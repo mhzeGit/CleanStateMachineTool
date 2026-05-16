@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -7,101 +6,74 @@ namespace StateMachineTool.Editor
 {
     public class StateNodeView : Node
     {
-        public string StateId { get; private set; }
-        public StateMachineGraphView GraphView { get; private set; }
+        public string StateId { get; }
+        public Port InputPort { get; private set; }
+        public Port OutputPort { get; private set; }
 
-        private Label typeLabel;
-
-        public StateNodeView(StateMachineGraphView graphView, Runtime.StateData stateData)
+        public StateNodeView(string stateId, string titleText, Runtime.StateType stateType, Vector2 position)
         {
-            GraphView = graphView;
-            StateId = stateData.id;
+            StateId = stateId;
+            viewDataKey = stateId;
+            title = titleText;
 
-            viewDataKey = stateData.id;
-            title = stateData.displayName;
-
-            SetPosition(new Rect(stateData.position, new Vector2(200, 100)));
+            SetPosition(new Rect(position, new Vector2(180, 0)));
             capabilities |= Capabilities.Movable | Capabilities.Selectable | Capabilities.Deletable;
 
-            AddToClassList("state-node");
-
-            SetupPorts(stateData.stateType);
-            SetupTypeBadge(stateData.stateType);
-            RefreshStyle(stateData.stateType);
-        }
-
-        private void SetupPorts(Runtime.StateType stateType)
-        {
+            // Entry states have no input port
             if (stateType != Runtime.StateType.Entry)
             {
-                var inputPort = Port.Create<Edge>(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(bool));
-                inputPort.portName = "In";
-                inputPort.name = "in-port";
-                inputContainer.Add(inputPort);
+                InputPort = InstantiatePort(Orientation.Horizontal, Direction.Input, Port.Capacity.Multi, typeof(bool));
+                InputPort.portName = "In";
+                InputPort.name = "in";
+                inputContainer.Add(InputPort);
             }
 
-            var outputPort = Port.Create<Edge>(Orientation.Horizontal, Direction.Output, Port.Capacity.Multi, typeof(bool));
-            outputPort.portName = "Out";
-            outputPort.name = "out-port";
-            outputContainer.Add(outputPort);
+            OutputPort = InstantiatePort(Orientation.Horizontal, Direction.Output, Port.Capacity.Multi, typeof(bool));
+            OutputPort.portName = "Out";
+            OutputPort.name = "out";
+            outputContainer.Add(OutputPort);
+
+            // Type badge in title bar
+            var badge = new Label(stateType.ToString());
+            badge.style.fontSize = 10;
+            badge.style.unityTextAlign = TextAnchor.MiddleCenter;
+            badge.style.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+            badge.style.paddingTop = 1; badge.style.paddingBottom = 1;
+            badge.style.paddingLeft = 6; badge.style.paddingRight = 6;
+            badge.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f, 0.5f);
+            badge.style.borderTopLeftRadius = 3; badge.style.borderTopRightRadius = 3;
+            badge.style.borderBottomLeftRadius = 3; badge.style.borderBottomRightRadius = 3;
+            titleButtonContainer.Add(badge);
+
+            ApplyStateStyle(stateType);
         }
 
-        private void SetupTypeBadge(Runtime.StateType stateType)
+        public void ApplyStateStyle(Runtime.StateType stateType)
         {
-            typeLabel = new Label(stateType.ToString());
-            typeLabel.AddToClassList("state-type-badge");
-            titleButtonContainer.Add(typeLabel);
-        }
-
-        public void RefreshStyle(Runtime.StateType stateType)
-        {
-            RemoveFromClassList("state-entry");
-            RemoveFromClassList("state-normal");
-            RemoveFromClassList("state-any");
+            RemoveFromClassList("entry");
+            RemoveFromClassList("any");
+            RemoveFromClassList("normal");
 
             switch (stateType)
             {
                 case Runtime.StateType.Entry:
-                    AddToClassList("state-entry");
+                    AddToClassList("entry");
+                    titleContainer.style.backgroundColor = new Color(0.16f, 0.37f, 0.2f, 1f);
+                    titleContainer.style.color = Color.white;
                     break;
                 case Runtime.StateType.Any:
-                    AddToClassList("state-any");
+                    AddToClassList("any");
+                    titleContainer.style.backgroundColor = new Color(0.37f, 0.27f, 0.11f, 1f);
+                    titleContainer.style.color = Color.white;
                     break;
                 default:
-                    AddToClassList("state-normal");
+                    AddToClassList("normal");
+                    titleContainer.style.backgroundColor = new Color(0.22f, 0.24f, 0.31f, 1f);
+                    titleContainer.style.color = new Color(0.85f, 0.85f, 0.9f, 1f);
                     break;
             }
-
-            if (typeLabel != null)
-                typeLabel.text = stateType.ToString();
         }
 
-        public void UpdateFromData(Runtime.StateData data)
-        {
-            title = data.displayName;
-            RefreshStyle(data.stateType);
-        }
-
-        public override void SetPosition(Rect newPos)
-        {
-            base.SetPosition(newPos);
-
-            var stateData = GraphView.Asset.GetState(StateId);
-            if (stateData != null)
-            {
-                stateData.position = newPos.position;
-                EditorUtility.SetDirty(GraphView.Asset);
-            }
-        }
-
-        public Port GetInputPort()
-        {
-            return inputContainer.Q<Port>("in-port");
-        }
-
-        public Port GetOutputPort()
-        {
-            return outputContainer.Q<Port>("out-port");
-        }
+        public void SetTitle(string newTitle) => title = newTitle;
     }
 }

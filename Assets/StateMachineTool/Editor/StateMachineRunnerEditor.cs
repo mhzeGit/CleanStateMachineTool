@@ -49,7 +49,7 @@ namespace StateMachineTool.Editor
 
             if (GUILayout.Button("Open Editor Window"))
             {
-                StateMachineEditorWindow.ShowWindow();
+                StateMachineEditorWindow.Open();
             }
 
             if (Application.isPlaying)

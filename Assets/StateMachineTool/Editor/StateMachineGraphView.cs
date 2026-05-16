@@ -18,7 +18,6 @@ namespace StateMachineTool.Editor
 
         private Vector2 lastMousePosition;
         private bool isBuilding;
-        private Label emptyGraphLabel;
 
         public StateMachineGraphView()
         {
@@ -30,32 +29,15 @@ namespace StateMachineTool.Editor
             this.AddManipulator(new RectangleSelector());
             this.AddManipulator(new ClickSelector());
 
-            var minimap = new MiniMap
-            {
-                anchored = true,
-                windowed = false
-            };
-            minimap.SetPosition(new Rect(10, 30, 180, 130));
-            minimap.AddToClassList("graph-minimap");
+            var minimap = new MiniMap { anchored = true };
+            minimap.SetPosition(new Rect(10, 10, 200, 140));
             Add(minimap);
 
-            RegisterCallback<MouseMoveEvent>(e =>
-            {
-                lastMousePosition = e.localMousePosition;
-            });
+            var grid = new GridBackground();
+            grid.StretchToParentSize();
+            Insert(0, grid);
 
-            graphViewChanged += OnGraphViewChanged;
-            serializeGraphElements += OnSerializeGraphElements;
-            unserializeAndPaste += OnUnserializeAndPaste;
-            canPasteSerializedData += OnCanPasteSerializedData;
-
-            nodeCreationRequest = ctx =>
-            {
-                if (Asset == null) return;
-                var mousePos = contentViewContainer.WorldToLocal(ctx.screenMousePosition);
-                var stateData = new SM.StateData("New State", mousePos);
-                CreateStateNode(stateData);
-            };
+            RegisterCallback<MouseMoveEvent>(e => lastMousePosition = e.localMousePosition);
 
             RegisterCallback<KeyDownEvent>(evt =>
             {
@@ -66,180 +48,124 @@ namespace StateMachineTool.Editor
                 }
             });
 
+            graphViewChanged += OnGraphViewChanged;
+
+            nodeCreationRequest = ctx =>
+            {
+                if (Asset == null) return;
+                var pos = contentViewContainer.WorldToLocal(ctx.screenMousePosition);
+                CreateState($"State {Asset.graphData.states.Count}", pos);
+            };
+
             style.flexGrow = 1;
-
-            var grid = new GridBackground();
-            grid.name = "grid-background";
-            grid.StretchToParentSize();
-            Insert(0, grid);
-
-            emptyGraphLabel = new Label("Right-click here or use the Toolbar buttons to add states.\nDrag from Out ports ( ) to connect states.");
-            emptyGraphLabel.name = "empty-graph-label";
-            emptyGraphLabel.AddToClassList("empty-graph-label");
-            Add(emptyGraphLabel);
         }
+
+        // ====== Asset Loading ======
 
         public void LoadAsset(SM.StateMachineAsset asset)
         {
             Asset = asset;
             if (Asset == null) return;
-
             isBuilding = true;
-            ClearGraph();
-            BuildGraph();
+            ClearUserElements();
+            BuildElements();
             isBuilding = false;
         }
 
         public void RefreshGraph()
         {
             if (Asset == null) return;
-
             isBuilding = true;
-            ClearGraph();
-            BuildGraph();
+            ClearUserElements();
+            BuildElements();
             isBuilding = false;
         }
 
-        private void ClearGraph()
+        private void ClearUserElements()
         {
-            DeleteElements(graphElements.ToList());
+            foreach (var e in edges.ToList()) RemoveElement(e);
+            foreach (var n in nodes.ToList()) RemoveElement(n);
         }
 
-        private void BuildGraph()
+        private void BuildElements()
         {
-            var graphData = Asset.graphData;
-
-            foreach (var state in graphData.states)
-                CreateStateNodeView(state);
-
-            foreach (var transition in graphData.transitions)
-                CreateTransitionEdge(transition);
-
-            UpdateEmptyLabel();
+            foreach (var s in Asset.graphData.states) AddStateNode(s);
+            foreach (var t in Asset.graphData.transitions) AddTransitionEdge(t);
         }
 
-        private void UpdateEmptyLabel()
-        {
-            if (emptyGraphLabel == null) return;
-            bool hasStates = Asset != null ? Asset.graphData.states.Count > 0 : false;
-            emptyGraphLabel.style.display = hasStates ? DisplayStyle.None : DisplayStyle.Flex;
-        }
+        // ====== State Node Management ======
 
-        public void CreateStateAtCenter(string name)
+        public StateNodeView CreateState(string name, Vector2 worldPos)
         {
-            if (Asset == null) return;
-            var center = contentViewContainer.WorldToLocal(
-                new Vector2(contentViewContainer.layout.width / 2, contentViewContainer.layout.height / 2));
-            var stateData = new SM.StateData(name, center);
-            CreateStateNode(stateData);
-        }
-
-        public void CreateEntryStateAtCenter()
-        {
-            if (Asset == null) return;
-            var center = contentViewContainer.WorldToLocal(
-                new Vector2(contentViewContainer.layout.width / 2, contentViewContainer.layout.height / 2));
-            var stateData = new SM.StateData("Entry", center, SM.StateType.Entry);
-            Asset.graphData.entryStateId = stateData.id;
-            CreateStateNode(stateData);
-        }
-
-        public StateNodeView CreateStateNode(SM.StateData stateData)
-        {
+            if (Asset == null) return null;
             Undo.RecordObject(Asset, "Create State");
-            Asset.graphData.states.Add(stateData);
-
-            if (stateData.stateType == SM.StateType.Entry)
-                Asset.graphData.entryStateId = stateData.id;
-
-            var nodeView = CreateStateNodeView(stateData);
+            var data = new SM.StateData(name, worldPos);
+            Asset.graphData.states.Add(data);
             EditorUtility.SetDirty(Asset);
+            var node = AddStateNode(data);
             OnGraphChanged?.Invoke();
-            UpdateEmptyLabel();
-            return nodeView;
+            return node;
         }
 
-        private StateNodeView CreateStateNodeView(SM.StateData stateData)
+        public StateNodeView CreateEntryState(string name, Vector2 worldPos)
         {
-            var nodeView = new StateNodeView(this, stateData);
-            nodeView.RegisterCallback<PointerDownEvent>(evt =>
-            {
-                OnStateSelected?.Invoke(stateData);
-            });
-            AddElement(nodeView);
-            return nodeView;
-        }
-
-        public void CreateTransition(SM.StateData fromState, SM.StateData toState)
-        {
-            var fromNode = GetNodeByStateId(fromState.id);
-            var toNode = GetNodeByStateId(toState.id);
-            if (fromNode == null || toNode == null) return;
-
-            var transitionData = new SM.TransitionData(fromState.id, toState.id)
-            {
-                displayName = $"{fromState.displayName} -> {toState.displayName}"
-            };
-            Asset.graphData.transitions.Add(transitionData);
-
-            ConnectNodes(fromNode, toNode, transitionData.id);
+            if (Asset == null) return null;
+            Undo.RecordObject(Asset, "Create Entry State");
+            var data = new SM.StateData(name, worldPos, SM.StateType.Entry);
+            Asset.graphData.states.Add(data);
+            Asset.graphData.entryStateId = data.id;
             EditorUtility.SetDirty(Asset);
+            var node = AddStateNode(data);
             OnGraphChanged?.Invoke();
+            return node;
         }
 
-        private void ConnectNodes(StateNodeView fromNode, StateNodeView toNode, string transitionId)
+        private StateNodeView AddStateNode(SM.StateData data)
         {
-            var edge = new TransitionEdgeView(transitionId);
-            edge.output = fromNode.GetOutputPort();
-            edge.input = toNode.GetInputPort();
+            var node = new StateNodeView(data.id, data.displayName, data.stateType, data.position);
+            node.RegisterCallback<PointerDownEvent>(_ => OnStateSelected?.Invoke(data));
+            AddElement(node);
+            return node;
+        }
+
+        // ====== Transition Management ======
+
+        private void AddTransitionEdge(SM.TransitionData data)
+        {
+            var fromNode = GetNodeById(data.fromStateId);
+            var toNode = GetNodeById(data.toStateId);
+            if (fromNode == null || toNode == null || fromNode.OutputPort == null || toNode.InputPort == null) return;
+
+            var edge = new TransitionEdgeView(data.id);
+            edge.output = fromNode.OutputPort;
+            edge.input = toNode.InputPort;
             edge.output.Connect(edge);
             edge.input.Connect(edge);
-
-            edge.RegisterCallback<PointerDownEvent>(evt =>
+            var capturedId = data.id;
+            edge.RegisterCallback<PointerDownEvent>(_ =>
             {
-                var transition = Asset.graphData.transitions.FirstOrDefault(t => t.id == transitionId);
-                if (transition != null)
-                    OnTransitionSelected?.Invoke(transition);
+                var t = Asset.graphData.transitions.FirstOrDefault(x => x.id == capturedId);
+                if (t != null) OnTransitionSelected?.Invoke(t);
             });
-
             AddElement(edge);
         }
 
-        private void CreateTransitionEdge(SM.TransitionData transitionData)
-        {
-            var fromNode = GetNodeByStateId(transitionData.fromStateId);
-            var toNode = GetNodeByStateId(transitionData.toStateId);
-            if (fromNode == null || toNode == null) return;
-
-            var edge = new TransitionEdgeView(transitionData.id);
-            edge.output = fromNode.GetOutputPort();
-            edge.input = toNode.GetInputPort();
-            edge.output.Connect(edge);
-            edge.input.Connect(edge);
-
-            var capturedId = transitionData.id;
-            edge.RegisterCallback<PointerDownEvent>(evt =>
-            {
-                var transition = Asset.graphData.transitions.FirstOrDefault(t => t.id == capturedId);
-                if (transition != null)
-                    OnTransitionSelected?.Invoke(transition);
-            });
-
-            AddElement(edge);
-        }
-
-        public StateNodeView GetNodeByStateId(string stateId)
+        public StateNodeView GetNodeById(string stateId)
         {
             return nodes.OfType<StateNodeView>().FirstOrDefault(n => n.StateId == stateId);
         }
 
+        // ====== Port Compatibility ======
+
         public override List<Port> GetCompatiblePorts(Port startPort, NodeAdapter nodeAdapter)
         {
-            return ports.ToList().Where(endPort =>
-                endPort.direction != startPort.direction &&
-                endPort.node != startPort.node
+            return ports.ToList().Where(p =>
+                p.direction != startPort.direction &&
+                p.node != startPort.node
             ).ToList();
         }
+
+        // ====== Graph Changes ======
 
         private GraphViewChange OnGraphViewChanged(GraphViewChange change)
         {
@@ -247,20 +173,22 @@ namespace StateMachineTool.Editor
 
             if (change.elementsToRemove != null)
             {
-                var transitionsToRemove = change.elementsToRemove
-                    .OfType<TransitionEdgeView>()
-                    .Select(e => e.TransitionId)
-                    .ToList();
-
-                var statesToRemove = change.elementsToRemove
-                    .OfType<StateNodeView>()
-                    .Select(n => n.StateId)
-                    .ToList();
-
-                foreach (var tid in transitionsToRemove)
-                    RemoveTransitionData(tid);
-                foreach (var sid in statesToRemove)
-                    RemoveStateData(sid);
+                foreach (var elem in change.elementsToRemove)
+                {
+                    if (elem is TransitionEdgeView te)
+                    {
+                        Asset.graphData.transitions.RemoveAll(t => t.id == te.TransitionId);
+                    }
+                    else if (elem is StateNodeView sn)
+                    {
+                        Asset.graphData.transitions.RemoveAll(t => t.fromStateId == sn.StateId || t.toStateId == sn.StateId);
+                        Asset.graphData.states.RemoveAll(s => s.id == sn.StateId);
+                        if (Asset.graphData.entryStateId == sn.StateId)
+                            Asset.graphData.entryStateId = null;
+                    }
+                }
+                EditorUtility.SetDirty(Asset);
+                OnGraphChanged?.Invoke();
             }
 
             if (change.edgesToCreate != null)
@@ -272,29 +200,27 @@ namespace StateMachineTool.Editor
                         edge.input?.node is StateNodeView toNode &&
                         fromNode.StateId != toNode.StateId)
                     {
+                        Undo.RecordObject(Asset, "Create Transition");
                         var fromState = Asset.GetState(fromNode.StateId);
                         var toState = Asset.GetState(toNode.StateId);
                         if (fromState != null && toState != null)
                         {
-                            Undo.RecordObject(Asset, "Create Transition");
-
-                            var transitionData = new SM.TransitionData(fromState.id, toState.id)
+                            var data = new SM.TransitionData(fromState.id, toState.id)
                             {
                                 displayName = $"{fromState.displayName} -> {toState.displayName}"
                             };
-                            Asset.graphData.transitions.Add(transitionData);
+                            Asset.graphData.transitions.Add(data);
 
-                            var transitionEdge = new TransitionEdgeView(transitionData.id);
-                            transitionEdge.output = edge.output;
-                            transitionEdge.input = edge.input;
-
-                            var capturedId = transitionData.id;
-                            transitionEdge.RegisterCallback<PointerDownEvent>(evt =>
+                            var te = new TransitionEdgeView(data.id);
+                            te.output = edge.output;
+                            te.input = edge.input;
+                            var capturedId = data.id;
+                            te.RegisterCallback<PointerDownEvent>(_ =>
                             {
                                 var t = Asset.graphData.transitions.FirstOrDefault(x => x.id == capturedId);
                                 if (t != null) OnTransitionSelected?.Invoke(t);
                             });
-                            change.edgesToCreate[i] = transitionEdge;
+                            change.edgesToCreate[i] = te;
                         }
                     }
                 }
@@ -304,13 +230,12 @@ namespace StateMachineTool.Editor
 
             if (change.movedElements != null)
             {
-                foreach (var element in change.movedElements)
+                foreach (var elem in change.movedElements)
                 {
-                    if (element is StateNodeView stateNode)
+                    if (elem is StateNodeView sn)
                     {
-                        var stateData = Asset.GetState(stateNode.StateId);
-                        if (stateData != null)
-                            stateData.position = stateNode.GetPosition().position;
+                        var data = Asset.GetState(sn.StateId);
+                        if (data != null) data.position = sn.GetPosition().position;
                     }
                 }
                 EditorUtility.SetDirty(Asset);
@@ -319,64 +244,25 @@ namespace StateMachineTool.Editor
             return change;
         }
 
-        private void RemoveTransitionData(string transitionId)
-        {
-            Asset.graphData.transitions.RemoveAll(t => t.id == transitionId);
-            EditorUtility.SetDirty(Asset);
-            OnGraphChanged?.Invoke();
-        }
-
-        private void RemoveStateData(string stateId)
-        {
-            Asset.graphData.transitions.RemoveAll(t => t.fromStateId == stateId || t.toStateId == stateId);
-            Asset.graphData.states.RemoveAll(s => s.id == stateId);
-
-            if (Asset.graphData.entryStateId == stateId)
-                Asset.graphData.entryStateId = null;
-
-            EditorUtility.SetDirty(Asset);
-            OnGraphChanged?.Invoke();
-            UpdateEmptyLabel();
-        }
+        // ====== Context Menu ======
 
         public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
         {
-            if (Asset == null)
-            {
-                base.BuildContextualMenu(evt);
-                return;
-            }
+            if (Asset == null) return;
 
-            evt.menu.AppendAction("Add State", action =>
+            evt.menu.AppendAction("Add State", _ =>
             {
-                var mousePos = viewTransform.matrix.inverse.MultiplyPoint(lastMousePosition);
-                var stateData = new SM.StateData("New State", mousePos);
-                CreateStateNode(stateData);
-            }, DropdownMenuAction.AlwaysEnabled);
+                var pos = viewTransform.matrix.inverse.MultiplyPoint(lastMousePosition);
+                CreateState($"State {Asset.graphData.states.Count}", pos);
+            });
 
-            evt.menu.AppendAction("Add Entry State (Start)", action =>
+            evt.menu.AppendAction("Add Entry State", _ =>
             {
-                var mousePos = viewTransform.matrix.inverse.MultiplyPoint(lastMousePosition);
-                var stateData = new SM.StateData("Entry", mousePos, SM.StateType.Entry);
-                Asset.graphData.entryStateId = stateData.id;
-                CreateStateNode(stateData);
-            }, DropdownMenuAction.AlwaysEnabled);
-
-            bool hasEntryState = Asset.graphData.states.Any(s => s.stateType == SM.StateType.Entry);
-            if (!hasEntryState)
-            {
-                evt.menu.AppendSeparator();
-
-                evt.menu.AppendAction("(No entry state defined)", null,
-                    DropdownMenuAction.AlwaysDisabled);
-            }
+                var pos = viewTransform.matrix.inverse.MultiplyPoint(lastMousePosition);
+                CreateEntryState("Entry", pos);
+            });
 
             evt.menu.AppendSeparator();
-            base.BuildContextualMenu(evt);
         }
-
-        private string OnSerializeGraphElements(IEnumerable<GraphElement> elements) => string.Empty;
-        private void OnUnserializeAndPaste(string operationName, string data) { }
-        private bool OnCanPasteSerializedData(string data) => false;
     }
 }

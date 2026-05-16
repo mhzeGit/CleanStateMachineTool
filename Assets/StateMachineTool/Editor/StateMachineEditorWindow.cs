@@ -1,6 +1,4 @@
-using System.Linq;
 using UnityEditor;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 using SM = StateMachineTool.Runtime;
@@ -13,174 +11,151 @@ namespace StateMachineTool.Editor
         private StateMachineGraphView graphView;
         private BlackboardEditorView blackboardView;
         private StateInspectorView inspectorView;
-        private TwoPaneSplitView horizontalSplit;
-        private TwoPaneSplitView leftVerticalSplit;
-        private VisualElement noAssetOverlay;
+        private TwoPaneSplitView mainSplit;
+        private TwoPaneSplitView sideSplit;
+        private Label assetLabel;
+        private Button addStateBtn, addEntryBtn;
 
-        public static void ShowWindow()
-        {
-            var window = GetWindow<StateMachineEditorWindow>();
-            window.titleContent = new GUIContent("State Machine");
-            window.minSize = new Vector2(800, 500);
-            window.Show();
-        }
+        public static void Open() => GetWindow<StateMachineEditorWindow>("State Machine");
 
         public static void OpenAsset(SM.StateMachineAsset asset)
         {
-            var window = GetWindow<StateMachineEditorWindow>();
-            window.titleContent = new GUIContent("State Machine");
-            window.LoadAsset(asset);
-            window.Show();
+            var w = GetWindow<StateMachineEditorWindow>("State Machine");
+            w.LoadAsset(asset);
         }
 
-        private void OnEnable()
+        void OnEnable()
         {
-            BuildLayout();
-            LoadStyleSheet();
-            UpdateOverlayVisibility();
+            BuildUI();
+            LoadUSS();
         }
 
-        private void OnDisable()
+        void OnSelectionChange()
         {
-            if (graphView != null)
-                graphView.OnStateSelected -= OnStateSelected;
+            if (Selection.activeObject is SM.StateMachineAsset a) LoadAsset(a);
         }
 
-        private void OnSelectionChange()
-        {
-            if (Selection.activeObject is SM.StateMachineAsset asset)
-            {
-                LoadAsset(asset);
-            }
-        }
+        // ====== Build ======
 
-        private void BuildLayout()
+        void BuildUI()
         {
             var root = rootVisualElement;
             root.Clear();
+            root.style.flexDirection = FlexDirection.Column;
             root.style.flexGrow = 1;
 
             BuildToolbar(root);
-            BuildNoAssetOverlay(root);
-            BuildMainContent(root);
+            BuildPanels(root);
         }
 
-        private void BuildToolbar(VisualElement root)
+        void BuildToolbar(VisualElement root)
         {
-            var toolbar = new VisualElement();
-            toolbar.AddToClassList("editor-toolbar");
-            root.Add(toolbar);
+            var bar = new VisualElement();
+            bar.style.flexDirection = FlexDirection.Row;
+            bar.style.alignItems = Align.Center;
+            bar.style.height = 28;
+            bar.style.minHeight = 28;
+            bar.style.backgroundColor = new Color(0.14f, 0.14f, 0.15f, 1f);
+            bar.style.paddingLeft = 10;
+            bar.style.paddingRight = 10;
+            bar.style.borderBottomWidth = 1;
+            bar.style.borderBottomColor = new Color(0.22f, 0.22f, 0.23f, 1f);
+            root.Add(bar);
 
-            var assetLabel = new Label("No asset loaded");
-            assetLabel.name = "asset-label";
-            assetLabel.AddToClassList("toolbar-label");
-            toolbar.Add(assetLabel);
+            assetLabel = new Label("No asset loaded");
+            assetLabel.style.color = new Color(0.75f, 0.75f, 0.78f, 1f);
+            assetLabel.style.fontSize = 12;
+            assetLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            assetLabel.style.minWidth = 120;
+            bar.Add(assetLabel);
 
             var spacer = new VisualElement();
             spacer.style.flexGrow = 1;
-            toolbar.Add(spacer);
+            bar.Add(spacer);
 
-            var addStateBtn = new Button(() =>
+            addStateBtn = MakeToolbarButton("+ State", () =>
             {
-                if (graphView != null)
-                    graphView.CreateStateAtCenter("New State");
-            }) { text = "+ State", tooltip = "Create a new state at graph center (or right-click the graph)" };
-            addStateBtn.AddToClassList("toolbar-button");
-            addStateBtn.style.display = DisplayStyle.None;
-            addStateBtn.name = "add-state-btn";
-            toolbar.Add(addStateBtn);
+                graphView?.CreateState($"State {currentAsset?.graphData.states.Count ?? 0}", Vector2.zero);
+            });
+            bar.Add(addStateBtn);
 
-            var addEntryBtn = new Button(() =>
+            addEntryBtn = MakeToolbarButton("+ Entry", () =>
             {
-                if (graphView != null)
-                    graphView.CreateEntryStateAtCenter();
-            }) { text = "+ Entry", tooltip = "Create the entry state" };
-            addEntryBtn.AddToClassList("toolbar-button");
-            addEntryBtn.style.display = DisplayStyle.None;
-            addEntryBtn.name = "add-entry-btn";
-            toolbar.Add(addEntryBtn);
+                graphView?.CreateEntryState("Entry", new Vector2(100, 0));
+            });
+            bar.Add(addEntryBtn);
 
-            var saveBtn = new Button(() =>
+            var saveBtn = MakeToolbarButton("Save", () =>
             {
-                if (currentAsset != null)
-                {
-                    EditorUtility.SetDirty(currentAsset);
-                    AssetDatabase.SaveAssets();
-                }
-            }) { text = "Save", tooltip = "Save the state machine asset" };
-            saveBtn.AddToClassList("toolbar-button");
-            saveBtn.style.display = DisplayStyle.None;
-            saveBtn.name = "save-btn";
-            toolbar.Add(saveBtn);
+                if (currentAsset != null) { EditorUtility.SetDirty(currentAsset); AssetDatabase.SaveAssets(); }
+            });
+            bar.Add(saveBtn);
 
-            var createBtn = new Button(StateMachineMenuItems.CreateStateMachineAsset)
-            { text = "New Asset", tooltip = "Create a new state machine asset" };
-            createBtn.AddToClassList("toolbar-button");
-            createBtn.name = "create-btn";
-            toolbar.Add(createBtn);
+            var refreshBtn = MakeToolbarButton("Refresh", () =>
+            {
+                graphView?.RefreshGraph();
+                blackboardView?.Refresh();
+            });
+            bar.Add(refreshBtn);
+
+            // Hide asset-dependent buttons initially
+            SetAssetButtonsVisible(false);
         }
 
-        private void BuildNoAssetOverlay(VisualElement root)
+        Button MakeToolbarButton(string text, System.Action onClick)
         {
-            noAssetOverlay = new VisualElement();
-            noAssetOverlay.AddToClassList("no-asset-overlay");
-            noAssetOverlay.name = "no-asset-overlay";
-
-            var overlayContent = new VisualElement();
-            overlayContent.AddToClassList("overlay-content");
-
-            var icon = new Label("( )");
-            icon.AddToClassList("overlay-icon");
-
-            var heading = new Label("State Machine Editor");
-            heading.AddToClassList("overlay-heading");
-
-            var subtext = new Label("Create a new State Machine Asset or select an existing one to begin.");
-            subtext.AddToClassList("overlay-subtext");
-
-            var createAssetBtn = new Button(StateMachineMenuItems.CreateStateMachineAsset)
-            { text = "New State Machine Asset" };
-            createAssetBtn.AddToClassList("overlay-button");
-
-            overlayContent.Add(icon);
-            overlayContent.Add(heading);
-            overlayContent.Add(subtext);
-            overlayContent.Add(createAssetBtn);
-
-            noAssetOverlay.Add(overlayContent);
-            root.Add(noAssetOverlay);
+            var btn = new Button(onClick) { text = text };
+            btn.style.height = 22;
+            btn.style.fontSize = 11;
+            btn.style.paddingLeft = 10;
+            btn.style.paddingRight = 10;
+            btn.style.marginLeft = 4;
+            btn.style.backgroundColor = new Color(0.25f, 0.25f, 0.28f, 0.8f);
+            btn.style.color = new Color(0.8f, 0.8f, 0.85f, 1f);
+            btn.style.borderTopLeftRadius = 3; btn.style.borderTopRightRadius = 3;
+            btn.style.borderBottomLeftRadius = 3; btn.style.borderBottomRightRadius = 3;
+            btn.style.borderTopWidth = 1; btn.style.borderBottomWidth = 1;
+            btn.style.borderLeftWidth = 1; btn.style.borderRightWidth = 1;
+            btn.style.borderTopColor = new Color(0.35f, 0.35f, 0.38f, 0.3f);
+            btn.style.borderBottomColor = new Color(0.35f, 0.35f, 0.38f, 0.3f);
+            btn.style.borderLeftColor = new Color(0.35f, 0.35f, 0.38f, 0.3f);
+            btn.style.borderRightColor = new Color(0.35f, 0.35f, 0.38f, 0.3f);
+            return btn;
         }
 
-        private void BuildMainContent(VisualElement root)
+        void BuildPanels(VisualElement root)
         {
-            horizontalSplit = new TwoPaneSplitView(1, 280, TwoPaneSplitViewOrientation.Horizontal);
-            horizontalSplit.name = "horizontal-split";
-            horizontalSplit.style.flexGrow = 1;
+            // Main horizontal split: left (blackboard+graph) | right (inspector)
+            // Pane 1 (inspector) is fixed-width
+            mainSplit = new TwoPaneSplitView(1, 280, TwoPaneSplitViewOrientation.Horizontal);
+            mainSplit.style.flexGrow = 1;
 
-            leftVerticalSplit = new TwoPaneSplitView(0, 240, TwoPaneSplitViewOrientation.Vertical);
-            leftVerticalSplit.name = "left-vertical-split";
+            // Side vertical split: top (blackboard) | bottom (graph)
+            // Pane 0 (blackboard) is fixed-height
+            sideSplit = new TwoPaneSplitView(0, 220, TwoPaneSplitViewOrientation.Vertical);
 
             blackboardView = new BlackboardEditorView();
-            blackboardView.name = "blackboard-view";
-            blackboardView.OnChanged += OnGraphDataChanged;
-            leftVerticalSplit.Add(blackboardView);
+            blackboardView.OnChanged += OnDataChanged;
+            sideSplit.Add(blackboardView);
 
             graphView = new StateMachineGraphView();
-            graphView.name = "graph-view";
-            graphView.OnStateSelected += OnStateSelected;
-            graphView.OnTransitionSelected += OnTransitionSelected;
-            graphView.OnGraphChanged += OnGraphDataChanged;
-            leftVerticalSplit.Add(graphView);
+            graphView.OnStateSelected += d => inspectorView?.ShowState(d);
+            graphView.OnTransitionSelected += t => inspectorView?.ShowTransition(t);
+            graphView.OnGraphChanged += OnDataChanged;
+            sideSplit.Add(graphView);
 
-            horizontalSplit.Add(leftVerticalSplit);
+            mainSplit.Add(sideSplit);
 
             inspectorView = new StateInspectorView();
-            inspectorView.name = "inspector-view";
-            inspectorView.OnChanged += OnGraphDataChanged;
-            horizontalSplit.Add(inspectorView);
+            inspectorView.OnChanged += OnDataChanged;
+            inspectorView.style.borderLeftWidth = 1;
+            inspectorView.style.borderLeftColor = new Color(0.22f, 0.22f, 0.23f, 1f);
+            mainSplit.Add(inspectorView);
 
-            root.Add(horizontalSplit);
+            root.Add(mainSplit);
         }
+
+        // ====== Asset ======
 
         public void LoadAsset(SM.StateMachineAsset asset)
         {
@@ -188,83 +163,36 @@ namespace StateMachineTool.Editor
             graphView?.LoadAsset(asset);
             blackboardView?.LoadAsset(asset);
             inspectorView?.LoadAsset(asset);
-            UpdateOverlayVisibility();
+            assetLabel.text = asset != null ? asset.name : "No asset loaded";
+            SetAssetButtonsVisible(asset != null);
         }
 
-        private void UpdateOverlayVisibility()
+        void SetAssetButtonsVisible(bool visible)
         {
-            bool hasAsset = currentAsset != null;
-
-            var overlay = rootVisualElement.Q<VisualElement>("no-asset-overlay");
-            if (overlay != null)
-                overlay.style.display = hasAsset ? DisplayStyle.None : DisplayStyle.Flex;
-
-            var split = rootVisualElement.Q<TwoPaneSplitView>("horizontal-split");
-            if (split != null)
-                split.style.display = hasAsset ? DisplayStyle.Flex : DisplayStyle.None;
-
-            var assetLabel = rootVisualElement.Q<Label>("asset-label");
-            if (assetLabel != null)
-                assetLabel.text = hasAsset ? currentAsset.name : "No asset loaded";
-
-            var addStateBtn = rootVisualElement.Q<Button>("add-state-btn");
-            if (addStateBtn != null)
-                addStateBtn.style.display = hasAsset ? DisplayStyle.Flex : DisplayStyle.None;
-
-            var addEntryBtn = rootVisualElement.Q<Button>("add-entry-btn");
-            if (addEntryBtn != null)
-                addEntryBtn.style.display = hasAsset ? DisplayStyle.Flex : DisplayStyle.None;
-
-            var saveBtn = rootVisualElement.Q<Button>("save-btn");
-            if (saveBtn != null)
-                saveBtn.style.display = hasAsset ? DisplayStyle.Flex : DisplayStyle.None;
-
-            var createBtn = rootVisualElement.Q<Button>("create-btn");
-            if (createBtn != null)
-                createBtn.style.display = hasAsset ? DisplayStyle.None : DisplayStyle.Flex;
+            var d = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (addStateBtn != null) addStateBtn.style.display = d;
+            if (addEntryBtn != null) addEntryBtn.style.display = d;
         }
 
-        private void OnStateSelected(SM.StateData stateData)
-        {
-            inspectorView?.ShowState(stateData);
-        }
-
-        private void OnTransitionSelected(SM.TransitionData transitionData)
-        {
-            inspectorView?.ShowTransition(transitionData);
-        }
-
-        private void OnGraphDataChanged()
+        void OnDataChanged()
         {
             if (currentAsset != null)
             {
                 EditorUtility.SetDirty(currentAsset);
                 blackboardView?.Refresh();
-                SyncGraphViewNodes();
-            }
-        }
-
-        private void SyncGraphViewNodes()
-        {
-            if (graphView == null || currentAsset == null) return;
-
-            foreach (var stateData in currentAsset.graphData.states)
-            {
-                var nodeView = graphView.GetNodeByStateId(stateData.id);
-                if (nodeView != null)
+                // Sync node titles from data
+                if (graphView != null && currentAsset != null)
                 {
-                    nodeView.UpdateFromData(stateData);
+                    foreach (var s in currentAsset.graphData.states)
+                        graphView.GetNodeById(s.id)?.SetTitle(s.displayName);
                 }
             }
         }
 
-        private void LoadStyleSheet()
+        void LoadUSS()
         {
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/StateMachineTool/Editor/StateMachineStyles.uss");
-
-            if (styleSheet != null)
-                rootVisualElement.styleSheets.Add(styleSheet);
+            var ss = AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/StateMachineTool/Editor/StateMachineStyles.uss");
+            if (ss != null) rootVisualElement.styleSheets.Add(ss);
         }
     }
 }

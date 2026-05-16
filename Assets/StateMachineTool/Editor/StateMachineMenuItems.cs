@@ -35,7 +35,7 @@ namespace StateMachineTool.Editor
         [MenuItem("Window/State Machine Editor", false, 200)]
         public static void OpenEditorWindow()
         {
-            StateMachineEditorWindow.ShowWindow();
+            StateMachineEditorWindow.Open();
         }
     }
 }
