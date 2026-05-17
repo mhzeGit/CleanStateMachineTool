@@ -27,7 +27,8 @@ MonoBehaviour:
       position: {x: 783, y: 184}
       stateType: 0
       comment: 
-      onEnterActions: []
+      onEnterActions:
+      - rid: 502891706644168790
       onUpdateActions:
       - rid: 502891706644168778
       - rid: 502891706644168783
@@ -38,11 +39,21 @@ MonoBehaviour:
       toStateId: 6d5bf1c6-265f-42d1-a349-59bc77841499
       displayName: Entry -> New State
       priority: 2
-      conditions: []
+      conditions:
+      - rid: 502891706644168785
     blackboard:
-      variables: []
+      variables:
+      - key: GIGI
+        type: 1
+        intValue: 0
+        floatValue: 0
+        boolValue: 0
+        stringValue: 
+        vector2Value: {x: 0, y: 0}
+        vector3Value: {x: 0, y: 0, z: 0}
+        objectValue: {fileID: 0}
       events: []
-    entryStateId: 4550e4dd-ec99-4abc-853e-00290c7c9fdc
+    entryStateId: 
   references:
     version: 2
     RefIds:
@@ -50,7 +61,7 @@ MonoBehaviour:
       type: {class: DebugLogAction, ns: StateMachineTool.Runtime, asm: StateMachineTool.Runtime}
       data:
         enabled: 1
-        message: State Action
+        message: GIGGAGAG
     - rid: 502891706644168783
       type: {class: UnityEventAction, ns: StateMachineTool.Runtime, asm: StateMachineTool.Runtime}
       data:
@@ -58,3 +69,19 @@ MonoBehaviour:
         unityEvent:
           m_PersistentCalls:
             m_Calls: []
+    - rid: 502891706644168785
+      type: {class: AlwaysCondition, ns: StateMachineTool.Runtime, asm: StateMachineTool.Runtime}
+      data:
+        negate: 0
+    - rid: 502891706644168790
+      type: {class: SetVariableAction, ns: StateMachineTool.Runtime, asm: StateMachineTool.Runtime}
+      data:
+        enabled: 1
+        variableKey: 
+        intValue: 0
+        floatValue: 0
+        boolValue: 0
+        stringValue: 
+        vector2Value: {x: 0, y: 0}
+        vector3Value: {x: 0, y: 0, z: 0}
+        objectValue: {fileID: 0}

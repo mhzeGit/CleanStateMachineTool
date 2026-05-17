@@ -23,7 +23,9 @@ namespace StateMachineTool.Editor
 
         public BlackboardEditorView()
         {
-            AddToClassList("blackboard-editor");
+            style.backgroundColor = new UnityEngine.Color(0.15f, 0.15f, 0.16f, 1f);
+            style.paddingBottom = 4;
+
             BuildUI();
         }
 
@@ -34,117 +36,178 @@ namespace StateMachineTool.Editor
             Refresh();
         }
 
+        // ====== Build ======
+
         private void BuildUI()
         {
             var header = new Label("BLACKBOARD");
-            header.AddToClassList("blackboard-header");
+            header.style.backgroundColor = new UnityEngine.Color(0.11f, 0.11f, 0.12f, 1f);
+            header.style.color = new UnityEngine.Color(0.78f, 0.78f, 0.78f, 1f);
+            header.style.fontSize = 12;
+            header.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            header.style.paddingLeft = 12;
+            header.style.paddingRight = 12;
+            header.style.paddingTop = 6;
+            header.style.paddingBottom = 6;
+            header.style.borderBottomWidth = 1;
+            header.style.borderBottomColor = new UnityEngine.Color(0.2f, 0.2f, 0.21f, 1f);
             Add(header);
 
             var scrollView = new ScrollView();
             scrollView.style.flexGrow = 1;
 
-            // --- Variables Section ---
-            var variablesHeader = new Label("Variables");
-            variablesHeader.AddToClassList("blackboard-section-header");
-            scrollView.Add(variablesHeader);
+            // ==== Variables ====
+            var varSectionLabel = new Label("Variables");
+            varSectionLabel.style.color = new UnityEngine.Color(0.6f, 0.6f, 0.65f, 1f);
+            varSectionLabel.style.fontSize = 11;
+            varSectionLabel.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            varSectionLabel.style.paddingLeft = 12;
+            varSectionLabel.style.paddingRight = 12;
+            varSectionLabel.style.paddingTop = 8;
+            varSectionLabel.style.paddingBottom = 2;
+            scrollView.Add(varSectionLabel);
 
-            var addVarBtn = new Button(() => AddVariable());
-            addVarBtn.text = "+ Add Variable";
-            addVarBtn.AddToClassList("blackboard-add-btn");
+            var addVarBtn = new Button(() => AddVariable()) { text = "+ Add Variable" };
+            addVarBtn.style.fontSize = 10;
+            addVarBtn.style.height = 20;
+            addVarBtn.style.marginLeft = 12;
+            addVarBtn.style.marginRight = 12;
+            addVarBtn.style.marginBottom = 4;
+            addVarBtn.style.backgroundColor = new UnityEngine.Color(0.25f, 0.25f, 0.28f, 0.6f);
+            addVarBtn.style.color = new UnityEngine.Color(0.7f, 0.78f, 0.85f, 1f);
+            addVarBtn.style.borderTopLeftRadius = 3; addVarBtn.style.borderTopRightRadius = 3;
+            addVarBtn.style.borderBottomLeftRadius = 3; addVarBtn.style.borderBottomRightRadius = 3;
             scrollView.Add(addVarBtn);
 
-            var varContainer = new VisualElement();
-            varContainer.AddToClassList("blackboard-list-container");
-            scrollView.Add(varContainer);
-
-            variableListView = new ListView();
-            variableListView.AddToClassList("blackboard-list");
-            variableListView.fixedItemHeight = 24;
-            variableListView.makeItem = () =>
-            {
-                var label = new Label();
-                label.AddToClassList("blackboard-list-item");
-                return label;
-            };
-            variableListView.bindItem = (element, index) =>
-            {
-                if (index >= asset.graphData.blackboard.variables.Count) return;
-                var variable = asset.graphData.blackboard.variables[index];
-                var label = element as Label;
-                if (label != null)
-                    label.text = $"{variable.key} ({variable.type})";
-            };
+            variableListView = MakeListView();
             variableListView.selectionChanged += OnVariableSelectionChanged;
-            variableListView.selectionType = SelectionType.Single;
-            varContainer.Add(variableListView);
+            var varListContainer = new VisualElement();
+            varListContainer.style.marginLeft = 8;
+            varListContainer.style.marginRight = 8;
+            varListContainer.Add(variableListView);
+            scrollView.Add(varListContainer);
 
-            // Variable Edit Panel
             variableEditPanel = new VisualElement();
-            variableEditPanel.AddToClassList("blackboard-edit-panel");
             variableEditPanel.style.display = DisplayStyle.None;
+            variableEditPanel.style.marginLeft = 8;
+            variableEditPanel.style.marginRight = 8;
+            variableEditPanel.style.marginTop = 4;
+            variableEditPanel.style.marginBottom = 4;
+            variableEditPanel.style.paddingLeft = 8;
+            variableEditPanel.style.paddingRight = 8;
+            variableEditPanel.style.paddingTop = 6;
+            variableEditPanel.style.paddingBottom = 6;
+            variableEditPanel.style.backgroundColor = new UnityEngine.Color(0.18f, 0.18f, 0.2f, 1f);
+            variableEditPanel.style.borderTopLeftRadius = 4; variableEditPanel.style.borderTopRightRadius = 4;
+            variableEditPanel.style.borderBottomLeftRadius = 4; variableEditPanel.style.borderBottomRightRadius = 4;
             scrollView.Add(variableEditPanel);
 
-            // --- Events Section ---
-            var eventsHeader = new Label("Events");
-            eventsHeader.AddToClassList("blackboard-section-header");
-            scrollView.Add(eventsHeader);
+            // ==== Events ====
+            var evtSectionLabel = new Label("Events");
+            evtSectionLabel.style.color = new UnityEngine.Color(0.6f, 0.6f, 0.65f, 1f);
+            evtSectionLabel.style.fontSize = 11;
+            evtSectionLabel.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            evtSectionLabel.style.paddingLeft = 12;
+            evtSectionLabel.style.paddingRight = 12;
+            evtSectionLabel.style.paddingTop = 12;
+            evtSectionLabel.style.paddingBottom = 2;
+            scrollView.Add(evtSectionLabel);
 
-            var addEventBtn = new Button(() => AddEvent());
-            addEventBtn.text = "+ Add Event";
-            addEventBtn.AddToClassList("blackboard-add-btn");
-            scrollView.Add(addEventBtn);
+            var addEvtBtn = new Button(() => AddEvent()) { text = "+ Add Event" };
+            addEvtBtn.style.fontSize = 10;
+            addEvtBtn.style.height = 20;
+            addEvtBtn.style.marginLeft = 12;
+            addEvtBtn.style.marginRight = 12;
+            addEvtBtn.style.marginBottom = 4;
+            addEvtBtn.style.backgroundColor = new UnityEngine.Color(0.25f, 0.25f, 0.28f, 0.6f);
+            addEvtBtn.style.color = new UnityEngine.Color(0.7f, 0.78f, 0.85f, 1f);
+            addEvtBtn.style.borderTopLeftRadius = 3; addEvtBtn.style.borderTopRightRadius = 3;
+            addEvtBtn.style.borderBottomLeftRadius = 3; addEvtBtn.style.borderBottomRightRadius = 3;
+            scrollView.Add(addEvtBtn);
 
-            var eventContainer = new VisualElement();
-            eventContainer.AddToClassList("blackboard-list-container");
-            scrollView.Add(eventContainer);
-
-            eventListView = new ListView();
-            eventListView.AddToClassList("blackboard-list");
-            eventListView.fixedItemHeight = 24;
-            eventListView.makeItem = () =>
-            {
-                var label = new Label();
-                label.AddToClassList("blackboard-list-item");
-                return label;
-            };
-            eventListView.bindItem = (element, index) =>
-            {
-                if (index >= asset.graphData.blackboard.events.Count) return;
-                var evt = asset.graphData.blackboard.events[index];
-                var label = element as Label;
-                if (label != null)
-                    label.text = evt.key;
-            };
+            eventListView = MakeListView();
             eventListView.selectionChanged += OnEventSelectionChanged;
-            eventListView.selectionType = SelectionType.Single;
-            eventContainer.Add(eventListView);
+            var evtListContainer = new VisualElement();
+            evtListContainer.style.marginLeft = 8;
+            evtListContainer.style.marginRight = 8;
+            evtListContainer.Add(eventListView);
+            scrollView.Add(evtListContainer);
 
-            // Event Edit Panel
             eventEditPanel = new VisualElement();
-            eventEditPanel.AddToClassList("blackboard-edit-panel");
             eventEditPanel.style.display = DisplayStyle.None;
+            eventEditPanel.style.marginLeft = 8;
+            eventEditPanel.style.marginRight = 8;
+            eventEditPanel.style.marginTop = 4;
+            eventEditPanel.style.marginBottom = 4;
+            eventEditPanel.style.paddingLeft = 8;
+            eventEditPanel.style.paddingRight = 8;
+            eventEditPanel.style.paddingTop = 6;
+            eventEditPanel.style.paddingBottom = 6;
+            eventEditPanel.style.backgroundColor = new UnityEngine.Color(0.18f, 0.18f, 0.2f, 1f);
+            eventEditPanel.style.borderTopLeftRadius = 4; eventEditPanel.style.borderTopRightRadius = 4;
+            eventEditPanel.style.borderBottomLeftRadius = 4; eventEditPanel.style.borderBottomRightRadius = 4;
             scrollView.Add(eventEditPanel);
 
             Add(scrollView);
         }
 
+        private ListView MakeListView()
+        {
+            var lv = new ListView();
+            lv.fixedItemHeight = 22;
+            lv.selectionType = SelectionType.Single;
+            lv.makeItem = () =>
+            {
+                var label = new Label();
+                label.style.fontSize = 11;
+                label.style.color = new UnityEngine.Color(0.78f, 0.78f, 0.82f, 1f);
+                label.style.paddingLeft = 8;
+                label.style.paddingTop = 2;
+                label.style.unityTextAlign = UnityEngine.TextAnchor.MiddleLeft;
+                return label;
+            };
+            return lv;
+        }
+
+        // ====== Refresh ======
+
         public void Refresh()
         {
             if (asset == null) return;
-            variableListView.itemsSource = asset.graphData.blackboard.variables;
+
+            var vars = asset.graphData.blackboard.variables;
+            variableListView.itemsSource = vars;
+            variableListView.bindItem = (elem, i) =>
+            {
+                if (i < 0 || i >= vars.Count) return;
+                var v = vars[i];
+                ((Label)elem).text = $"{v.key} ({v.type})";
+            };
             variableListView.RefreshItems();
-            eventListView.itemsSource = asset.graphData.blackboard.events;
+
+            var evts = asset.graphData.blackboard.events;
+            eventListView.itemsSource = evts;
+            eventListView.bindItem = (elem, i) =>
+            {
+                if (i < 0 || i >= evts.Count) return;
+                var e = evts[i];
+                ((Label)elem).text = e.key;
+            };
             eventListView.RefreshItems();
         }
 
+        // ====== Add ======
+
         private void AddVariable()
         {
-            var variable = new BlackboardVariable
+            if (asset == null) return;
+            Undo.RecordObject(asset, "Add Variable");
+            var v = new BlackboardVariable
             {
-                key = $"Variable {asset.graphData.blackboard.variables.Count}",
+                key = $"var{asset.graphData.blackboard.variables.Count}",
                 type = BlackboardValueType.Bool
             };
-            asset.graphData.blackboard.variables.Add(variable);
+            asset.graphData.blackboard.variables.Add(v);
             EditorUtility.SetDirty(asset);
             Refresh();
             variableListView.selectedIndex = asset.graphData.blackboard.variables.Count - 1;
@@ -153,9 +216,11 @@ namespace StateMachineTool.Editor
 
         private void AddEvent()
         {
+            if (asset == null) return;
+            Undo.RecordObject(asset, "Add Event");
             var evt = new BlackboardEvent
             {
-                key = $"Event {asset.graphData.blackboard.events.Count}",
+                key = $"event{asset.graphData.blackboard.events.Count}",
                 displayName = $"Event {asset.graphData.blackboard.events.Count}"
             };
             asset.graphData.blackboard.events.Add(evt);
@@ -165,35 +230,41 @@ namespace StateMachineTool.Editor
             OnChanged?.Invoke();
         }
 
-        private void OnVariableSelectionChanged(IEnumerable<object> selectedItems)
+        // ====== Selection ======
+
+        private void OnVariableSelectionChanged(IEnumerable<object> sel)
         {
-            var selected = selectedItems?.FirstOrDefault() as BlackboardVariable;
-            selectedVariable = selected;
-            BuildVariableEditPanel();
+            selectedVariable = sel?.FirstOrDefault() as BlackboardVariable;
+            selectedEvent = null;
+            eventListView?.SetSelectionWithoutNotify(new int[0]);
+            BuildVariableEditor();
         }
 
-        private void OnEventSelectionChanged(IEnumerable<object> selectedItems)
+        private void OnEventSelectionChanged(IEnumerable<object> sel)
         {
-            var selected = selectedItems?.FirstOrDefault() as BlackboardEvent;
-            selectedEvent = selected;
-            BuildEventEditPanel();
+            selectedEvent = sel?.FirstOrDefault() as BlackboardEvent;
+            selectedVariable = null;
+            variableListView?.SetSelectionWithoutNotify(new int[0]);
+            BuildEventEditor();
         }
 
-        private void BuildVariableEditPanel()
+        private void BuildVariableEditor()
         {
             variableEditPanel.Clear();
-            variableEditPanel.style.display = DisplayStyle.None;
-
-            if (selectedVariable == null) return;
-
+            if (selectedVariable == null) { variableEditPanel.style.display = DisplayStyle.None; return; }
             variableEditPanel.style.display = DisplayStyle.Flex;
 
-            var titleLabel = new Label($"Edit Variable: {selectedVariable.key}");
-            titleLabel.AddToClassList("edit-panel-title");
-            variableEditPanel.Add(titleLabel);
+            var title = new Label($"Variable: {selectedVariable.key}");
+            title.style.fontSize = 12;
+            title.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            title.style.color = new UnityEngine.Color(0.75f, 0.75f, 0.82f, 1f);
+            title.style.paddingBottom = 4;
+            title.style.marginBottom = 4;
+            title.style.borderBottomWidth = 1;
+            title.style.borderBottomColor = new UnityEngine.Color(0.25f, 0.25f, 0.28f, 1f);
+            variableEditPanel.Add(title);
 
-            var keyField = new TextField("Key");
-            keyField.value = selectedVariable.key;
+            var keyField = new TextField("Key") { value = selectedVariable.key };
             keyField.RegisterValueChangedCallback(evt =>
             {
                 selectedVariable.key = evt.newValue;
@@ -211,114 +282,86 @@ namespace StateMachineTool.Editor
             });
             variableEditPanel.Add(typeField);
 
-            BuildValueField(variableEditPanel, selectedVariable);
+            BuildValueField(selectedVariable);
 
             var deleteBtn = new Button(() =>
             {
                 asset.graphData.blackboard.variables.Remove(selectedVariable);
                 selectedVariable = null;
+                variableEditPanel.style.display = DisplayStyle.None;
                 EditorUtility.SetDirty(asset);
                 Refresh();
                 OnChanged?.Invoke();
-            });
-            deleteBtn.text = "Delete Variable";
-            deleteBtn.AddToClassList("delete-btn");
+            }) { text = "Delete" };
+            deleteBtn.style.marginTop = 6;
+            deleteBtn.style.height = 22;
+            deleteBtn.style.fontSize = 10;
+            deleteBtn.style.color = new UnityEngine.Color(0.92f, 0.55f, 0.55f, 1f);
+            deleteBtn.style.backgroundColor = new UnityEngine.Color(0.35f, 0.1f, 0.1f, 0.5f);
+            deleteBtn.style.borderTopLeftRadius = 3; deleteBtn.style.borderTopRightRadius = 3;
+            deleteBtn.style.borderBottomLeftRadius = 3; deleteBtn.style.borderBottomRightRadius = 3;
             variableEditPanel.Add(deleteBtn);
         }
 
-        private void BuildValueField(VisualElement parent, BlackboardVariable variable)
+        private void BuildValueField(BlackboardVariable variable)
         {
             switch (variable.type)
             {
                 case BlackboardValueType.Int:
-                    var intField = new IntegerField("Default Value");
-                    intField.value = variable.intValue;
-                    intField.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.intValue = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(intField);
+                    var intField = new IntegerField("Default") { value = variable.intValue };
+                    intField.RegisterValueChangedCallback(evt => { variable.intValue = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(intField);
                     break;
                 case BlackboardValueType.Float:
-                    var floatField = new FloatField("Default Value");
-                    floatField.value = variable.floatValue;
-                    floatField.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.floatValue = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(floatField);
+                    var floatField = new FloatField("Default") { value = variable.floatValue };
+                    floatField.RegisterValueChangedCallback(evt => { variable.floatValue = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(floatField);
                     break;
                 case BlackboardValueType.Bool:
-                    var boolField = new Toggle("Default Value");
-                    boolField.value = variable.boolValue;
-                    boolField.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.boolValue = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(boolField);
+                    var toggle = new Toggle("Default") { value = variable.boolValue };
+                    toggle.RegisterValueChangedCallback(evt => { variable.boolValue = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(toggle);
                     break;
                 case BlackboardValueType.String:
-                    var stringField = new TextField("Default Value");
-                    stringField.value = variable.stringValue;
-                    stringField.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.stringValue = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(stringField);
+                    var strField = new TextField("Default") { value = variable.stringValue };
+                    strField.RegisterValueChangedCallback(evt => { variable.stringValue = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(strField);
                     break;
                 case BlackboardValueType.Vector2:
-                    var vec2Field = new Vector2Field("Default Value");
-                    vec2Field.value = variable.vector2Value;
-                    vec2Field.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.vector2Value = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(vec2Field);
+                    var v2Field = new Vector2Field("Default") { value = variable.vector2Value };
+                    v2Field.RegisterValueChangedCallback(evt => { variable.vector2Value = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(v2Field);
                     break;
                 case BlackboardValueType.Vector3:
-                    var vec3Field = new Vector3Field("Default Value");
-                    vec3Field.value = variable.vector3Value;
-                    vec3Field.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.vector3Value = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(vec3Field);
+                    var v3Field = new Vector3Field("Default") { value = variable.vector3Value };
+                    v3Field.RegisterValueChangedCallback(evt => { variable.vector3Value = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(v3Field);
                     break;
                 case BlackboardValueType.Object:
-                    var objField = new ObjectField("Default Value");
-                    objField.objectType = typeof(UnityEngine.Object);
-                    objField.value = variable.objectValue;
-                    objField.RegisterValueChangedCallback(evt =>
-                    {
-                        variable.objectValue = evt.newValue;
-                        EditorUtility.SetDirty(asset);
-                    });
-                    parent.Add(objField);
+                    var objField = new ObjectField("Default") { objectType = typeof(UnityEngine.Object), value = variable.objectValue };
+                    objField.RegisterValueChangedCallback(evt => { variable.objectValue = evt.newValue; EditorUtility.SetDirty(asset); });
+                    variableEditPanel.Add(objField);
                     break;
             }
         }
 
-        private void BuildEventEditPanel()
+        private void BuildEventEditor()
         {
             eventEditPanel.Clear();
-            eventEditPanel.style.display = DisplayStyle.None;
-
-            if (selectedEvent == null) return;
-
+            if (selectedEvent == null) { eventEditPanel.style.display = DisplayStyle.None; return; }
             eventEditPanel.style.display = DisplayStyle.Flex;
 
-            var titleLabel = new Label($"Edit Event: {selectedEvent.key}");
-            titleLabel.AddToClassList("edit-panel-title");
-            eventEditPanel.Add(titleLabel);
+            var title = new Label($"Event: {selectedEvent.key}");
+            title.style.fontSize = 12;
+            title.style.unityFontStyleAndWeight = UnityEngine.FontStyle.Bold;
+            title.style.color = new UnityEngine.Color(0.75f, 0.75f, 0.82f, 1f);
+            title.style.paddingBottom = 4;
+            title.style.marginBottom = 4;
+            title.style.borderBottomWidth = 1;
+            title.style.borderBottomColor = new UnityEngine.Color(0.25f, 0.25f, 0.28f, 1f);
+            eventEditPanel.Add(title);
 
-            var keyField = new TextField("Key");
-            keyField.value = selectedEvent.key;
+            var keyField = new TextField("Key") { value = selectedEvent.key };
             keyField.RegisterValueChangedCallback(evt =>
             {
                 selectedEvent.key = evt.newValue;
@@ -327,26 +370,31 @@ namespace StateMachineTool.Editor
             });
             eventEditPanel.Add(keyField);
 
-            var displayNameField = new TextField("Display Name");
-            displayNameField.value = selectedEvent.displayName;
-            displayNameField.RegisterValueChangedCallback(evt =>
+            var nameField = new TextField("Display Name") { value = selectedEvent.displayName };
+            nameField.RegisterValueChangedCallback(evt =>
             {
                 selectedEvent.displayName = evt.newValue;
                 EditorUtility.SetDirty(asset);
                 Refresh();
             });
-            eventEditPanel.Add(displayNameField);
+            eventEditPanel.Add(nameField);
 
             var deleteBtn = new Button(() =>
             {
                 asset.graphData.blackboard.events.Remove(selectedEvent);
                 selectedEvent = null;
+                eventEditPanel.style.display = DisplayStyle.None;
                 EditorUtility.SetDirty(asset);
                 Refresh();
                 OnChanged?.Invoke();
-            });
-            deleteBtn.text = "Delete Event";
-            deleteBtn.AddToClassList("delete-btn");
+            }) { text = "Delete" };
+            deleteBtn.style.marginTop = 6;
+            deleteBtn.style.height = 22;
+            deleteBtn.style.fontSize = 10;
+            deleteBtn.style.color = new UnityEngine.Color(0.92f, 0.55f, 0.55f, 1f);
+            deleteBtn.style.backgroundColor = new UnityEngine.Color(0.35f, 0.1f, 0.1f, 0.5f);
+            deleteBtn.style.borderTopLeftRadius = 3; deleteBtn.style.borderTopRightRadius = 3;
+            deleteBtn.style.borderBottomLeftRadius = 3; deleteBtn.style.borderBottomRightRadius = 3;
             eventEditPanel.Add(deleteBtn);
         }
     }
