@@ -23,8 +23,10 @@ namespace CleanStateMachine
         private SelectionController _selectionController;
         private DragController _dragController;
         private SelectionBox _selectionBox;
+        private ConnectionController _connectionController;
 
         private readonly List<StateView> _states = new();
+        private readonly List<ConnectionView> _connections = new();
 
         private void OnEnable()
         {
@@ -35,13 +37,18 @@ namespace CleanStateMachine
             _selectionController = new SelectionController();
             _dragController = new DragController();
             _selectionBox = new SelectionBox();
+            _connectionController = new ConnectionController();
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
+            _contextMenu.ConnectRequested += OnConnectRequested;
+            _connectionController.ConnectionCompleted += OnConnectionCompleted;
         }
 
         private void OnDisable()
         {
             _contextMenu.CreateStateRequested -= OnCreateStateRequested;
+            _contextMenu.ConnectRequested -= OnConnectRequested;
+            _connectionController.ConnectionCompleted -= OnConnectionCompleted;
         }
 
         private void OnGUI()
@@ -56,21 +63,66 @@ namespace CleanStateMachine
 
             if (e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
             {
+                _connectionController.Cancel();
                 Vector2 graphMousePosition = (e.mousePosition - _panOffset) / _zoom;
-                _contextMenu.Show(graphMousePosition);
+                StateView hitState = HitTestState(graphMousePosition);
+                _contextMenu.Show(graphMousePosition, hitState);
                 e.Use();
             }
 
-            HandleLeftClickInteraction(rect);
+            if (_connectionController.IsConnecting)
+            {
+                HandleConnectingInput(rect);
+            }
+            else
+            {
+                HandleLeftClickInteraction(rect);
+            }
+
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
+            {
+                if (_connectionController.IsConnecting)
+                {
+                    _connectionController.Cancel();
+                    e.Use();
+                    Repaint();
+                }
+            }
 
             _graphView.Draw(rect, _panOffset, _zoom);
-
+            DrawConnections();
             DrawStates();
             DrawSelectionOverlays();
+            _connectionController.DrawPending(_zoom, _panOffset);
             _selectionBox.DrawScreen(_zoom, _panOffset);
 
-            if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive)
+            if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
                 Repaint();
+        }
+
+        private void HandleConnectingInput(Rect viewRect)
+        {
+            var e = Event.current;
+            Vector2 graphMousePos = (e.mousePosition - _panOffset) / _zoom;
+
+            switch (e.type)
+            {
+                case EventType.MouseMove:
+                case EventType.MouseDrag:
+                    _connectionController.UpdatePending(graphMousePos);
+                    Repaint();
+                    e.Use();
+                    break;
+
+                case EventType.MouseDown when e.button == 0 && viewRect.Contains(e.mousePosition):
+                    if (!_connectionController.TryComplete(graphMousePos, _states))
+                    {
+                        _connectionController.Cancel();
+                    }
+                    e.Use();
+                    Repaint();
+                    break;
+            }
         }
 
         private void HandleLeftClickInteraction(Rect viewRect)
@@ -176,6 +228,17 @@ namespace CleanStateMachine
             return null;
         }
 
+        private StateView HitTestState(Vector2 graphPos)
+        {
+            for (int i = _states.Count - 1; i >= 0; i--)
+            {
+                if (_states[i].ContainsPoint(graphPos))
+                    return _states[i];
+            }
+
+            return null;
+        }
+
         private void DrawSelectionOverlays()
         {
             var selected = _selectionController.Selected;
@@ -193,10 +256,30 @@ namespace CleanStateMachine
             }
         }
 
+        private void DrawConnections()
+        {
+            for (int i = 0; i < _connections.Count; i++)
+            {
+                _connections[i].Draw(_zoom, _panOffset);
+            }
+        }
+
         private void OnCreateStateRequested(Vector2 graphMousePosition)
         {
             var state = new StateView(graphMousePosition);
             _states.Add(state);
+            Repaint();
+        }
+
+        private void OnConnectRequested(StateView source)
+        {
+            _connectionController.StartConnection(source);
+            Repaint();
+        }
+
+        private void OnConnectionCompleted(StateView from, StateView to)
+        {
+            _connections.Add(new ConnectionView(from, to));
             Repaint();
         }
     }

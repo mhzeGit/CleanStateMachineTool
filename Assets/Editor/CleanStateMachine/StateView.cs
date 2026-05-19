@@ -31,6 +31,16 @@ namespace CleanStateMachine
             Name = name;
         }
 
+        public Vector2 GetOutputAnchor()
+        {
+            return new Vector2(Position.x + Size.x, Position.y + Size.y * 0.5f);
+        }
+
+        public Vector2 GetInputAnchor()
+        {
+            return new Vector2(Position.x, Position.y + Size.y * 0.5f);
+        }
+
         public Rect GetGraphBounds()
         {
             return new Rect(Position.x, Position.y, Size.x, Size.y);

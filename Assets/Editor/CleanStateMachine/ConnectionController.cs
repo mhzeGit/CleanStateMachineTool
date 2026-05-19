@@ -1,0 +1,87 @@
+using System;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+
+namespace CleanStateMachine
+{
+    public class ConnectionController
+    {
+        public bool IsConnecting { get; private set; }
+        public StateView SourceNode { get; private set; }
+
+        private Vector2 _currentMouseGraphPos;
+
+        public event Action<StateView, StateView> ConnectionCompleted;
+
+        private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 0.45f);
+
+        public void StartConnection(StateView source)
+        {
+            SourceNode = source;
+            IsConnecting = true;
+            _currentMouseGraphPos = source.GetOutputAnchor();
+        }
+
+        public void UpdatePending(Vector2 graphMousePos)
+        {
+            _currentMouseGraphPos = graphMousePos;
+        }
+
+        public bool TryComplete(Vector2 graphMousePos, IReadOnlyList<StateView> allStates)
+        {
+            if (!IsConnecting)
+                return false;
+
+            for (int i = allStates.Count - 1; i >= 0; i--)
+            {
+                if (allStates[i] != SourceNode && allStates[i].ContainsPoint(graphMousePos))
+                {
+                    ConnectionCompleted?.Invoke(SourceNode, allStates[i]);
+                    Cancel();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void Cancel()
+        {
+            IsConnecting = false;
+            SourceNode = null;
+        }
+
+        public void DrawPending(float zoom, Vector2 panOffset)
+        {
+            if (!IsConnecting)
+                return;
+
+            Vector3 startPos = SourceNode.GetOutputAnchor() * zoom + panOffset;
+            Vector3 endPos = _currentMouseGraphPos * zoom + panOffset;
+
+            float dx = Mathf.Max(Mathf.Abs(endPos.x - startPos.x) * 0.5f, 50f);
+            Vector3 startTan = startPos + new Vector3(dx, 0f, 0f);
+            Vector3 endTan = endPos - new Vector3(dx, 0f, 0f);
+
+            Handles.DrawBezier(startPos, endPos, startTan, endTan, PendingColor, null, 2f);
+            DrawArrowhead(endPos, endTan - endPos, PendingColor, zoom);
+        }
+
+        private static void DrawArrowhead(Vector3 tip, Vector3 tangent, Color color, float zoom)
+        {
+            float size = Mathf.Max(8f, 12f * zoom);
+            Vector3 dir = tangent.normalized;
+            Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
+
+            Vector3 p1 = tip;
+            Vector3 p2 = tip - dir * size + perp * (size * 0.4f);
+            Vector3 p3 = tip - dir * size - perp * (size * 0.4f);
+
+            Color prev = Handles.color;
+            Handles.color = color;
+            Handles.DrawAAConvexPolygon(p1, p2, p3);
+            Handles.color = prev;
+        }
+    }
+}

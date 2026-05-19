@@ -9,7 +9,10 @@ namespace CleanStateMachine
     {
         private readonly List<IContextMenuProvider> _providers = new();
 
+        private StateView _contextNode;
+
         public event Action<Vector2> CreateStateRequested;
+        public event Action<StateView> ConnectRequested;
 
         public void AddProvider(IContextMenuProvider provider)
         {
@@ -25,8 +28,10 @@ namespace CleanStateMachine
             _providers.Remove(provider);
         }
 
-        public void Show(Vector2 graphMousePosition)
+        public void Show(Vector2 graphMousePosition, StateView contextNode = null)
         {
+            _contextNode = contextNode;
+
             var menu = new GenericMenu();
 
             AddDefaultItems(menu, graphMousePosition);
@@ -43,7 +48,16 @@ namespace CleanStateMachine
             menu.AddDisabledItem(new GUIContent("Paste"));
             menu.AddDisabledItem(new GUIContent("Delete"));
             menu.AddSeparator(string.Empty);
-            menu.AddDisabledItem(new GUIContent("Create Connection"));
+
+            if (_contextNode != null)
+            {
+                StateView captured = _contextNode;
+                menu.AddItem(new GUIContent("Connect"), false, () => ConnectRequested?.Invoke(captured));
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("Connect"));
+            }
         }
 
         private void AddProviderItems(GenericMenu menu, Vector2 graphMousePosition)
