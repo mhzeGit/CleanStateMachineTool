@@ -24,7 +24,7 @@ namespace CleanStateMachine
 
             switch (e.type)
             {
-                case EventType.MouseDown when e.button == 1 && rect.Contains(e.mousePosition):
+                case EventType.MouseDown when e.button == 2 && rect.Contains(e.mousePosition):
                     IsPanning = true;
                     _panStartMouse = e.mousePosition;
                     _panStartOffset = panOffset;

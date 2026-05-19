@@ -18,12 +18,21 @@ namespace CleanStateMachine
 
         private GraphView _graphView;
         private GraphPanController _panController;
+        private GraphContextMenu _contextMenu;
 
         private void OnEnable()
         {
             wantsMouseMove = true;
             _graphView = new GraphView();
             _panController = new GraphPanController();
+            _contextMenu = new GraphContextMenu();
+
+            _contextMenu.CreateStateRequested += OnCreateStateRequested;
+        }
+
+        private void OnDisable()
+        {
+            _contextMenu.CreateStateRequested -= OnCreateStateRequested;
         }
 
         private void OnGUI()
@@ -32,12 +41,26 @@ namespace CleanStateMachine
                 return;
 
             var rect = new Rect(0f, 0f, position.width, position.height);
+            var e = Event.current;
 
             _panController.HandleInput(rect, ref _panOffset, ref _zoom);
+
+            if (e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
+            {
+                Vector2 graphMousePosition = (e.mousePosition - _panOffset) / _zoom;
+                _contextMenu.Show(graphMousePosition);
+                e.Use();
+            }
+
             _graphView.Draw(rect, _panOffset, _zoom);
 
             if (_panController.IsPanning)
                 Repaint();
+        }
+
+        private void OnCreateStateRequested(Vector2 graphMousePosition)
+        {
+            Debug.Log($"Create State at graph position: {graphMousePosition}");
         }
     }
 }
