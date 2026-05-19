@@ -14,6 +14,10 @@ namespace CleanStateMachine
         private const float ZoomSensitivity = 0.02f;
         private const float ZoomClamp = 0.5f;
 
+        private const float ScrollThreshold = 2.5f;
+        private const float TouchpadPanScale = 20f;
+        private const float ZoomSensitivityTouchpad = 0.07f;
+
         public void HandleInput(Rect rect, ref Vector2 panOffset, ref float zoom)
         {
             var e = Event.current;
@@ -38,17 +42,43 @@ namespace CleanStateMachine
                     break;
 
                 case EventType.ScrollWheel when rect.Contains(e.mousePosition):
-                    float clamped = Mathf.Clamp(-e.delta.y * ZoomSensitivity, -ZoomClamp, ZoomClamp);
-                    float newZoom = Mathf.Clamp(zoom * Mathf.Exp(clamped), ZoomMin, ZoomMax);
-
-                    Vector2 mouseScreen = e.mousePosition;
-                    Vector2 worldPos = (mouseScreen - panOffset) / zoom;
-                    panOffset = mouseScreen - worldPos * newZoom;
-                    zoom = newZoom;
-
+                    HandleScrollWheel(e, ref panOffset, ref zoom);
                     e.Use();
                     break;
             }
+        }
+
+        private void HandleScrollWheel(Event e, ref Vector2 panOffset, ref float zoom)
+        {
+            bool hasX = !Mathf.Approximately(e.delta.x, 0f);
+            bool hasY = !Mathf.Approximately(e.delta.y, 0f);
+
+            if (hasX && hasY)
+            {
+                ApplyZoom(e.delta.y, e.mousePosition, ref panOffset, ref zoom, ZoomSensitivityTouchpad);
+            }
+            else if (hasX)
+            {
+                panOffset.x -= e.delta.x * TouchpadPanScale;
+            }
+            else if (hasY && Mathf.Abs(e.delta.y) < ScrollThreshold)
+            {
+                panOffset.y -= e.delta.y * TouchpadPanScale;
+            }
+            else if (hasY)
+            {
+                ApplyZoom(e.delta.y, e.mousePosition, ref panOffset, ref zoom, ZoomSensitivity);
+            }
+        }
+
+        private static void ApplyZoom(float deltaY, Vector2 mousePosition, ref Vector2 panOffset, ref float zoom, float sensitivity)
+        {
+            float clamped = Mathf.Clamp(-deltaY * sensitivity, -ZoomClamp, ZoomClamp);
+            float newZoom = Mathf.Clamp(zoom * Mathf.Exp(clamped), ZoomMin, ZoomMax);
+
+            Vector2 worldPos = (mousePosition - panOffset) / zoom;
+            panOffset = mousePosition - worldPos * newZoom;
+            zoom = newZoom;
         }
     }
 }
