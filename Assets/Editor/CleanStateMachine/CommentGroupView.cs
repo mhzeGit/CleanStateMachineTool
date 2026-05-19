@@ -8,9 +8,7 @@ namespace CleanStateMachine
     {
         public bool IsSelected { get; set; }
 
-        private Vector2 _position;
-        private Vector2 _cachedSize;
-        private bool _boundsDirty;
+        private Vector2 _fallbackPosition;
         private readonly List<StateView> _members = new();
 
         public string Label;
@@ -40,49 +38,13 @@ namespace CleanStateMachine
         {
             Label = label;
             _members.AddRange(members);
-            RecalcBounds();
-        }
-
-        public Vector2 Position
-        {
-            get => _position;
-            set
-            {
-                Vector2 delta = value - _position;
-                if (delta.sqrMagnitude < 0.0001f) return;
-                _position = value;
-                for (int i = 0; i < _members.Count; i++)
-                    _members[i].Position += delta;
-            }
-        }
-
-        public Vector2 Size
-        {
-            get
-            {
-                if (_boundsDirty) RecalcBounds();
-                return _cachedSize;
-            }
-        }
-
-        private void RecalcBounds()
-        {
-            _boundsDirty = false;
-            if (_members.Count == 0)
-            {
-                _cachedSize = new Vector2(200f, 80f);
-                return;
-            }
-
-            Rect b = GetMembersBounds();
-            float w = b.width + PadH * 2f;
-            float h = b.height + PadTop + PadBot;
-            _cachedSize = new Vector2(w, h);
-            _position = new Vector2(b.x - PadH, b.y - PadTop);
         }
 
         private Rect GetMembersBounds()
         {
+            if (_members.Count == 0)
+                return new Rect(_fallbackPosition.x, _fallbackPosition.y, 160f, 40f);
+
             float xMin = float.MaxValue, xMax = float.MinValue;
             float yMin = float.MaxValue, yMax = float.MinValue;
             for (int i = 0; i < _members.Count; i++)
@@ -94,6 +56,39 @@ namespace CleanStateMachine
                 if (r.yMax > yMax) yMax = r.yMax;
             }
             return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        public Vector2 Position
+        {
+            get
+            {
+                Rect b = GetMembersBounds();
+                return new Vector2(b.x - PadH, b.y - PadTop);
+            }
+            set
+            {
+                if (_members.Count == 0)
+                {
+                    _fallbackPosition = value;
+                    return;
+                }
+
+                Vector2 current = Position;
+                Vector2 delta = value - current;
+                if (delta.sqrMagnitude < 0.0001f) return;
+
+                for (int i = 0; i < _members.Count; i++)
+                    _members[i].Position += delta;
+            }
+        }
+
+        public Vector2 Size
+        {
+            get
+            {
+                Rect b = GetMembersBounds();
+                return new Vector2(b.width + PadH * 2f, b.height + PadTop + PadBot);
+            }
         }
 
         public Rect GetGraphBounds()
