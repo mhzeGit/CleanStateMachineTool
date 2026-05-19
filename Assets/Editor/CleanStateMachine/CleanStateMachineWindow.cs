@@ -62,6 +62,7 @@ namespace CleanStateMachine
             _contextMenu.PasteRequested += PasteStates;
             _contextMenu.DeleteRequested += DeleteSelected;
             _connectionController.ConnectionCompleted += OnConnectionCompleted;
+            _selectionController.SelectionChanged += OnSelectionChanged;
         }
 
         private void OnDisable()
@@ -73,6 +74,7 @@ namespace CleanStateMachine
             _contextMenu.PasteRequested -= PasteStates;
             _contextMenu.DeleteRequested -= DeleteSelected;
             _connectionController.ConnectionCompleted -= OnConnectionCompleted;
+            _selectionController.SelectionChanged -= OnSelectionChanged;
         }
 
         private void OnGUI()
@@ -295,13 +297,18 @@ namespace CleanStateMachine
                     _selectionController.Clear();
 
                 Rect r = _selectionBox.GetGraphRect();
+
+                var boxStates = new List<StateView>();
                 for (int i = 0; i < _states.Count; i++)
                     if (r.Overlaps(_states[i].GetGraphBounds()))
-                        _selectionController.Select(_states[i]);
+                        boxStates.Add(_states[i]);
+                _selectionController.SelectRange(boxStates);
 
+                var boxGroups = new List<CommentGroupView>();
                 for (int i = 0; i < _groups.Count; i++)
                     if (r.Overlaps(_groups[i].GetGraphBounds()))
-                        _selectionController.Select(_groups[i]);
+                        boxGroups.Add(_groups[i]);
+                _selectionController.SelectRange(boxGroups);
 
                 _selectionBox.End();
             }
@@ -542,6 +549,35 @@ namespace CleanStateMachine
 
             _selectionController.Clear();
             Repaint();
+        }
+
+        private void OnSelectionChanged()
+        {
+            List<StateView> pickedStates = new();
+            for (int i = 0; i < _states.Count; i++)
+                if (_states[i].IsSelected)
+                    pickedStates.Add(_states[i]);
+
+            if (pickedStates.Count > 0)
+            {
+                for (int i = _states.Count - 1; i >= 0; i--)
+                    if (_states[i].IsSelected)
+                        _states.RemoveAt(i);
+                _states.AddRange(pickedStates);
+            }
+
+            List<CommentGroupView> pickedGroups = new();
+            for (int i = 0; i < _groups.Count; i++)
+                if (_groups[i].IsSelected)
+                    pickedGroups.Add(_groups[i]);
+
+            if (pickedGroups.Count > 0)
+            {
+                for (int i = _groups.Count - 1; i >= 0; i--)
+                    if (_groups[i].IsSelected)
+                        _groups.RemoveAt(i);
+                _groups.AddRange(pickedGroups);
+            }
         }
     }
 }
