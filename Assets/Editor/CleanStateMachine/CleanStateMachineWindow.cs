@@ -14,6 +14,16 @@ namespace CleanStateMachine
             window.Show();
         }
 
+        [System.Serializable]
+        private class CopiedStateData
+        {
+            public Vector2 position;
+            public string name;
+            public Vector2 size;
+        }
+
+        private static List<CopiedStateData> _clipboard;
+
         [SerializeField] private Vector2 _panOffset;
         [SerializeField] private float _zoom = 1f;
 
@@ -43,6 +53,9 @@ namespace CleanStateMachine
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
             _contextMenu.ConnectRequested += OnConnectRequested;
             _contextMenu.UngroupRequested += OnUngroupRequested;
+            _contextMenu.CopyRequested += CopySelectedStates;
+            _contextMenu.PasteRequested += PasteStates;
+            _contextMenu.DeleteRequested += DeleteSelected;
             _connectionController.ConnectionCompleted += OnConnectionCompleted;
         }
 
@@ -51,6 +64,9 @@ namespace CleanStateMachine
             _contextMenu.CreateStateRequested -= OnCreateStateRequested;
             _contextMenu.ConnectRequested -= OnConnectRequested;
             _contextMenu.UngroupRequested -= OnUngroupRequested;
+            _contextMenu.CopyRequested -= CopySelectedStates;
+            _contextMenu.PasteRequested -= PasteStates;
+            _contextMenu.DeleteRequested -= DeleteSelected;
             _connectionController.ConnectionCompleted -= OnConnectionCompleted;
         }
 
@@ -64,7 +80,8 @@ namespace CleanStateMachine
 
             _panController.HandleInput(rect, ref _panOffset, ref _zoom);
 
-            HandleKeyboardShortcuts(e);
+            if (!_connectionController.IsConnecting)
+                HandleKeyboardShortcuts(e);
 
             if (e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
             {
@@ -73,7 +90,9 @@ namespace CleanStateMachine
                 ISelectable hit = HitTest(graphMousePosition);
                 StateView hitState = hit as StateView;
                 CommentGroupView hitGroup = hit as CommentGroupView;
-                _contextMenu.Show(graphMousePosition, hitState, hitGroup);
+                _contextMenu.Show(graphMousePosition, hitState, hitGroup,
+                    _selectionController.Count > 0,
+                    _clipboard is { Count: > 0 });
                 e.Use();
             }
 
@@ -119,9 +138,23 @@ namespace CleanStateMachine
                 Repaint();
             }
 
+            if (e.keyCode == KeyCode.C && e.control)
+            {
+                CopySelectedStates();
+                e.Use();
+                Repaint();
+            }
+
+            if (e.keyCode == KeyCode.V && e.control)
+            {
+                PasteStates();
+                e.Use();
+                Repaint();
+            }
+
             if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
             {
-                DeleteSelectedGroups();
+                DeleteSelected();
                 e.Use();
                 Repaint();
             }
@@ -320,22 +353,6 @@ namespace CleanStateMachine
             _selectionController.Select(group);
         }
 
-        private void DeleteSelectedGroups()
-        {
-            bool removed = false;
-            for (int i = _groups.Count - 1; i >= 0; i--)
-            {
-                if (_groups[i].IsSelected)
-                {
-                    _selectionController.Deselect(_groups[i]);
-                    _groups.RemoveAt(i);
-                    removed = true;
-                }
-            }
-
-            if (removed) Repaint();
-        }
-
         private void DrawSelectionOverlays()
         {
             var selected = _selectionController.Selected;
@@ -384,6 +401,80 @@ namespace CleanStateMachine
         {
             _selectionController.Deselect(group);
             _groups.Remove(group);
+            Repaint();
+        }
+
+        private void CopySelectedStates()
+        {
+            _clipboard = new List<CopiedStateData>();
+            for (int i = 0; i < _selectionController.Count; i++)
+            {
+                if (_selectionController.Selected[i] is StateView s)
+                {
+                    _clipboard.Add(new CopiedStateData
+                    {
+                        position = s.Position,
+                        name = s.Name,
+                        size = s.Size
+                    });
+                }
+            }
+        }
+
+        private void PasteStates()
+        {
+            if (_clipboard == null || _clipboard.Count == 0) return;
+
+            _selectionController.Clear();
+            const float offset = 25f;
+
+            for (int i = 0; i < _clipboard.Count; i++)
+            {
+                var data = _clipboard[i];
+                var state = new StateView(data.position + new Vector2(offset, offset), data.name)
+                {
+                    Size = data.size
+                };
+                _states.Add(state);
+                _selectionController.Select(state);
+            }
+
+            Repaint();
+        }
+
+        private void DeleteSelected()
+        {
+            HashSet<StateView> toRemove = new();
+            for (int i = _states.Count - 1; i >= 0; i--)
+            {
+                if (_states[i].IsSelected)
+                    toRemove.Add(_states[i]);
+            }
+
+            for (int i = _connections.Count - 1; i >= 0; i--)
+            {
+                if (toRemove.Contains(_connections[i].From) || toRemove.Contains(_connections[i].To))
+                    _connections.RemoveAt(i);
+            }
+
+            for (int i = _states.Count - 1; i >= 0; i--)
+            {
+                if (_states[i].IsSelected)
+                {
+                    _selectionController.Deselect(_states[i]);
+                    _states.RemoveAt(i);
+                }
+            }
+
+            for (int i = _groups.Count - 1; i >= 0; i--)
+            {
+                if (_groups[i].IsSelected)
+                {
+                    _selectionController.Deselect(_groups[i]);
+                    _groups.RemoveAt(i);
+                }
+            }
+
             Repaint();
         }
     }
