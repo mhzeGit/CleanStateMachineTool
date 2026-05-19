@@ -20,6 +20,9 @@ namespace CleanStateMachine
         private GraphView _graphView;
         private GraphPanController _panController;
         private GraphContextMenu _contextMenu;
+        private SelectionController _selectionController;
+        private DragController _dragController;
+        private SelectionBox _selectionBox;
 
         private readonly List<StateView> _states = new();
 
@@ -29,6 +32,9 @@ namespace CleanStateMachine
             _graphView = new GraphView();
             _panController = new GraphPanController();
             _contextMenu = new GraphContextMenu();
+            _selectionController = new SelectionController();
+            _dragController = new DragController();
+            _selectionBox = new SelectionBox();
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
         }
@@ -55,12 +61,128 @@ namespace CleanStateMachine
                 e.Use();
             }
 
+            HandleLeftClickInteraction(rect);
+
             _graphView.Draw(rect, _panOffset, _zoom);
 
+            DrawSelectionOverlays();
             DrawStates();
+            _selectionBox.DrawScreen(_zoom, _panOffset);
 
-            if (_panController.IsPanning)
+            if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive)
                 Repaint();
+        }
+
+        private void HandleLeftClickInteraction(Rect viewRect)
+        {
+            var e = Event.current;
+            if (e.button != 0)
+                return;
+
+            Vector2 graphMousePos = (e.mousePosition - _panOffset) / _zoom;
+
+            switch (e.type)
+            {
+                case EventType.MouseDown when viewRect.Contains(e.mousePosition):
+                    OnLeftMouseDown(graphMousePos, e);
+                    break;
+
+                case EventType.MouseDrag:
+                    OnLeftMouseDrag(graphMousePos, e);
+                    break;
+
+                case EventType.MouseUp:
+                    OnLeftMouseUp(graphMousePos, e);
+                    break;
+            }
+        }
+
+        private void OnLeftMouseDown(Vector2 graphPos, Event e)
+        {
+            ISelectable hit = HitTest(graphPos);
+
+            if (hit != null)
+            {
+                if (e.shift)
+                {
+                    _selectionController.Toggle(hit);
+                }
+                else if (!_selectionController.IsSelected(hit))
+                {
+                    _selectionController.SelectOnly(hit);
+                }
+
+                _dragController.StartDrag(graphPos, _selectionController.Selected);
+            }
+            else
+            {
+                if (!e.shift)
+                    _selectionController.Clear();
+
+                _selectionBox.Start(graphPos);
+            }
+
+            e.Use();
+        }
+
+        private void OnLeftMouseDrag(Vector2 graphPos, Event e)
+        {
+            if (_dragController.IsActive)
+            {
+                _dragController.UpdateDrag(graphPos, _zoom);
+            }
+            else if (_selectionBox.IsActive)
+            {
+                _selectionBox.Update(graphPos);
+            }
+
+            e.Use();
+        }
+
+        private void OnLeftMouseUp(Vector2 graphPos, Event e)
+        {
+            if (_dragController.IsActive)
+            {
+                _dragController.EndDrag();
+            }
+            else if (_selectionBox.IsActive)
+            {
+                if (!e.shift)
+                    _selectionController.Clear();
+
+                Rect selectionGraphRect = _selectionBox.GetGraphRect();
+                for (int i = 0; i < _states.Count; i++)
+                {
+                    if (selectionGraphRect.Overlaps(_states[i].GetGraphBounds()))
+                    {
+                        _selectionController.Select(_states[i]);
+                    }
+                }
+
+                _selectionBox.End();
+            }
+
+            e.Use();
+        }
+
+        private ISelectable HitTest(Vector2 graphPos)
+        {
+            for (int i = _states.Count - 1; i >= 0; i--)
+            {
+                if (_states[i].ContainsPoint(graphPos))
+                    return _states[i];
+            }
+
+            return null;
+        }
+
+        private void DrawSelectionOverlays()
+        {
+            var selected = _selectionController.Selected;
+            for (int i = 0; i < selected.Count; i++)
+            {
+                selected[i].DrawSelectionOverlay(_zoom, _panOffset);
+            }
         }
 
         private void DrawStates()
