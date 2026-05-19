@@ -11,12 +11,12 @@ namespace CleanStateMachine
 
         private const float ZoomMin = 0.1f;
         private const float ZoomMax = 5f;
-        private const float ZoomSensitivity = 0.02f;
+        private const float ZoomSensitivity = 0.05f;
         private const float ZoomClamp = 0.5f;
 
         private const float ScrollThreshold = 2.5f;
         private const float TouchpadPanScale = 20f;
-        private const float ZoomSensitivityTouchpad = 0.07f;
+        private const float ZoomSensitivityTouchpad = 0.1f;
 
         public void HandleInput(Rect rect, ref Vector2 panOffset, ref float zoom)
         {
