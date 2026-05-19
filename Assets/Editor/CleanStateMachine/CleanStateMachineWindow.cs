@@ -27,6 +27,7 @@ namespace CleanStateMachine
 
         private readonly List<StateView> _states = new();
         private readonly List<ConnectionView> _connections = new();
+        private readonly List<CommentGroupView> _groups = new();
 
         private void OnEnable()
         {
@@ -41,6 +42,7 @@ namespace CleanStateMachine
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
             _contextMenu.ConnectRequested += OnConnectRequested;
+            _contextMenu.UngroupRequested += OnUngroupRequested;
             _connectionController.ConnectionCompleted += OnConnectionCompleted;
         }
 
@@ -48,6 +50,7 @@ namespace CleanStateMachine
         {
             _contextMenu.CreateStateRequested -= OnCreateStateRequested;
             _contextMenu.ConnectRequested -= OnConnectRequested;
+            _contextMenu.UngroupRequested -= OnUngroupRequested;
             _connectionController.ConnectionCompleted -= OnConnectionCompleted;
         }
 
@@ -61,12 +64,16 @@ namespace CleanStateMachine
 
             _panController.HandleInput(rect, ref _panOffset, ref _zoom);
 
+            HandleKeyboardShortcuts(e);
+
             if (e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
             {
                 _connectionController.Cancel();
                 Vector2 graphMousePosition = (e.mousePosition - _panOffset) / _zoom;
-                StateView hitState = HitTestState(graphMousePosition);
-                _contextMenu.Show(graphMousePosition, hitState);
+                ISelectable hit = HitTest(graphMousePosition);
+                StateView hitState = hit as StateView;
+                CommentGroupView hitGroup = hit as CommentGroupView;
+                _contextMenu.Show(graphMousePosition, hitState, hitGroup);
                 e.Use();
             }
 
@@ -90,14 +97,34 @@ namespace CleanStateMachine
             }
 
             _graphView.Draw(rect, _panOffset, _zoom);
+            DrawGroups();
             DrawConnections();
-            DrawStates();
             DrawSelectionOverlays();
+            DrawStates();
             _connectionController.DrawPending(_zoom, _panOffset);
             _selectionBox.DrawScreen(_zoom, _panOffset);
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
                 Repaint();
+        }
+
+        private void HandleKeyboardShortcuts(Event e)
+        {
+            if (e.type != EventType.KeyDown) return;
+
+            if (e.keyCode == KeyCode.G && e.control)
+            {
+                CreateGroupFromSelectedStates();
+                e.Use();
+                Repaint();
+            }
+
+            if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
+            {
+                DeleteSelectedGroups();
+                e.Use();
+                Repaint();
+            }
         }
 
         private void HandleConnectingInput(Rect viewRect)
@@ -164,7 +191,7 @@ namespace CleanStateMachine
                     _selectionController.SelectOnly(hit);
                 }
 
-                _dragController.StartDrag(graphPos, _selectionController.Selected);
+                _dragController.StartDrag(graphPos, GetDragItems());
             }
             else
             {
@@ -202,19 +229,43 @@ namespace CleanStateMachine
                 if (!e.shift)
                     _selectionController.Clear();
 
-                Rect selectionGraphRect = _selectionBox.GetGraphRect();
+                Rect r = _selectionBox.GetGraphRect();
                 for (int i = 0; i < _states.Count; i++)
-                {
-                    if (selectionGraphRect.Overlaps(_states[i].GetGraphBounds()))
-                    {
+                    if (r.Overlaps(_states[i].GetGraphBounds()))
                         _selectionController.Select(_states[i]);
-                    }
-                }
+
+                for (int i = 0; i < _groups.Count; i++)
+                    if (r.Overlaps(_groups[i].GetGraphBounds()))
+                        _selectionController.Select(_groups[i]);
 
                 _selectionBox.End();
             }
 
             e.Use();
+        }
+
+        private List<ISelectable> GetDragItems()
+        {
+            List<ISelectable> selected = new(_selectionController.Selected);
+            HashSet<StateView> groupMembers = new();
+            for (int i = 0; i < _groups.Count; i++)
+            {
+                if (_selectionController.IsSelected(_groups[i]))
+                {
+                    for (int j = 0; j < _groups[i].Members.Count; j++)
+                        groupMembers.Add(_groups[i].Members[j]);
+                }
+            }
+
+            if (groupMembers.Count == 0) return selected;
+
+            for (int i = selected.Count - 1; i >= 0; i--)
+            {
+                if (selected[i] is StateView s && groupMembers.Contains(s))
+                    selected.RemoveAt(i);
+            }
+
+            return selected;
         }
 
         private ISelectable HitTest(Vector2 graphPos)
@@ -223,6 +274,12 @@ namespace CleanStateMachine
             {
                 if (_states[i].ContainsPoint(graphPos))
                     return _states[i];
+            }
+
+            for (int i = _groups.Count - 1; i >= 0; i--)
+            {
+                if (_groups[i].ContainsPoint(graphPos))
+                    return _groups[i];
             }
 
             return null;
@@ -237,6 +294,46 @@ namespace CleanStateMachine
             }
 
             return null;
+        }
+
+        private void DrawGroups()
+        {
+            for (int i = 0; i < _groups.Count; i++)
+                _groups[i].Draw(_zoom, _panOffset);
+        }
+
+        private void CreateGroupFromSelectedStates()
+        {
+            var selectedStates = new List<StateView>();
+            for (int i = 0; i < _selectionController.Count; i++)
+            {
+                if (_selectionController.Selected[i] is StateView s)
+                    selectedStates.Add(s);
+            }
+
+            if (selectedStates.Count < 1) return;
+
+            var group = new CommentGroupView(selectedStates, $"Group {_groups.Count + 1}");
+            _groups.Add(group);
+
+            _selectionController.Clear();
+            _selectionController.Select(group);
+        }
+
+        private void DeleteSelectedGroups()
+        {
+            bool removed = false;
+            for (int i = _groups.Count - 1; i >= 0; i--)
+            {
+                if (_groups[i].IsSelected)
+                {
+                    _selectionController.Deselect(_groups[i]);
+                    _groups.RemoveAt(i);
+                    removed = true;
+                }
+            }
+
+            if (removed) Repaint();
         }
 
         private void DrawSelectionOverlays()
@@ -280,6 +377,13 @@ namespace CleanStateMachine
         private void OnConnectionCompleted(StateView from, StateView to)
         {
             _connections.Add(new ConnectionView(from, to));
+            Repaint();
+        }
+
+        private void OnUngroupRequested(CommentGroupView group)
+        {
+            _selectionController.Deselect(group);
+            _groups.Remove(group);
             Repaint();
         }
     }

@@ -10,9 +10,11 @@ namespace CleanStateMachine
         private readonly List<IContextMenuProvider> _providers = new();
 
         private StateView _contextNode;
+        private CommentGroupView _contextGroup;
 
         public event Action<Vector2> CreateStateRequested;
         public event Action<StateView> ConnectRequested;
+        public event Action<CommentGroupView> UngroupRequested;
 
         public void AddProvider(IContextMenuProvider provider)
         {
@@ -28,9 +30,10 @@ namespace CleanStateMachine
             _providers.Remove(provider);
         }
 
-        public void Show(Vector2 graphMousePosition, StateView contextNode = null)
+        public void Show(Vector2 graphMousePosition, StateView contextNode = null, CommentGroupView contextGroup = null)
         {
             _contextNode = contextNode;
+            _contextGroup = contextGroup;
 
             var menu = new GenericMenu();
 
@@ -46,7 +49,17 @@ namespace CleanStateMachine
             menu.AddSeparator(string.Empty);
             menu.AddDisabledItem(new GUIContent("Copy"));
             menu.AddDisabledItem(new GUIContent("Paste"));
-            menu.AddDisabledItem(new GUIContent("Delete"));
+
+            if (_contextGroup != null)
+            {
+                CommentGroupView captured = _contextGroup;
+                menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupRequested?.Invoke(captured));
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("Delete"));
+            }
+
             menu.AddSeparator(string.Empty);
 
             if (_contextNode != null)

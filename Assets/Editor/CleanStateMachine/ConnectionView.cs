@@ -18,12 +18,14 @@ namespace CleanStateMachine
 
         public void Draw(float zoom, Vector2 panOffset)
         {
-            Vector3 startPos = From.GetOutputAnchor() * zoom + panOffset;
-            Vector3 endPos = To.GetInputAnchor() * zoom + panOffset;
+            Vector3 startPos = From.GetCenter() * zoom + panOffset;
+            Vector3 endPos = To.GetCenter() * zoom + panOffset;
 
-            float dx = Mathf.Max(Mathf.Abs(endPos.x - startPos.x) * 0.5f, 50f);
-            Vector3 startTan = startPos + new Vector3(dx, 0f, 0f);
-            Vector3 endTan = endPos - new Vector3(dx, 0f, 0f);
+            Vector3 dir = (endPos - startPos).normalized;
+            float distance = Vector3.Distance(startPos, endPos);
+            float tangentStrength = Mathf.Max(distance * 0.5f, 50f);
+            Vector3 startTan = startPos + dir * tangentStrength;
+            Vector3 endTan = endPos - dir * tangentStrength;
 
             Handles.DrawBezier(startPos, endPos, startTan, endTan, ConnectionColor, null, 3f);
             DrawArrowhead(endPos, endTan - endPos, ConnectionColor, zoom);
