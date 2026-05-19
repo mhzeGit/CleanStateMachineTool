@@ -27,6 +27,9 @@ namespace CleanStateMachine
         [SerializeField] private Vector2 _panOffset;
         [SerializeField] private float _zoom = 1f;
 
+        private Vector2 _lastMouseGraphPos;
+
+        private UndoRedoSystem _undoRedoSystem;
         private GraphView _graphView;
         private GraphPanController _panController;
         private GraphContextMenu _contextMenu;
@@ -38,10 +41,12 @@ namespace CleanStateMachine
         private readonly List<StateView> _states = new();
         private readonly List<ConnectionView> _connections = new();
         private readonly List<CommentGroupView> _groups = new();
+        private Dictionary<ISelectable, Vector2> _preDragPositions;
 
         private void OnEnable()
         {
             wantsMouseMove = true;
+            _undoRedoSystem = new UndoRedoSystem();
             _graphView = new GraphView();
             _panController = new GraphPanController();
             _contextMenu = new GraphContextMenu();
@@ -79,6 +84,8 @@ namespace CleanStateMachine
             var e = Event.current;
 
             _panController.HandleInput(rect, ref _panOffset, ref _zoom);
+
+            _lastMouseGraphPos = (e.mousePosition - _panOffset) / _zoom;
 
             if (!_connectionController.IsConnecting)
                 HandleKeyboardShortcuts(e);
@@ -131,11 +138,28 @@ namespace CleanStateMachine
         {
             if (e.type != EventType.KeyDown) return;
 
+            if (e.keyCode == KeyCode.Z && e.control)
+            {
+                if (_undoRedoSystem.Undo())
+                    Repaint();
+                e.Use();
+                return;
+            }
+
+            if (e.keyCode == KeyCode.Y && e.control)
+            {
+                if (_undoRedoSystem.Redo())
+                    Repaint();
+                e.Use();
+                return;
+            }
+
             if (e.keyCode == KeyCode.G && e.control)
             {
                 CreateGroupFromSelectedStates();
                 e.Use();
                 Repaint();
+                return;
             }
 
             if (e.keyCode == KeyCode.C && e.control)
@@ -143,6 +167,7 @@ namespace CleanStateMachine
                 CopySelectedStates();
                 e.Use();
                 Repaint();
+                return;
             }
 
             if (e.keyCode == KeyCode.V && e.control)
@@ -150,6 +175,7 @@ namespace CleanStateMachine
                 PasteStates();
                 e.Use();
                 Repaint();
+                return;
             }
 
             if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
@@ -224,7 +250,9 @@ namespace CleanStateMachine
                     _selectionController.SelectOnly(hit);
                 }
 
-                _dragController.StartDrag(graphPos, GetDragItems());
+                var dragItems = GetDragItems();
+                CapturePreDragPositions(dragItems);
+                _dragController.StartDrag(graphPos, dragItems);
             }
             else
             {
@@ -256,6 +284,10 @@ namespace CleanStateMachine
             if (_dragController.IsActive)
             {
                 _dragController.EndDrag();
+                var moveCmd = CreateMoveCommandIfMoved();
+                if (moveCmd != null)
+                    _undoRedoSystem.Execute(moveCmd);
+                _preDragPositions = null;
             }
             else if (_selectionBox.IsActive)
             {
@@ -299,6 +331,37 @@ namespace CleanStateMachine
             }
 
             return selected;
+        }
+
+        private void CapturePreDragPositions(List<ISelectable> items)
+        {
+            _preDragPositions = new Dictionary<ISelectable, Vector2>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+                _preDragPositions[items[i]] = items[i].Position;
+        }
+
+        private MoveStatesCommand CreateMoveCommandIfMoved()
+        {
+            if (_preDragPositions == null || _preDragPositions.Count == 0)
+                return null;
+
+            var items = new List<ISelectable>(_preDragPositions.Count);
+            var startPositions = new List<Vector2>(_preDragPositions.Count);
+            var endPositions = new List<Vector2>(_preDragPositions.Count);
+            bool moved = false;
+
+            foreach (var kvp in _preDragPositions)
+            {
+                Vector2 currentPos = kvp.Key.Position;
+                if ((currentPos - kvp.Value).sqrMagnitude > 0.0001f)
+                    moved = true;
+
+                items.Add(kvp.Key);
+                startPositions.Add(kvp.Value);
+                endPositions.Add(currentPos);
+            }
+
+            return moved ? new MoveStatesCommand(items, startPositions, endPositions) : null;
         }
 
         private ISelectable HitTest(Vector2 graphPos)
@@ -347,7 +410,8 @@ namespace CleanStateMachine
             if (selectedStates.Count < 1) return;
 
             var group = new CommentGroupView(selectedStates, $"Group {_groups.Count + 1}");
-            _groups.Add(group);
+            var cmd = new CreateGroupCommand(_groups, group);
+            _undoRedoSystem.Execute(cmd);
 
             _selectionController.Clear();
             _selectionController.Select(group);
@@ -381,7 +445,8 @@ namespace CleanStateMachine
         private void OnCreateStateRequested(Vector2 graphMousePosition)
         {
             var state = new StateView(graphMousePosition);
-            _states.Add(state);
+            var cmd = new CreateStateCommand(_states, state);
+            _undoRedoSystem.Execute(cmd);
             Repaint();
         }
 
@@ -393,14 +458,17 @@ namespace CleanStateMachine
 
         private void OnConnectionCompleted(StateView from, StateView to)
         {
-            _connections.Add(new ConnectionView(from, to));
+            var connection = new ConnectionView(from, to);
+            var cmd = new CreateConnectionCommand(_connections, connection);
+            _undoRedoSystem.Execute(cmd);
             Repaint();
         }
 
         private void OnUngroupRequested(CommentGroupView group)
         {
             _selectionController.Deselect(group);
-            _groups.Remove(group);
+            var cmd = new UngroupCommand(_groups, group);
+            _undoRedoSystem.Execute(cmd);
             Repaint();
         }
 
@@ -425,56 +493,54 @@ namespace CleanStateMachine
         {
             if (_clipboard == null || _clipboard.Count == 0) return;
 
+            Vector2 mouseGraphPos = _lastMouseGraphPos;
+
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            for (int i = 0; i < _clipboard.Count; i++)
+            {
+                var d = _clipboard[i];
+                if (d.position.x < minX) minX = d.position.x;
+                if (d.position.x + d.size.x > maxX) maxX = d.position.x + d.size.x;
+                if (d.position.y < minY) minY = d.position.y;
+                if (d.position.y + d.size.y > maxY) maxY = d.position.y + d.size.y;
+            }
+
+            Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
+            Vector2 offset = mouseGraphPos - center;
+
             _selectionController.Clear();
-            const float offset = 25f;
+
+            var composite = new CompositeCommand("Paste States");
+            var pastedStates = new List<StateView>();
 
             for (int i = 0; i < _clipboard.Count; i++)
             {
                 var data = _clipboard[i];
-                var state = new StateView(data.position + new Vector2(offset, offset), data.name)
+                var state = new StateView(data.position + offset, data.name)
                 {
                     Size = data.size
                 };
-                _states.Add(state);
-                _selectionController.Select(state);
+                composite.Add(new CreateStateCommand(_states, state));
+                pastedStates.Add(state);
             }
+
+            _undoRedoSystem.Execute(composite);
+
+            for (int i = 0; i < pastedStates.Count; i++)
+                _selectionController.Select(pastedStates[i]);
 
             Repaint();
         }
 
         private void DeleteSelected()
         {
-            HashSet<StateView> toRemove = new();
-            for (int i = _states.Count - 1; i >= 0; i--)
-            {
-                if (_states[i].IsSelected)
-                    toRemove.Add(_states[i]);
-            }
+            if (_selectionController.Count == 0) return;
 
-            for (int i = _connections.Count - 1; i >= 0; i--)
-            {
-                if (toRemove.Contains(_connections[i].From) || toRemove.Contains(_connections[i].To))
-                    _connections.RemoveAt(i);
-            }
+            var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
+            _undoRedoSystem.Execute(cmd);
 
-            for (int i = _states.Count - 1; i >= 0; i--)
-            {
-                if (_states[i].IsSelected)
-                {
-                    _selectionController.Deselect(_states[i]);
-                    _states.RemoveAt(i);
-                }
-            }
-
-            for (int i = _groups.Count - 1; i >= 0; i--)
-            {
-                if (_groups[i].IsSelected)
-                {
-                    _selectionController.Deselect(_groups[i]);
-                    _groups.RemoveAt(i);
-                }
-            }
-
+            _selectionController.Clear();
             Repaint();
         }
     }
