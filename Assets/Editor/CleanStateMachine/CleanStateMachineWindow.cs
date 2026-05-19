@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,6 +20,8 @@ namespace CleanStateMachine
         private GraphView _graphView;
         private GraphPanController _panController;
         private GraphContextMenu _contextMenu;
+
+        private readonly List<StateView> _states = new();
 
         private void OnEnable()
         {
@@ -54,13 +57,25 @@ namespace CleanStateMachine
 
             _graphView.Draw(rect, _panOffset, _zoom);
 
+            DrawStates();
+
             if (_panController.IsPanning)
                 Repaint();
         }
 
+        private void DrawStates()
+        {
+            for (int i = 0; i < _states.Count; i++)
+            {
+                _states[i].Draw(_zoom, _panOffset);
+            }
+        }
+
         private void OnCreateStateRequested(Vector2 graphMousePosition)
         {
-            Debug.Log($"Create State at graph position: {graphMousePosition}");
+            var state = new StateView(graphMousePosition);
+            _states.Add(state);
+            Repaint();
         }
     }
 }
