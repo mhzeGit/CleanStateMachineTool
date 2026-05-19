@@ -207,7 +207,7 @@ namespace CleanStateMachine
                         continue;
                     }
 
-                    bool insideInner = IsInsideFilledRoundedRect(x, y, width, height, radius - borderWidth);
+                    bool insideInner = IsInsideFilledRoundedRectInset(x, y, width, height, radius, borderWidth);
                     tex.SetPixel(x, y, insideInner ? transparent : borderColor);
                 }
             }
@@ -247,6 +247,51 @@ namespace CleanStateMachine
                 float dx = x - (w - r) + 0.5f;
                 float dy = y - (h - r) + 0.5f;
                 return dx * dx + dy * dy <= r * r;
+            }
+
+            return true;
+        }
+
+        private static bool IsInsideFilledRoundedRectInset(int x, int y, int w, int h, int r, int inset)
+        {
+            int left = inset;
+            int right = w - inset;
+            int top = inset;
+            int bottom = h - inset;
+
+            if (x < left || x >= right || y < top || y >= bottom)
+                return false;
+
+            int ri = r - inset;
+            if (ri <= 0)
+                return true;
+
+            if (x < left + ri && y < top + ri)
+            {
+                float dx = (left + ri) - x - 0.5f;
+                float dy = (top + ri) - y - 0.5f;
+                return dx * dx + dy * dy <= ri * ri;
+            }
+
+            if (x >= right - ri && y < top + ri)
+            {
+                float dx = x - (right - ri) + 0.5f;
+                float dy = (top + ri) - y - 0.5f;
+                return dx * dx + dy * dy <= ri * ri;
+            }
+
+            if (x < left + ri && y >= bottom - ri)
+            {
+                float dx = (left + ri) - x - 0.5f;
+                float dy = y - (bottom - ri) + 0.5f;
+                return dx * dx + dy * dy <= ri * ri;
+            }
+
+            if (x >= right - ri && y >= bottom - ri)
+            {
+                float dx = x - (right - ri) + 0.5f;
+                float dy = y - (bottom - ri) + 0.5f;
+                return dx * dx + dy * dy <= ri * ri;
             }
 
             return true;

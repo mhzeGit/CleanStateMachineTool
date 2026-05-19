@@ -65,8 +65,8 @@ namespace CleanStateMachine
 
             _graphView.Draw(rect, _panOffset, _zoom);
 
-            DrawSelectionOverlays();
             DrawStates();
+            DrawSelectionOverlays();
             _selectionBox.DrawScreen(_zoom, _panOffset);
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive)
