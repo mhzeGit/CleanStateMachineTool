@@ -15,6 +15,14 @@ namespace CleanStateMachine
             window.Show();
         }
 
+        public static void OpenWithController(StateMachineController controller)
+        {
+            var window = GetWindow<CleanStateMachineWindow>();
+            window.titleContent = new GUIContent(controller.name);
+            window._pendingController = controller;
+            window.Show();
+        }
+
         [System.Serializable]
         private class CopiedStateData
         {
@@ -32,6 +40,12 @@ namespace CleanStateMachine
         [SerializeField] private float _blackboardWidth = 220f;
         [SerializeField] private float _detailsWidth = 220f;
         [SerializeField] private List<BlackboardVariable> _blackboardVariables = new();
+        [SerializeField] private StateMachineController _controller;
+
+        private bool _hasUnsavedChanges;
+        private bool _isLoading;
+        private StateMachineController _pendingController;
+        private const float ToolbarHeight = 20f;
 
         private BlackboardView _blackboardView;
         private DetailsPanelView _detailsView;
@@ -79,9 +93,12 @@ namespace CleanStateMachine
             _blackboardView = new BlackboardView();
             _detailsView = new DetailsPanelView();
 
-            _blackboardView.VariablesChanged += Repaint;
+            _blackboardView.VariablesChanged += OnBlackboardVariablesChanged;
 
-            EnsureEntryStateExists();
+            if (_controller != null)
+                LoadFromController();
+            else
+                EnsureEntryStateExists();
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
             _contextMenu.ConnectRequested += OnConnectRequested;
@@ -102,7 +119,10 @@ namespace CleanStateMachine
             _contextMenu.DeleteRequested -= DeleteSelected;
             _selectionController.SelectionChanged -= OnSelectionChanged;
 
-            _blackboardView.VariablesChanged -= Repaint;
+            _blackboardView.VariablesChanged -= OnBlackboardVariablesChanged;
+
+            if (_controller != null && _hasUnsavedChanges && !_isLoading)
+                SaveToController();
         }
 
         private void OnGUI()
@@ -110,9 +130,20 @@ namespace CleanStateMachine
             if (position.width < 1f || position.height < 1f)
                 return;
 
+            if (_pendingController != null)
+            {
+                var pending = _pendingController;
+                _pendingController = null;
+                LoadController(pending);
+            }
+
             var e = Event.current;
 
-            ComputeLayout(out Rect graphRect, out Rect leftRect, out Rect rightRect,
+            DrawToolbar();
+
+            Rect contentRect = new Rect(0f, ToolbarHeight, position.width, position.height - ToolbarHeight);
+
+            ComputeLayout(contentRect, out Rect graphRect, out Rect leftRect, out Rect rightRect,
                 out Rect leftSplitterRect, out Rect rightSplitterRect);
 
             _panController.HandleInput(graphRect, ref _panOffset, ref _zoom);
@@ -219,7 +250,7 @@ namespace CleanStateMachine
                 Repaint();
         }
 
-        private void ComputeLayout(out Rect graphRect, out Rect leftRect, out Rect rightRect,
+        private void ComputeLayout(Rect contentRect, out Rect graphRect, out Rect leftRect, out Rect rightRect,
             out Rect leftSplitterRect, out Rect rightSplitterRect)
         {
             float leftW = _showBlackboard ? _blackboardWidth : UITheme.CollapsedWidth;
@@ -227,8 +258,8 @@ namespace CleanStateMachine
             float splitter = UITheme.SplitterWidth;
 
             float minGraph = 200f;
-            float leftMax = position.width - rightW - splitter * 2f - minGraph;
-            float rightMax = position.width - leftW - splitter * 2f - minGraph;
+            float leftMax = contentRect.width - rightW - splitter * 2f - minGraph;
+            float rightMax = contentRect.width - leftW - splitter * 2f - minGraph;
 
             if (_showBlackboard && _blackboardWidth > leftMax)
                 _blackboardWidth = Mathf.Max(UITheme.MinPanelWidth, leftMax);
@@ -239,23 +270,23 @@ namespace CleanStateMachine
             leftW = _showBlackboard ? _blackboardWidth : UITheme.CollapsedWidth;
             rightW = _selectionController.Count > 0 ? _detailsWidth : 0f;
 
-            leftRect = new Rect(0f, 0f, leftW, position.height);
+            leftRect = new Rect(0f, 0f, leftW, contentRect.height);
 
-            float rightX = position.width - rightW;
-            rightRect = new Rect(rightX, 0f, rightW, position.height);
+            float rightX = contentRect.width - rightW;
+            rightRect = new Rect(rightX, 0f, rightW, contentRect.height);
 
             float gx = leftW + (_showBlackboard ? splitter : 0f);
-            float gw = position.width - leftW - rightW
+            float gw = contentRect.width - leftW - rightW
                 - (_showBlackboard ? splitter : 0f)
                 - (_selectionController.Count > 0 ? splitter : 0f);
-            graphRect = new Rect(gx, 0f, gw, position.height);
+            graphRect = new Rect(gx, 0f, gw, contentRect.height);
 
             leftSplitterRect = _showBlackboard
-                ? new Rect(leftW, 0f, splitter, position.height)
+                ? new Rect(leftW, 0f, splitter, contentRect.height)
                 : new Rect(0f, 0f, 0f, 0f);
 
             rightSplitterRect = _selectionController.Count > 0
-                ? new Rect(rightX - splitter, 0f, splitter, position.height)
+                ? new Rect(rightX - splitter, 0f, splitter, contentRect.height)
                 : new Rect(0f, 0f, 0f, 0f);
         }
 
@@ -356,7 +387,10 @@ namespace CleanStateMachine
             if (e.keyCode == KeyCode.Z && e.control)
             {
                 if (_undoRedoSystem.Undo())
+                {
+                    MarkChanged();
                     Repaint();
+                }
                 e.Use();
                 return;
             }
@@ -364,7 +398,10 @@ namespace CleanStateMachine
             if (e.keyCode == KeyCode.Y && e.control)
             {
                 if (_undoRedoSystem.Redo())
+                {
+                    MarkChanged();
                     Repaint();
+                }
                 e.Use();
                 return;
             }
@@ -462,6 +499,7 @@ namespace CleanStateMachine
 
                         cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(source, target)));
                         _undoRedoSystem.Execute(cmd);
+                        MarkChanged();
                     }
                     else
                     {
@@ -478,6 +516,7 @@ namespace CleanStateMachine
                         cmd.Add(new CreateStateCommand(_states, newState));
                         cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(source, newState)));
                         _undoRedoSystem.Execute(cmd);
+                        MarkChanged();
                     }
 
                     _connectionController.Cancel();
@@ -614,7 +653,10 @@ namespace CleanStateMachine
                 _dragController.EndDrag();
                 var moveCmd = CreateMoveCommandIfMoved();
                 if (moveCmd != null)
+                {
                     _undoRedoSystem.Execute(moveCmd);
+                    MarkChanged();
+                }
                 _preDragPositions = null;
                 if (wasMoving)
                     _lastDoubleClickCandidate = null;
@@ -758,6 +800,7 @@ namespace CleanStateMachine
             var group = new CommentGroupView(selectedStates, $"Group {_groups.Count + 1}");
             var cmd = new CreateGroupCommand(_groups, group);
             _undoRedoSystem.Execute(cmd);
+            MarkChanged();
 
             _selectionController.Clear();
             _selectionController.Select(group);
@@ -834,6 +877,7 @@ namespace CleanStateMachine
                 _undoRedoSystem.Execute(cmd);
             }
 
+            MarkChanged();
             Repaint();
         }
 
@@ -862,6 +906,7 @@ namespace CleanStateMachine
             _selectionController.Deselect(group);
             var cmd = new UngroupCommand(_groups, group);
             _undoRedoSystem.Execute(cmd);
+            MarkChanged();
             Repaint();
         }
 
@@ -919,6 +964,7 @@ namespace CleanStateMachine
             }
 
             _undoRedoSystem.Execute(composite);
+            MarkChanged();
 
             for (int i = 0; i < pastedStates.Count; i++)
                 _selectionController.Select(pastedStates[i]);
@@ -940,6 +986,7 @@ namespace CleanStateMachine
 
             var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
             _undoRedoSystem.Execute(cmd);
+            MarkChanged();
 
             _selectionController.Clear();
             Repaint();
@@ -974,6 +1021,7 @@ namespace CleanStateMachine
             {
                 var cmd = new RenameStateCommand(_editingState, _editingOriginalName, newName);
                 _undoRedoSystem.Execute(cmd);
+                MarkChanged();
             }
             else
             {
@@ -1030,7 +1078,7 @@ namespace CleanStateMachine
                 _states.AddRange(pickedStates);
             }
 
-            if (_entryState != null && _states[0] != _entryState)
+            if (_entryState != null && _states.Count > 0 && _states[0] != _entryState)
             {
                 _states.Remove(_entryState);
                 _states.Insert(0, _entryState);
@@ -1061,6 +1109,318 @@ namespace CleanStateMachine
                         _groups.RemoveAt(i);
                 _groups.AddRange(pickedGroups);
             }
+        }
+
+        private void DrawToolbar()
+        {
+            Rect toolbarRect = new Rect(0f, 0f, position.width, ToolbarHeight);
+            EditorGUI.DrawRect(toolbarRect, UITheme.PanelHeaderBg);
+            EditorGUI.DrawRect(new Rect(0f, ToolbarHeight - 1f, position.width, 1f), UITheme.PanelBorder);
+
+            float x = 4f;
+            float y = 2f;
+            float buttonHeight = ToolbarHeight - 4f;
+
+            bool hasController = _controller != null;
+            bool canSave = hasController && _hasUnsavedChanges;
+
+            GUI.enabled = canSave;
+            Rect saveRect = new Rect(x, y, 50f, buttonHeight);
+            if (GUI.Button(saveRect, "Save"))
+            {
+                SaveToController();
+                _controller.Save();
+                MarkSaved();
+            }
+            GUI.enabled = true;
+
+            x += 54f;
+            Rect saveAsRect = new Rect(x, y, 70f, buttonHeight);
+            if (GUI.Button(saveAsRect, "Save As..."))
+            {
+                SaveAs();
+            }
+
+            x += 74f;
+            Rect newRect = new Rect(x, y, 50f, buttonHeight);
+            if (GUI.Button(newRect, "New"))
+            {
+                NewFile();
+            }
+
+            string nameText = hasController ? _controller.name : "No Controller";
+            if (_hasUnsavedChanges) nameText += " *";
+
+            float labelX = x + 54f;
+            var labelStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleRight,
+                normal = { textColor = UITheme.TextColor }
+            };
+            Rect labelRect = new Rect(labelX, y, toolbarRect.width - labelX - 4f, buttonHeight);
+            GUI.Label(labelRect, nameText, labelStyle);
+
+            var e = Event.current;
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.S && e.control)
+            {
+                if (hasController)
+                {
+                    SaveToController();
+                    _controller.Save();
+                    MarkSaved();
+                }
+                e.Use();
+                Repaint();
+            }
+        }
+
+        private void UpdateTitle()
+        {
+            string name = _controller != null ? _controller.name : "CleanStateMachine";
+            titleContent = new GUIContent(name);
+        }
+
+        private void MarkChanged()
+        {
+            if (_isLoading) return;
+            _hasUnsavedChanges = true;
+            hasUnsavedChanges = true;
+            UpdateTitle();
+        }
+
+        private void MarkSaved()
+        {
+            _hasUnsavedChanges = false;
+            hasUnsavedChanges = false;
+            UpdateTitle();
+        }
+
+        private void OnBlackboardVariablesChanged()
+        {
+            MarkChanged();
+            Repaint();
+        }
+
+        public override void SaveChanges()
+        {
+            base.SaveChanges();
+            if (_controller != null)
+            {
+                SaveToController();
+                _controller.Save();
+                MarkSaved();
+            }
+        }
+
+        public void LoadController(StateMachineController controller)
+        {
+            if (controller == null) return;
+            if (controller == _controller) return;
+
+            if (_hasUnsavedChanges && _controller != null)
+            {
+                int option = EditorUtility.DisplayDialogComplex(
+                    "Unsaved Changes",
+                    $"Save changes to {_controller.name} before switching?",
+                    "Save", "Cancel", "Discard");
+
+                if (option == 1) return;
+
+                if (option == 0)
+                {
+                    SaveToController();
+                    _controller.Save();
+                }
+            }
+
+            _controller = controller;
+            LoadFromController();
+        }
+
+        private void LoadFromController()
+        {
+            _isLoading = true;
+
+            _editingState = null;
+            _selectionController.Clear();
+            _states.Clear();
+            _connections.Clear();
+            _groups.Clear();
+            _blackboardVariables.Clear();
+            _undoRedoSystem = new UndoRedoSystem();
+
+            if (_controller != null)
+            {
+                var data = _controller.Data;
+
+                var stateLookup = new List<StateView>();
+                for (int i = 0; i < data.States.Count; i++)
+                {
+                    var sd = data.States[i];
+                    var state = new StateView(sd.Position, sd.Name, sd.IsEntry)
+                    {
+                        Size = sd.Size
+                    };
+                    _states.Add(state);
+                    stateLookup.Add(state);
+                }
+
+                for (int i = 0; i < data.Connections.Count; i++)
+                {
+                    var cd = data.Connections[i];
+                    if (cd.FromIndex >= 0 && cd.FromIndex < stateLookup.Count &&
+                        cd.ToIndex >= 0 && cd.ToIndex < stateLookup.Count)
+                    {
+                        _connections.Add(new ConnectionView(
+                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex]));
+                    }
+                }
+
+                for (int i = 0; i < data.Groups.Count; i++)
+                {
+                    var gd = data.Groups[i];
+                    var members = new List<StateView>();
+                    foreach (int mi in gd.MemberIndices)
+                    {
+                        if (mi >= 0 && mi < stateLookup.Count)
+                            members.Add(stateLookup[mi]);
+                    }
+                    _groups.Add(new CommentGroupView(members, gd.Label));
+                }
+
+                for (int i = 0; i < data.BlackboardVariables.Count; i++)
+                    _blackboardVariables.Add(data.BlackboardVariables[i].Clone());
+
+                _panOffset = data.PanOffset;
+                _zoom = data.Zoom;
+                _showBlackboard = data.ShowBlackboard;
+                _blackboardWidth = data.BlackboardWidth;
+                _detailsWidth = data.DetailsWidth;
+            }
+
+            EnsureEntryStateExists();
+            _isLoading = false;
+            MarkSaved();
+            UpdateTitle();
+            Repaint();
+        }
+
+        private void SaveToController()
+        {
+            if (_controller == null) return;
+
+            var data = new SerializableData();
+
+            var stateToIndex = new Dictionary<StateView, int>();
+            for (int i = 0; i < _states.Count; i++)
+                stateToIndex[_states[i]] = i;
+
+            foreach (var state in _states)
+            {
+                data.States.Add(new StateData
+                {
+                    Name = state.Name,
+                    Position = state.Position,
+                    Size = state.Size,
+                    IsEntry = state.IsEntry
+                });
+            }
+
+            foreach (var conn in _connections)
+            {
+                data.Connections.Add(new ConnectionData
+                {
+                    FromIndex = stateToIndex[conn.From],
+                    ToIndex = stateToIndex[conn.To]
+                });
+            }
+
+            foreach (var group in _groups)
+            {
+                var gd = new GroupData { Label = group.Label };
+                foreach (var member in group.Members)
+                    gd.MemberIndices.Add(stateToIndex[member]);
+                data.Groups.Add(gd);
+            }
+
+            foreach (var v in _blackboardVariables)
+                data.BlackboardVariables.Add(v.Clone());
+
+            data.PanOffset = _panOffset;
+            data.Zoom = _zoom;
+            data.ShowBlackboard = _showBlackboard;
+            data.BlackboardWidth = _blackboardWidth;
+            data.DetailsWidth = _detailsWidth;
+
+            _controller.Data = data;
+        }
+
+        private void SaveAs()
+        {
+            string path = EditorUtility.SaveFilePanelInProject(
+                "Save State Machine Controller",
+                "NewStateMachineController",
+                "asset",
+                "Save state machine controller as...");
+
+            if (string.IsNullOrEmpty(path)) return;
+
+            var controller = CreateInstance<StateMachineController>();
+            AssetDatabase.CreateAsset(controller, path);
+
+            _controller = controller;
+            SaveToController();
+            _controller.Save();
+            MarkSaved();
+            Repaint();
+
+            EditorGUIUtility.PingObject(controller);
+        }
+
+        private void NewFile()
+        {
+            if (_hasUnsavedChanges)
+            {
+                int option = EditorUtility.DisplayDialogComplex(
+                    "Unsaved Changes",
+                    "You have unsaved changes. What do you want to do?",
+                    "Save", "Cancel", "Discard");
+
+                if (option == 1) return;
+
+                if (option == 0)
+                {
+                    if (_controller != null)
+                    {
+                        SaveToController();
+                        _controller.Save();
+                    }
+                    else
+                    {
+                        SaveAs();
+                        return;
+                    }
+                }
+            }
+
+            _controller = null;
+            _editingState = null;
+            _selectionController.Clear();
+            _states.Clear();
+            _connections.Clear();
+            _groups.Clear();
+            _blackboardVariables.Clear();
+            _undoRedoSystem = new UndoRedoSystem();
+            _panOffset = Vector2.zero;
+            _zoom = 1f;
+            _showBlackboard = true;
+            _blackboardWidth = 220f;
+            _detailsWidth = 220f;
+
+            EnsureEntryStateExists();
+
+            MarkSaved();
+            Repaint();
         }
     }
 }
