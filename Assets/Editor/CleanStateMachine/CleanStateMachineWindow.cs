@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEditor;
 using UnityEngine;
 
@@ -56,8 +57,9 @@ namespace CleanStateMachine
         private StateView _editingState;
         private string _editingOriginalName;
         private bool _focusRequested;
-        private bool _selectAllRequested;
-        private double _lastClickTime;
+        private bool _selectAllDone;
+        private static readonly Stopwatch _clickStopwatch = Stopwatch.StartNew();
+        private long _lastClickTimestamp;
         private StateView _lastDoubleClickCandidate;
 
         private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
@@ -116,6 +118,8 @@ namespace CleanStateMachine
                 out Rect leftSplitterRect, out Rect rightSplitterRect);
 
             _panController.HandleInput(graphRect, ref _panOffset, ref _zoom);
+
+            UpdateConnectionOffsets();
 
             if (_editingState != null)
             {
@@ -182,18 +186,18 @@ namespace CleanStateMachine
             {
                 EditorGUI.FocusTextInControl("StateRenameField");
                 _focusRequested = false;
-                _selectAllRequested = true;
             }
 
-            if (_selectAllRequested && Event.current.type == EventType.Repaint)
+            if (_editingState != null && !_selectAllDone && Event.current.type == EventType.Repaint
+                && GUI.GetNameOfFocusedControl() == "StateRenameField")
             {
-                if (GUI.GetNameOfFocusedControl() == "StateRenameField")
+                if (_editingState.EditingBuffer == _editingOriginalName)
                 {
                     var textEditor = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
                     if (textEditor != null)
                         textEditor.SelectAll();
-                    _selectAllRequested = false;
                 }
+                _selectAllDone = true;
             }
 
             DrawSelectionOverlays();
@@ -499,8 +503,13 @@ namespace CleanStateMachine
 
             if (hit is StateView sv && !sv.IsEntry)
             {
-                double now = EditorApplication.timeSinceStartup;
-                if (sv == _lastDoubleClickCandidate && (now - _lastClickTime) < 0.3)
+                long now = _clickStopwatch.ElapsedMilliseconds;
+                long elapsed = now - _lastClickTimestamp;
+                bool sameState = sv == _lastDoubleClickCandidate;
+
+                UnityEngine.Debug.Log($"Click '{sv.Name}' | same={sameState} | elapsed={elapsed}ms | cand={_lastDoubleClickCandidate?.Name ?? "null"}");
+
+                if (sameState && elapsed < 500)
                 {
                     _lastDoubleClickCandidate = null;
                     if (!_selectionController.IsSelected(sv))
@@ -509,8 +518,16 @@ namespace CleanStateMachine
                     e.Use();
                     return;
                 }
-                _lastClickTime = now;
-                _lastDoubleClickCandidate = sv;
+
+                if (!sameState)
+                {
+                    _lastClickTimestamp = now;
+                    _lastDoubleClickCandidate = sv;
+                }
+                else
+                {
+                    _lastDoubleClickCandidate = null;
+                }
             }
             else
             {
@@ -746,7 +763,7 @@ namespace CleanStateMachine
             }
         }
 
-        private void DrawConnections()
+        private void UpdateConnectionOffsets()
         {
             var groups = new Dictionary<(StateView, StateView), List<ConnectionView>>();
             for (int i = 0; i < _connections.Count; i++)
@@ -770,10 +787,16 @@ namespace CleanStateMachine
                 int count = list.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    float offset = count == 1 ? 0f : (i - (count - 1) * 0.5f) * 15f;
-                    list[i].PerpendicularOffset = offset;
-                    list[i].Draw(_zoom, _panOffset);
+                    list[i].PerpendicularOffset = count == 1 ? 0f : (i - (count - 1) * 0.5f) * 15f;
                 }
+            }
+        }
+
+        private void DrawConnections()
+        {
+            for (int i = 0; i < _connections.Count; i++)
+            {
+                _connections[i].Draw(_zoom, _panOffset);
             }
         }
 
@@ -787,8 +810,20 @@ namespace CleanStateMachine
 
         private void OnConnectRequested(StateView source)
         {
+            if (source.IsEntry && HasOutgoingConnection(source))
+                return;
             _connectionController.StartConnection(source);
             Repaint();
+        }
+
+        private bool HasOutgoingConnection(StateView source)
+        {
+            for (int i = 0; i < _connections.Count; i++)
+            {
+                if (_connections[i].From == source)
+                    return true;
+            }
+            return false;
         }
 
         private void OnConnectionCompleted(StateView from, StateView to)
@@ -900,6 +935,7 @@ namespace CleanStateMachine
             _editingOriginalName = state.Name;
             _editingState = state;
             _focusRequested = true;
+            _selectAllDone = false;
             Repaint();
         }
 

@@ -12,8 +12,9 @@ namespace CleanStateMachine
 
         private static readonly Color ConnectionColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
         private static readonly Color SelectedColor = new Color(0.80f, 0.92f, 1.00f, 1.00f);
-        private const float HitTestThreshold = 3f;
-        private const float BoundsMargin = 0.5f;
+        private const float HitTestThreshold = 10f;
+        private const float ArrowGraphSize = 10f;
+        private const float ArrowGraphWidth = 5f;
         private const float BaseWidth = 1.5f;
         private const float SelectedBaseWidth = 2f;
 
@@ -46,43 +47,71 @@ namespace CleanStateMachine
             return new Vector2(-dir.y, dir.x) * PerpendicularOffset;
         }
 
+        private void GetLineEndpoints(out Vector2 from, out Vector2 to)
+        {
+            from = From.GetCenter() + GetOffsetVector();
+            to = To.GetCenter() + GetOffsetVector();
+        }
+
+        private void GetArrowheadVertices(Vector2 from, Vector2 to, out Vector2 tip, out Vector2 left, out Vector2 right)
+        {
+            Vector2 dir = (to - from).normalized;
+            Vector2 perp = new Vector2(-dir.y, dir.x);
+            tip = (from + to) * 0.5f;
+            Vector2 basePt = tip - dir * ArrowGraphSize;
+            left = basePt + perp * ArrowGraphWidth;
+            right = basePt - perp * ArrowGraphWidth;
+        }
+
+        private static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float len = ab.magnitude;
+            if (len < 0.001f)
+                return Vector2.Distance(p, a);
+
+            Vector2 dir = ab / len;
+            float t = Vector2.Dot(p - a, dir);
+            Vector2 closest;
+
+            if (t <= 0f)
+                closest = a;
+            else if (t >= len)
+                closest = b;
+            else
+                closest = a + dir * t;
+
+            return Vector2.Distance(p, closest);
+        }
+
         public Rect GetGraphBounds()
         {
-            Vector3 from = From.GetCenter() + GetOffsetVector();
-            Vector3 to = To.GetCenter() + GetOffsetVector();
+            GetLineEndpoints(out Vector2 from, out Vector2 to);
+            GetArrowheadVertices(from, to, out Vector2 tip, out Vector2 left, out Vector2 right);
 
-            float minX = Mathf.Min(from.x, to.x);
-            float maxX = Mathf.Max(from.x, to.x);
-            float minY = Mathf.Min(from.y, to.y);
-            float maxY = Mathf.Max(from.y, to.y);
+            float minX = Mathf.Min(from.x, to.x, tip.x, left.x, right.x) - HitTestThreshold;
+            float maxX = Mathf.Max(from.x, to.x, tip.x, left.x, right.x) + HitTestThreshold;
+            float minY = Mathf.Min(from.y, to.y, tip.y, left.y, right.y) - HitTestThreshold;
+            float maxY = Mathf.Max(from.y, to.y, tip.y, left.y, right.y) + HitTestThreshold;
 
-            float margin = BoundsMargin;
-            return new Rect(minX - margin, minY - margin, maxX - minX + margin * 2, maxY - minY + margin * 2);
+            return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
 
         public bool ContainsPoint(Vector2 graphPoint)
         {
-            Vector3 from = From.GetCenter() + GetOffsetVector();
-            Vector3 to = To.GetCenter() + GetOffsetVector();
+            GetLineEndpoints(out Vector2 from, out Vector2 to);
 
-            Vector3 line = to - from;
-            float lineLen = line.magnitude;
-            if (lineLen < 0.001f)
-                return Vector2.Distance(graphPoint, from) <= HitTestThreshold;
+            if (DistToSegment(graphPoint, from, to) <= HitTestThreshold)
+                return true;
 
-            Vector3 dir = line / lineLen;
-            Vector3 toPoint = graphPoint - (Vector2)from;
-            float projection = Vector3.Dot(toPoint, dir);
+            GetArrowheadVertices(from, to, out Vector2 tip, out Vector2 left, out Vector2 right);
 
-            Vector3 closest;
-            if (projection <= 0f)
-                closest = from;
-            else if (projection >= lineLen)
-                closest = to;
-            else
-                closest = from + dir * projection;
+            if (DistToSegment(graphPoint, tip, left) <= HitTestThreshold ||
+                DistToSegment(graphPoint, left, right) <= HitTestThreshold ||
+                DistToSegment(graphPoint, right, tip) <= HitTestThreshold)
+                return true;
 
-            return Vector2.Distance(graphPoint, closest) <= HitTestThreshold;
+            return false;
         }
 
         public void DrawSelectionOverlay(float zoom, Vector2 panOffset)
