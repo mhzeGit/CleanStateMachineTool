@@ -8,6 +8,7 @@ namespace CleanStateMachine
 
         private Vector2 _panStartMouse;
         private Vector2 _panStartOffset;
+        private bool _hasDragged;
 
         private const float ZoomMin = 0.1f;
         private const float ZoomMax = 5f;
@@ -24,15 +25,17 @@ namespace CleanStateMachine
 
             switch (e.type)
             {
-                case EventType.MouseDown when e.button == 2 && rect.Contains(e.mousePosition):
+                case EventType.MouseDrag when e.button == 1 && rect.Contains(e.mousePosition) && !IsPanning:
                     IsPanning = true;
                     _panStartMouse = e.mousePosition;
                     _panStartOffset = panOffset;
+                    _hasDragged = true;
                     e.Use();
                     break;
 
                 case EventType.MouseDrag when IsPanning:
                     panOffset = _panStartOffset + e.mousePosition - _panStartMouse;
+                    _hasDragged = true;
                     e.Use();
                     break;
 
@@ -46,6 +49,22 @@ namespace CleanStateMachine
                     e.Use();
                     break;
             }
+        }
+
+        public bool ConsumeContextClickIfPanned()
+        {
+            if (_hasDragged)
+            {
+                _hasDragged = false;
+                return true;
+            }
+            return false;
+        }
+
+        public void CancelPanning()
+        {
+            IsPanning = false;
+            _hasDragged = false;
         }
 
         private void HandleScrollWheel(Event e, ref Vector2 panOffset, ref float zoom)
