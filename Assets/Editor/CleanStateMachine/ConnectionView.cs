@@ -9,11 +9,11 @@ namespace CleanStateMachine
         public StateView To { get; }
         public bool IsSelected { get; set; }
 
-        private static readonly Color ConnectionColor = new Color(0.60f, 0.80f, 1.00f, 0.90f);
+        private static readonly Color ConnectionColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
         private static readonly Color SelectedColor = new Color(0.80f, 0.92f, 1.00f, 1.00f);
-        private const float HitTestThreshold = 10f;
-        private const float BaseWidth = 5f;
-        private const float SelectedBaseWidth = 7f;
+        private const float HitTestThreshold = 5f;
+        private const float BaseWidth = 2f;
+        private const float SelectedBaseWidth = 3f;
 
         public ConnectionView(StateView from, StateView to)
         {
@@ -70,7 +70,6 @@ namespace CleanStateMachine
 
         public void DrawSelectionOverlay(float zoom, Vector2 panOffset)
         {
-            DrawLine(From.GetCenter() * zoom + panOffset, To.GetCenter() * zoom + panOffset, SelectedColor, Mathf.Max(1f, (SelectedBaseWidth + 3f) * zoom));
         }
 
         public void Draw(float zoom, Vector2 panOffset)
@@ -82,23 +81,32 @@ namespace CleanStateMachine
             float width = Mathf.Max(1f, (IsSelected ? SelectedBaseWidth : BaseWidth) * zoom);
 
             DrawLine(startPos, endPos, color, width);
+            DrawMidArrowhead(startPos, endPos, color, zoom);
         }
 
         private static void DrawLine(Vector3 start, Vector3 end, Color color, float width)
         {
+            Color prev = Handles.color;
+            Handles.color = color;
+            Handles.DrawAAPolyLine(EditorGUIUtility.whiteTexture, width, start, end);
+            Handles.color = prev;
+        }
+
+        private static void DrawMidArrowhead(Vector3 start, Vector3 end, Color color, float zoom)
+        {
+            Vector3 mid = (start + end) * 0.5f;
             Vector3 dir = (end - start).normalized;
             Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
-            float halfW = width * 0.5f;
 
-            Vector3[] corners = new Vector3[]
-            {
-                start + perp * halfW,
-                start - perp * halfW,
-                end - perp * halfW,
-                end + perp * halfW,
-            };
+            float arrowSize = Mathf.Max(6f, 10f * zoom);
+            float arrowWidth = arrowSize * 0.5f;
 
-            Handles.DrawSolidRectangleWithOutline(corners, color, color);
+            Vector3 basePt = mid - dir * arrowSize;
+
+            Color prev = Handles.color;
+            Handles.color = color;
+            Handles.DrawAAConvexPolygon(mid, basePt + perp * arrowWidth, basePt - perp * arrowWidth);
+            Handles.color = prev;
         }
     }
 }
