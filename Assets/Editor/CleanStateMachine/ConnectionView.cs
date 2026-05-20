@@ -11,7 +11,8 @@ namespace CleanStateMachine
 
         private static readonly Color ConnectionColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
         private static readonly Color SelectedColor = new Color(0.80f, 0.92f, 1.00f, 1.00f);
-        private const float HitTestThreshold = 5f;
+        private const float HitTestThreshold = 3f;
+        private const float BoundsMargin = 0.5f;
         private const float BaseWidth = 1.5f;
         private const float SelectedBaseWidth = 2f;
 
@@ -39,7 +40,7 @@ namespace CleanStateMachine
             float minY = Mathf.Min(from.y, to.y);
             float maxY = Mathf.Max(from.y, to.y);
 
-            float margin = HitTestThreshold;
+            float margin = BoundsMargin;
             return new Rect(minX - margin, minY - margin, maxX - minX + margin * 2, maxY - minY + margin * 2);
         }
 

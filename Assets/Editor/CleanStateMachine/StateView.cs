@@ -9,6 +9,7 @@ namespace CleanStateMachine
         public string Name { get; set; }
 
         public bool IsSelected { get; set; }
+        public bool IsEntry { get; }
 
         private static GUIStyle _fillStyle;
         private static GUIStyle _borderStyle;
@@ -26,10 +27,19 @@ namespace CleanStateMachine
         private static int _cachedSelectionRadius;
         private static int _cachedSelectionBorderWidth;
 
+        private static Texture2D _cachedEntryFillTexture;
+        private static int _cachedEntryFillRadius;
+        private static Texture2D _cachedEntryBorderTexture;
+        private static int _cachedEntryBorderRadius;
+        private static int _cachedEntryBorderWidth;
+
         private static readonly Color FillColor = new Color(0.18f, 0.18f, 0.20f);
         private static readonly Color PermanentBorderColor = new Color(0.28f, 0.28f, 0.31f);
         private static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.35f);
         private static readonly Color SelectionColor = Color.yellow;
+
+        private static readonly Color EntryFillColor = new Color(0.15f, 0.50f, 0.15f);
+        private static readonly Color EntryBorderColor = new Color(0.25f, 0.65f, 0.25f);
 
         private const float DefaultWidth = 160f;
         private const float DefaultHeight = 40f;
@@ -40,11 +50,12 @@ namespace CleanStateMachine
         private const float ShadowExpandPx = 6f;
         private const int ShadowBlurKernel = 3;
 
-        public StateView(Vector2 position, string name = "State")
+        public StateView(Vector2 position, string name = "State", bool isEntry = false)
         {
             Position = position;
             Size = new Vector2(DefaultWidth, DefaultHeight);
             Name = name;
+            IsEntry = isEntry;
         }
 
         public Vector2 GetCenter()
@@ -114,9 +125,17 @@ namespace CleanStateMachine
             int borderWidth = Mathf.Max(1, Mathf.RoundToInt(PermanentBorderWidth * zoom));
             int shadowExpand = Mathf.Max(1, Mathf.RoundToInt(ShadowExpandPx * zoom));
 
-            EnsureFillTexture(scaledRadius);
             EnsureShadowTexture(scaledRadius, shadowExpand);
-            EnsureBorderTexture(scaledRadius, borderWidth, PermanentBorderColor);
+            if (IsEntry)
+            {
+                EnsureEntryFillTexture(scaledRadius);
+                EnsureEntryBorderTexture(scaledRadius, borderWidth);
+            }
+            else
+            {
+                EnsureFillTexture(scaledRadius);
+                EnsureBorderTexture(scaledRadius, borderWidth, PermanentBorderColor);
+            }
 
             var fillBorder = new RectOffset(scaledRadius, scaledRadius, scaledRadius, scaledRadius);
             int shadowRadius = scaledRadius + shadowExpand;
@@ -139,12 +158,12 @@ namespace CleanStateMachine
             _shadowStyle.border = shadowBorder;
             GUI.Box(shadowRect, "", _shadowStyle);
 
-            _fillStyle.normal.background = _cachedFillTexture;
+            _fillStyle.normal.background = IsEntry ? _cachedEntryFillTexture : _cachedFillTexture;
             _fillStyle.border = fillBorder;
             _fillStyle.fontSize = Mathf.RoundToInt(12 * zoom);
             GUI.Box(rect, Name, _fillStyle);
 
-            _borderStyle.normal.background = _cachedBorderTexture;
+            _borderStyle.normal.background = IsEntry ? _cachedEntryBorderTexture : _cachedBorderTexture;
             _borderStyle.border = fillBorder;
             GUI.Box(rect, "", _borderStyle);
         }
@@ -236,6 +255,41 @@ namespace CleanStateMachine
             _cachedSelectionTexture.hideFlags = HideFlags.HideAndDontSave;
             _cachedSelectionRadius = cornerRadius;
             _cachedSelectionBorderWidth = borderWidth;
+        }
+
+        private static void EnsureEntryFillTexture(int cornerRadius)
+        {
+            if (_cachedEntryFillTexture != null && _cachedEntryFillRadius == cornerRadius)
+                return;
+
+            if (_cachedEntryFillTexture != null)
+            {
+                Object.DestroyImmediate(_cachedEntryFillTexture);
+                _cachedEntryFillTexture = null;
+            }
+
+            int texSize = cornerRadius * 2 + 8;
+            _cachedEntryFillTexture = GenerateFilledTexture(texSize, texSize, cornerRadius, EntryFillColor);
+            _cachedEntryFillTexture.hideFlags = HideFlags.HideAndDontSave;
+            _cachedEntryFillRadius = cornerRadius;
+        }
+
+        private static void EnsureEntryBorderTexture(int cornerRadius, int borderWidth)
+        {
+            if (_cachedEntryBorderTexture != null && _cachedEntryBorderRadius == cornerRadius && _cachedEntryBorderWidth == borderWidth)
+                return;
+
+            if (_cachedEntryBorderTexture != null)
+            {
+                Object.DestroyImmediate(_cachedEntryBorderTexture);
+                _cachedEntryBorderTexture = null;
+            }
+
+            int texSize = cornerRadius * 2 + 8;
+            _cachedEntryBorderTexture = GenerateBorderTexture(texSize, texSize, cornerRadius, borderWidth, EntryBorderColor);
+            _cachedEntryBorderTexture.hideFlags = HideFlags.HideAndDontSave;
+            _cachedEntryBorderRadius = cornerRadius;
+            _cachedEntryBorderWidth = borderWidth;
         }
 
         private static Texture2D GenerateFilledTexture(int width, int height, int radius, Color fillColor)

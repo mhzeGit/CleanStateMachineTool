@@ -53,6 +53,9 @@ namespace CleanStateMachine
         private readonly List<ConnectionView> _connections = new();
         private readonly List<CommentGroupView> _groups = new();
         private Dictionary<ISelectable, Vector2> _preDragPositions;
+        private StateView _entryState;
+
+        private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
 
         private void OnEnable()
         {
@@ -72,6 +75,8 @@ namespace CleanStateMachine
             _blackboardView.CloseRequested += OnBlackboardCloseRequested;
             _detailsView.CloseRequested += OnDetailsCloseRequested;
             _blackboardView.VariablesChanged += Repaint;
+
+            EnsureEntryStateExists();
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
             _contextMenu.ConnectRequested += OnConnectRequested;
@@ -374,6 +379,12 @@ namespace CleanStateMachine
 
             if (hit != null)
             {
+                if (hit is StateView s && s.IsEntry)
+                {
+                    e.Use();
+                    return;
+                }
+
                 if (e.shift)
                 {
                     _selectionController.Toggle(hit);
@@ -431,7 +442,7 @@ namespace CleanStateMachine
 
                 var boxStates = new List<StateView>();
                 for (int i = 0; i < _states.Count; i++)
-                    if (r.Overlaps(_states[i].GetGraphBounds()))
+                    if (!_states[i].IsEntry && r.Overlaps(_states[i].GetGraphBounds()))
                         boxStates.Add(_states[i]);
                 _selectionController.SelectRange(boxStates);
 
@@ -466,11 +477,9 @@ namespace CleanStateMachine
                 }
             }
 
-            if (groupMembers.Count == 0) return selected;
-
             for (int i = selected.Count - 1; i >= 0; i--)
             {
-                if (selected[i] is StateView s && groupMembers.Contains(s))
+                if (selected[i] is StateView s && (groupMembers.Contains(s) || s.IsEntry))
                     selected.RemoveAt(i);
             }
 
@@ -627,7 +636,7 @@ namespace CleanStateMachine
             _clipboard = new List<CopiedStateData>();
             for (int i = 0; i < _selectionController.Count; i++)
             {
-                if (_selectionController.Selected[i] is StateView s)
+                if (_selectionController.Selected[i] is StateView s && !s.IsEntry)
                 {
                     _clipboard.Add(new CopiedStateData
                     {
@@ -687,11 +696,38 @@ namespace CleanStateMachine
         {
             if (_selectionController.Count == 0) return;
 
+            for (int i = _selectionController.Count - 1; i >= 0; i--)
+            {
+                if (_selectionController.Selected[i] is StateView s && s.IsEntry)
+                    _selectionController.Deselect(s);
+            }
+
+            if (_selectionController.Count == 0) return;
+
             var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
             _undoRedoSystem.Execute(cmd);
 
             _selectionController.Clear();
             Repaint();
+        }
+
+        private void EnsureEntryStateExists()
+        {
+            _entryState = null;
+            for (int i = 0; i < _states.Count; i++)
+            {
+                if (_states[i].IsEntry)
+                {
+                    _entryState = _states[i];
+                    break;
+                }
+            }
+
+            if (_entryState == null)
+            {
+                _entryState = new StateView(EntryStatePosition, "Entry", isEntry: true);
+                _states.Insert(0, _entryState);
+            }
         }
 
         private void OnSelectionChanged()

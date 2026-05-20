@@ -17,7 +17,7 @@ namespace CleanStateMachine
         {
             get
             {
-                int total = _deletedStates.Count + _deletedGroups.Count;
+                int total = _deletedStates.Count + _deletedConnections.Count + _deletedGroups.Count;
                 return $"Delete {total} Item{(total != 1 ? "s" : "")}";
             }
         }
@@ -41,12 +41,15 @@ namespace CleanStateMachine
         private void CaptureSelection(SelectionController selectionController)
         {
             var selectedStates = new HashSet<StateView>();
+            var selectedConnections = new HashSet<ConnectionView>();
             var selectedGroups = new HashSet<CommentGroupView>();
 
             for (int i = 0; i < selectionController.Count; i++)
             {
                 if (selectionController.Selected[i] is StateView s)
                     selectedStates.Add(s);
+                else if (selectionController.Selected[i] is ConnectionView c)
+                    selectedConnections.Add(c);
                 else if (selectionController.Selected[i] is CommentGroupView g)
                     selectedGroups.Add(g);
             }
@@ -62,7 +65,9 @@ namespace CleanStateMachine
             for (int i = 0; i < _connectionList.Count; i++)
             {
                 var conn = _connectionList[i];
-                if (selectedStates.Contains(conn.From) || selectedStates.Contains(conn.To))
+                if (selectedConnections.Contains(conn) ||
+                    selectedStates.Contains(conn.From) ||
+                    selectedStates.Contains(conn.To))
                     _deletedConnections.Add(conn);
             }
 
