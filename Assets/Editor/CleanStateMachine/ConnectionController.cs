@@ -14,7 +14,7 @@ namespace CleanStateMachine
 
         public event Action<StateView, StateView> ConnectionCompleted;
 
-        private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 0.90f);
+        private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
 
         public void StartConnection(StateView source)
         {
@@ -69,10 +69,19 @@ namespace CleanStateMachine
 
         private static void DrawLine(Vector3 start, Vector3 end, Color color, float width)
         {
-            Color prev = Handles.color;
-            Handles.color = color;
-            Handles.DrawAAPolyLine(EditorGUIUtility.whiteTexture, width, start, end);
-            Handles.color = prev;
+            Vector3 dir = (end - start).normalized;
+            Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
+            float halfW = width * 0.5f;
+
+            Vector3[] corners = new Vector3[]
+            {
+                start + perp * halfW,
+                start - perp * halfW,
+                end - perp * halfW,
+                end + perp * halfW,
+            };
+
+            Handles.DrawSolidRectangleWithOutline(corners, color, color);
         }
 
         private static void DrawMidArrowhead(Vector3 start, Vector3 end, Color color, float zoom)
@@ -83,7 +92,6 @@ namespace CleanStateMachine
 
             float arrowSize = Mathf.Max(6f, 10f * zoom);
             float arrowWidth = arrowSize * 0.5f;
-
             Vector3 basePt = mid - dir * arrowSize;
 
             Color prev = Handles.color;

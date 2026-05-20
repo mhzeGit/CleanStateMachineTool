@@ -12,8 +12,8 @@ namespace CleanStateMachine
         private static readonly Color ConnectionColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
         private static readonly Color SelectedColor = new Color(0.80f, 0.92f, 1.00f, 1.00f);
         private const float HitTestThreshold = 5f;
-        private const float BaseWidth = 2f;
-        private const float SelectedBaseWidth = 3f;
+        private const float BaseWidth = 1.5f;
+        private const float SelectedBaseWidth = 2f;
 
         public ConnectionView(StateView from, StateView to)
         {
@@ -86,10 +86,19 @@ namespace CleanStateMachine
 
         private static void DrawLine(Vector3 start, Vector3 end, Color color, float width)
         {
-            Color prev = Handles.color;
-            Handles.color = color;
-            Handles.DrawAAPolyLine(EditorGUIUtility.whiteTexture, width, start, end);
-            Handles.color = prev;
+            Vector3 dir = (end - start).normalized;
+            Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
+            float halfW = width * 0.5f;
+
+            Vector3[] corners = new Vector3[]
+            {
+                start + perp * halfW,
+                start - perp * halfW,
+                end - perp * halfW,
+                end + perp * halfW,
+            };
+
+            Handles.DrawSolidRectangleWithOutline(corners, color, color);
         }
 
         private static void DrawMidArrowhead(Vector3 start, Vector3 end, Color color, float zoom)
@@ -100,7 +109,6 @@ namespace CleanStateMachine
 
             float arrowSize = Mathf.Max(6f, 10f * zoom);
             float arrowWidth = arrowSize * 0.5f;
-
             Vector3 basePt = mid - dir * arrowSize;
 
             Color prev = Handles.color;

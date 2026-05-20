@@ -250,7 +250,9 @@ namespace CleanStateMachine
             {
                 for (int x = 0; x < width; x++)
                 {
-                    Color color = IsInsideFilledRoundedRect(x, y, width, height, radius) ? fillColor : transparent;
+                    float alpha = GetRoundedRectCoverage(x, y, width, height, radius);
+                    Color color = fillColor;
+                    color.a *= alpha;
                     tex.SetPixel(x, y, color);
                 }
             }
@@ -271,9 +273,8 @@ namespace CleanStateMachine
             {
                 for (int x = 0; x < width; x++)
                 {
-                    src[y * width + x] = IsInsideFilledRoundedRect(x, y, width, height, radius)
-                        ? shadowColor
-                        : Color.clear;
+                    float alpha = GetRoundedRectCoverage(x, y, width, height, radius);
+                    src[y * width + x] = new Color(shadowColor.r, shadowColor.g, shadowColor.b, shadowColor.a * alpha);
                 }
             }
 
@@ -324,20 +325,123 @@ namespace CleanStateMachine
             {
                 for (int x = 0; x < width; x++)
                 {
-                    bool insideOuter = IsInsideFilledRoundedRect(x, y, width, height, radius);
-                    if (!insideOuter)
+                    float coverage = GetBorderCoverage(x, y, width, height, radius, borderWidth);
+                    if (coverage <= 0f)
                     {
                         tex.SetPixel(x, y, transparent);
-                        continue;
                     }
-
-                    bool insideInner = IsInsideFilledRoundedRectInset(x, y, width, height, radius, borderWidth);
-                    tex.SetPixel(x, y, insideInner ? transparent : borderColor);
+                    else
+                    {
+                        Color color = borderColor;
+                        color.a *= coverage;
+                        tex.SetPixel(x, y, color);
+                    }
                 }
             }
 
             tex.Apply();
             return tex;
+        }
+
+        private static bool IsInsideFilledRoundedRect(float fx, float fy, int w, int h, int r)
+        {
+            if (r <= 0) return true;
+            if (fx < r && fy < r)
+            {
+                float dx = r - fx;
+                float dy = r - fy;
+                return dx * dx + dy * dy <= r * r;
+            }
+            if (fx >= w - r && fy < r)
+            {
+                float dx = fx - (w - r);
+                float dy = r - fy;
+                return dx * dx + dy * dy <= r * r;
+            }
+            if (fx < r && fy >= h - r)
+            {
+                float dx = r - fx;
+                float dy = fy - (h - r);
+                return dx * dx + dy * dy <= r * r;
+            }
+            if (fx >= w - r && fy >= h - r)
+            {
+                float dx = fx - (w - r);
+                float dy = fy - (h - r);
+                return dx * dx + dy * dy <= r * r;
+            }
+            return true;
+        }
+
+        private static float GetRoundedRectCoverage(int x, int y, int w, int h, int r)
+        {
+            int count = 0;
+            for (int sy = 0; sy < 3; sy++)
+            {
+                for (int sx = 0; sx < 3; sx++)
+                {
+                    float fx = x + (sx + 0.5f) / 3f;
+                    float fy = y + (sy + 0.5f) / 3f;
+                    if (IsInsideFilledRoundedRect(fx, fy, w, h, r))
+                        count++;
+                }
+            }
+            return count / 9f;
+        }
+
+        private static float GetBorderCoverage(int x, int y, int w, int h, int r, int inset)
+        {
+            int count = 0;
+            for (int sy = 0; sy < 3; sy++)
+            {
+                for (int sx = 0; sx < 3; sx++)
+                {
+                    float fx = x + (sx + 0.5f) / 3f;
+                    float fy = y + (sy + 0.5f) / 3f;
+                    bool insideOuter = IsInsideFilledRoundedRect(fx, fy, w, h, r);
+                    if (!insideOuter) continue;
+                    bool insideInner = IsInsideFilledRoundedRectInset(fx, fy, w, h, r, inset);
+                    if (!insideInner) count++;
+                }
+            }
+            return count / 9f;
+        }
+
+        private static bool IsInsideFilledRoundedRectInset(float fx, float fy, int w, int h, int r, int inset)
+        {
+            int left = inset;
+            int right = w - inset;
+            int top = inset;
+            int bottom = h - inset;
+            if (fx < left || fx >= right || fy < top || fy >= bottom)
+                return false;
+            int ri = r - inset;
+            if (ri <= 0) return true;
+            if (fx < left + ri && fy < top + ri)
+            {
+                float dx = (left + ri) - fx;
+                float dy = (top + ri) - fy;
+                return dx * dx + dy * dy <= ri * ri;
+            }
+            if (fx >= right - ri && fy < top + ri)
+            {
+                float dx = fx - (right - ri);
+                float dy = (top + ri) - fy;
+                return dx * dx + dy * dy <= ri * ri;
+            }
+            if (fx < left + ri && fy >= bottom - ri)
+            {
+                float dx = (left + ri) - fx;
+                float dy = fy - (bottom - ri);
+                return dx * dx + dy * dy <= ri * ri;
+            }
+            if (fx >= right - ri && fy >= bottom - ri)
+            {
+                float dx = fx - (right - ri);
+                float dy = fy - (bottom - ri);
+                return dx * dx + dy * dy <= ri * ri;
+            }
+            return true;
         }
 
         private static bool IsInsideFilledRoundedRect(int x, int y, int w, int h, int r)
