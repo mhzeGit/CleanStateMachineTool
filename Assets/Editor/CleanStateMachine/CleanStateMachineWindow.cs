@@ -507,16 +507,12 @@ namespace CleanStateMachine
                 long elapsed = now - _lastClickTimestamp;
                 bool sameState = sv == _lastDoubleClickCandidate;
 
-                UnityEngine.Debug.Log($"Click '{sv.Name}' | same={sameState} | elapsed={elapsed}ms | cand={_lastDoubleClickCandidate?.Name ?? "null"}");
-
                 if (sameState && elapsed < 500)
                 {
                     _lastDoubleClickCandidate = null;
                     if (!_selectionController.IsSelected(sv))
                         _selectionController.SelectOnly(sv);
                     StartEditing(sv);
-                    e.Use();
-                    return;
                 }
 
                 if (!sameState)
