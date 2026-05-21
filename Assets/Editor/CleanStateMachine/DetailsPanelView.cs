@@ -67,11 +67,11 @@ namespace CleanStateMachine
         {
             if (item is StateView state)
             {
-                DrawStateContent(rect, state, connections);
+                DrawStateContent(rect, state, connections, blackboardVariables);
             }
             else if (item is ConnectionView conn)
             {
-                DrawConnectionContent(rect, conn);
+                DrawConnectionContent(rect, conn, blackboardVariables);
             }
             else if (item is CommentGroupView group)
             {
@@ -83,10 +83,13 @@ namespace CleanStateMachine
             }
         }
 
-        private void DrawStateContent(Rect rect, StateView state, List<ConnectionView> connections)
+        private void DrawStateContent(Rect rect, StateView state, List<ConnectionView> connections,
+            List<BlackboardVariable> blackboardVariables)
         {
             float w = rect.width;
             float totalHeight = UITheme.RowHeight * 5f + 100f;
+            if (state.BehaviourInstance != null)
+                totalHeight += GetPropertiesHeight(state.BehaviourInstance) + 60f;
             Rect viewRect = new Rect(0f, 0f, w - 14f, Mathf.Max(totalHeight, rect.height));
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
@@ -167,6 +170,11 @@ namespace CleanStateMachine
                     AssetDatabase.OpenAsset(state.BehaviourScript);
                 }
                 y += 32f;
+
+                if (state.BehaviourInstance != null)
+                {
+                    DrawScriptableObjectProperties(ref y, iw, state.BehaviourInstance, blackboardVariables);
+                }
             }
             else
             {
@@ -184,10 +192,12 @@ namespace CleanStateMachine
             GUI.EndScrollView();
         }
 
-        private void DrawConnectionContent(Rect rect, ConnectionView conn)
+        private void DrawConnectionContent(Rect rect, ConnectionView conn, List<BlackboardVariable> blackboardVariables)
         {
             float w = rect.width;
             float totalHeight = UITheme.RowHeight * 3f + 80f;
+            if (conn.ConditionInstance != null)
+                totalHeight += GetPropertiesHeight(conn.ConditionInstance) + 60f;
             Rect viewRect = new Rect(0f, 0f, w - 14f, Mathf.Max(totalHeight, rect.height));
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
@@ -266,6 +276,11 @@ namespace CleanStateMachine
                     AssetDatabase.OpenAsset(conn.ConditionScript);
                 }
                 y += 32f;
+
+                if (conn.ConditionInstance != null)
+                {
+                    DrawScriptableObjectProperties(ref y, iw, conn.ConditionInstance, blackboardVariables);
+                }
             }
             else
             {
@@ -431,6 +446,196 @@ namespace CleanStateMachine
             GUI.Label(valueRect, value, UITheme.SecondaryStyle);
 
             y += UITheme.RowHeight;
+        }
+
+        private static float GetPropertiesHeight(ScriptableObject obj)
+        {
+            var so = new SerializedObject(obj);
+            float h = 0f;
+            SerializedProperty prop = so.GetIterator();
+            bool enterChildren = true;
+            while (prop.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (prop.name == "m_Script") continue;
+                float propHeight = prop.type == "BlackboardVariableReference"
+                    ? UITheme.RowHeight
+                    : EditorGUI.GetPropertyHeight(prop, true);
+                h += Mathf.Max(UITheme.RowHeight, propHeight) + 2f;
+            }
+            return h;
+        }
+
+        private static void DrawScriptableObjectProperties(ref float y, float width,
+            ScriptableObject obj, List<BlackboardVariable> blackboardVariables)
+        {
+            var so = new SerializedObject(obj);
+            so.Update();
+
+            y += 8f;
+            UITheme.DrawSectionDivider(y, width);
+            y += 12f;
+
+            Rect titleRect = new Rect(8f, y, width - 16f, 24f);
+            GUI.Label(titleRect, "Properties", UITheme.LargeTitleStyle);
+            y += 28f;
+
+            SerializedProperty prop = so.GetIterator();
+            bool enterChildren = true;
+            while (prop.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (prop.name == "m_Script") continue;
+
+                float rowH = Mathf.Max(UITheme.RowHeight, EditorGUI.GetPropertyHeight(prop, true));
+
+                if (prop.type == "BlackboardVariableReference")
+                {
+                    DrawBlackboardVariableRefField(new Rect(0f, y, width, rowH), prop, blackboardVariables);
+                }
+                else
+                {
+                    Rect rowRect = new Rect(0f, y, width, rowH);
+                    EditorGUI.DrawRect(rowRect, UITheme.RowEven);
+                    Rect propRect = new Rect(12f, y + 2f, width - 24f, rowH - 4f);
+                    EditorGUI.PropertyField(propRect, prop, true);
+                }
+
+                y += rowH + 2f;
+            }
+
+            if (so.ApplyModifiedProperties())
+            {
+                EditorUtility.SetDirty(obj);
+            }
+        }
+
+        private static void DrawBlackboardVariableRefField(Rect rect, SerializedProperty prop,
+            List<BlackboardVariable> blackboardVariables)
+        {
+            var useBbProp = prop.FindPropertyRelative("UseBlackboard");
+            var varNameProp = prop.FindPropertyRelative("BlackboardVariableName");
+            var valueTypeProp = prop.FindPropertyRelative("ValueType");
+            var defaultValueProp = prop.FindPropertyRelative("DefaultValue");
+
+            var bbType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
+            bool useBb = useBbProp.boolValue;
+
+            float labelWidth = 100f;
+            float modeWidth = 50f;
+            float gap = 4f;
+
+            Rect rowBg = new Rect(rect.x, rect.y, rect.width, rect.height);
+            EditorGUI.DrawRect(rowBg, UITheme.RowEven);
+
+            Rect labelRect = new Rect(12f, rect.y, labelWidth, rect.height);
+            GUI.Label(labelRect, prop.displayName, UITheme.LabelStyle);
+
+            Rect modeRect = new Rect(12f + labelWidth + gap, rect.y + 2f, modeWidth, rect.height - 4f);
+            string modeLabel = useBb ? "Bind" : "Val";
+            if (GUI.Button(modeRect, modeLabel, EditorStyles.miniButton))
+            {
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Direct Value"), !useBb, () =>
+                {
+                    useBbProp.boolValue = false;
+                    useBbProp.serializedObject.ApplyModifiedProperties();
+                });
+                menu.AddItem(new GUIContent("Bind to Blackboard"), useBb, () =>
+                {
+                    useBbProp.boolValue = true;
+                    useBbProp.serializedObject.ApplyModifiedProperties();
+                });
+                menu.DropDown(modeRect);
+            }
+
+            float fieldX = modeRect.xMax + gap;
+            float fieldW = rect.width - fieldX - 12f;
+
+            if (useBb)
+            {
+                Rect fieldRect = new Rect(fieldX, rect.y + 2f, fieldW, rect.height - 4f);
+                string current = varNameProp.stringValue;
+                string display = string.IsNullOrEmpty(current) ? "None" : current;
+
+                if (EditorGUI.DropdownButton(fieldRect, new GUIContent(display), FocusType.Keyboard))
+                {
+                    var menu = new GenericMenu();
+                    menu.AddItem(new GUIContent("None (direct)"), string.IsNullOrEmpty(current), () =>
+                    {
+                        varNameProp.stringValue = "";
+                        useBbProp.boolValue = false;
+                        varNameProp.serializedObject.ApplyModifiedProperties();
+                    });
+                    menu.AddSeparator("");
+                    for (int i = 0; i < blackboardVariables.Count; i++)
+                    {
+                        var bv = blackboardVariables[i];
+                        if (bv.Type == bbType)
+                        {
+                            string varName = bv.Name;
+                            bool selected = varName == current;
+                            string captured = varName;
+                            menu.AddItem(new GUIContent(varName), selected, (object n) =>
+                            {
+                                varNameProp.stringValue = (string)n;
+                                varNameProp.serializedObject.ApplyModifiedProperties();
+                            }, captured);
+                        }
+                    }
+                    if (blackboardVariables.FindAll(bv => bv.Type == bbType).Count == 0)
+                    {
+                        menu.AddDisabledItem(new GUIContent("No matching variables"));
+                    }
+                    menu.DropDown(fieldRect);
+                }
+            }
+            else
+            {
+                Rect fieldRect = new Rect(fieldX, rect.y + 2f, fieldW, rect.height - 4f);
+                switch (bbType)
+                {
+                    case BlackboardVariableType.Bool:
+                    {
+                        bool val = bool.TryParse(defaultValueProp.stringValue, out var v) && v;
+                        bool result = EditorGUI.Toggle(fieldRect, val);
+                        if (result != val)
+                            defaultValueProp.stringValue = result.ToString();
+                        break;
+                    }
+                    case BlackboardVariableType.Int:
+                    {
+                        int val = int.TryParse(defaultValueProp.stringValue, out var v) ? v : 0;
+                        int result = EditorGUI.IntField(fieldRect, val);
+                        if (result != val)
+                            defaultValueProp.stringValue = result.ToString();
+                        break;
+                    }
+                    case BlackboardVariableType.Float:
+                    {
+                        float val = float.TryParse(defaultValueProp.stringValue, out var v) ? v : 0f;
+                        float result = EditorGUI.FloatField(fieldRect, val);
+                        if (Mathf.Abs(result - val) > 1e-6f)
+                            defaultValueProp.stringValue = result.ToString("G");
+                        break;
+                    }
+                    case BlackboardVariableType.String:
+                    {
+                        string result = EditorGUI.TextField(fieldRect, defaultValueProp.stringValue);
+                        if (result != defaultValueProp.stringValue)
+                            defaultValueProp.stringValue = result;
+                        break;
+                    }
+                    case BlackboardVariableType.Vector2:
+                    case BlackboardVariableType.Vector3:
+                    {
+                        string result = EditorGUI.TextField(fieldRect, defaultValueProp.stringValue);
+                        if (result != defaultValueProp.stringValue)
+                            defaultValueProp.stringValue = result;
+                        break;
+                    }
+                }
+            }
         }
     }
 }

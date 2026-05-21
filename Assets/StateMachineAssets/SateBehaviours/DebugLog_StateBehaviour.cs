@@ -1,12 +1,17 @@
 using UnityEngine;
 using CleanStateMachine;
 
-public class NewStateBehaviour : StateBehaviour
+public class DebugLog_StateBehaviour : StateBehaviour
 {
-    public string message = "Hello World";
+    public CleanStateMachine.BlackboardVariableReference message = new CleanStateMachine.BlackboardVariableReference
+    {
+        ValueType = CleanStateMachine.BlackboardVariableType.String,
+        DefaultValue = "Hello World"
+    };
+
     public override void OnStateEnter(StateMachineComponent stateMachine)
     {
-        Debug.Log(message);
+        Debug.Log(message.GetStringValue(stateMachine));
         base.OnStateEnter(stateMachine);
     }
 

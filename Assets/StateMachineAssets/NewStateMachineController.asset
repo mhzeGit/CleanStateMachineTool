@@ -1,5 +1,22 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9205999975491014197
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: 2_Behaviour
+  m_EditorClassIdentifier: Assembly-CSharp::DebugLog_StateBehaviour
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 2
 --- !u!114 &-7696514207278436980
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -12,7 +29,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
   m_Name: 2->NO 2_Condition
   m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
-  Bool: 0
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: State1or2
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
 --- !u!114 &-6324071765435123549
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -25,8 +51,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
   m_Name: Entry->1_Condition
   m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
-  Bool: 1
---- !u!114 &-3249622987307683521
+  conditionBool:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+--- !u!114 &-2306008434130728459
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -37,21 +72,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
   m_Name: NO 2_Behaviour
-  m_EditorClassIdentifier: Assembly-CSharp::NewStateBehaviour
-  message: This is state NOOOO
---- !u!114 &-2209695657952457434
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
-  m_Name: 1_Behaviour
-  m_EditorClassIdentifier: Assembly-CSharp::NewStateBehaviour
-  message: This is state 1
+  m_EditorClassIdentifier: Assembly-CSharp::DebugLog_StateBehaviour
+  message:
+    UseBlackboard: 1
+    BlackboardVariableName: WrongState
+    ValueType: 3
+    DefaultValue: Hello World
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72,49 +98,55 @@ MonoBehaviour:
       IsEntry: 1
       BehaviourType: 
       Behaviour: {fileID: 0}
-    - Name: 2
-      Position: {x: 336.47946, y: 245.90184}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: NewStateBehaviour
-      Behaviour: {fileID: 2192708050943173681}
     - Name: 1
       Position: {x: 235.8346, y: 75.600235}
       Size: {x: 160, y: 40}
       IsEntry: 0
-      BehaviourType: NewStateBehaviour
-      Behaviour: {fileID: -2209695657952457434}
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 6409677120155523139}
+    - Name: 2
+      Position: {x: 336.47946, y: 245.90184}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -9205999975491014197}
     - Name: NO 2
       Position: {x: 510.66467, y: 80.15904}
       Size: {x: 160, y: 40}
       IsEntry: 0
-      BehaviourType: NewStateBehaviour
-      Behaviour: {fileID: -3249622987307683521}
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -2306008434130728459}
     Connections:
-    - FromIndex: 2
+    - FromIndex: 0
       ToIndex: 1
       ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: 8216924739884770493}
+      Condition: {fileID: -6324071765435123549}
     - FromIndex: 1
+      ToIndex: 2
+      ConditionType: SimpleBool_ConditionBehaviours
+      Condition: {fileID: 8216924739884770493}
+    - FromIndex: 2
       ToIndex: 3
       ConditionType: SimpleBool_ConditionBehaviours
       Condition: {fileID: -7696514207278436980}
     - FromIndex: 3
-      ToIndex: 2
+      ToIndex: 1
       ConditionType: SimpleBool_ConditionBehaviours
       Condition: {fileID: 6912135157052429415}
-    - FromIndex: 0
-      ToIndex: 2
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: -6324071765435123549}
     Groups: []
-    BlackboardVariables: []
-    PanOffset: {x: 209.56644, y: 196.08386}
-    Zoom: 1.0000023
+    BlackboardVariables:
+    - Name: State1or2
+      Type: 0
+      StringValue: False
+    - Name: WrongState
+      Type: 3
+      StringValue: ITS ON A WRONG STATE!!!
+    PanOffset: {x: 300.66183, y: 252.11508}
+    Zoom: 0.74082035
     ShowBlackboard: 1
-    BlackboardWidth: 256
-    DetailsWidth: 257
---- !u!114 &2192708050943173681
+    BlackboardWidth: 368
+    DetailsWidth: 286
+--- !u!114 &6409677120155523139
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -124,9 +156,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
-  m_Name: 2_Behaviour
-  m_EditorClassIdentifier: Assembly-CSharp::NewStateBehaviour
-  message: This is state 2
+  m_Name: 1_Behaviour
+  m_EditorClassIdentifier: Assembly-CSharp::DebugLog_StateBehaviour
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 1
 --- !u!114 &6912135157052429415
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -139,7 +175,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
   m_Name: NO 2->1_Condition
   m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
-  Bool: 0
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: State1or2
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
 --- !u!114 &8216924739884770493
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -152,4 +197,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
   m_Name: 1->2_Condition
   m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
-  Bool: 0
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: State1or2
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
