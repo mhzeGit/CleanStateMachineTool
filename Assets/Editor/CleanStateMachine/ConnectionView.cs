@@ -12,7 +12,7 @@ namespace CleanStateMachine
         public bool IsActive { get; set; }
         public double ActivationTime { get; set; }
         public float PerpendicularOffset { get; set; }
-        public List<TransitionCondition> Conditions { get; set; } = new List<TransitionCondition>();
+        public MonoScript ConditionScript { get; set; }
 
         private static readonly Color ConnectionColor = new Color(0.537f, 0.706f, 0.980f, 0.85f);
         private static readonly Color SelectedColor = new Color(0.537f, 0.706f, 0.980f, 1f);

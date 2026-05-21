@@ -8,20 +8,8 @@ namespace CleanStateMachine
     public class DetailsPanelView
     {
         private Vector2 _scrollPos;
-        private readonly StateClassEditor _stateClassEditor;
-        private readonly TransitionConditionEditor _conditionEditor;
-        private Vector2 _stateClassScroll;
-        private Vector2 _conditionScroll;
 
         public event Action Changed;
-
-        public DetailsPanelView()
-        {
-            _stateClassEditor = new StateClassEditor();
-            _conditionEditor = new TransitionConditionEditor();
-            _stateClassEditor.Changed += () => Changed?.Invoke();
-            _conditionEditor.Changed += () => Changed?.Invoke();
-        }
 
         public void Draw(Rect rect, IReadOnlyList<ISelectable> selected,
             List<StateView> states, List<ConnectionView> connections,
@@ -82,7 +70,7 @@ namespace CleanStateMachine
             }
             else if (item is ConnectionView conn)
             {
-                DrawConnectionContent(rect, conn, blackboardVariables);
+                DrawConnectionContent(rect, conn);
             }
             else if (item is CommentGroupView group)
             {
@@ -96,98 +84,178 @@ namespace CleanStateMachine
 
         private void DrawStateContent(Rect rect, StateView state, List<ConnectionView> connections)
         {
-            if (state.StateClass == null)
-                state.StateClass = new StateClassData();
-
             float w = rect.width;
-            float totalInfoHeight = UITheme.RowHeight * 4f + 40f;
-            float editorHeight = rect.height - totalInfoHeight - 4f;
-            if (editorHeight < 120f) editorHeight = 120f;
-
-            Rect viewRect = new Rect(0f, 0f, w - 14f, totalInfoHeight + editorHeight);
+            float totalHeight = UITheme.RowHeight * 5f + 100f;
+            Rect viewRect = new Rect(0f, 0f, w - 14f, Mathf.Max(totalHeight, rect.height));
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
             float y = 12f;
+            float iw = viewRect.width;
 
-            // --- Info ---
-            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            Rect titleRect = new Rect(8f, y, iw - 16f, 24f);
             GUI.Label(titleRect, "State Information", UITheme.LargeTitleStyle);
             y += 28f;
-
-            float iw = viewRect.width;
 
             DrawInfoRow(ref y, iw, "Name", state.Name);
             DrawInfoRow(ref y, iw, "Position", $"({state.Position.x:F1}, {state.Position.y:F1})");
             DrawInfoRow(ref y, iw, "Size", $"({state.Size.x:F0} x {state.Size.y:F0})");
-
-            int connectionCount = CountStateConnections(state, connections);
-            DrawInfoRow(ref y, iw, "Connections", connectionCount.ToString());
+            DrawInfoRow(ref y, iw, "Connections", CountStateConnections(state, connections).ToString());
 
             y += 12f;
-
             UITheme.DrawSectionDivider(y, iw);
             y += 12f;
 
-            // --- Events ---
-            Rect eventsTitleRect = new Rect(8f, y, iw - 16f, 24f);
-            GUI.Label(eventsTitleRect, "State Class Events", UITheme.LargeTitleStyle);
+            Rect scriptTitleRect = new Rect(8f, y, iw - 16f, 24f);
+            GUI.Label(scriptTitleRect, "State Behaviour", UITheme.LargeTitleStyle);
             y += 28f;
 
-            float ey = y;
+            Rect labelRect = new Rect(12f, y, 80f, UITheme.RowHeight);
+            GUI.Label(labelRect, "Script", UITheme.LabelStyle);
+
+            Rect fieldRect = new Rect(96f, y + 4f, iw - 112f, UITheme.RowHeight - 8f);
+            var newScript = (MonoScript)EditorGUI.ObjectField(fieldRect, state.BehaviourScript, typeof(MonoScript), false);
+
+            if (newScript != state.BehaviourScript)
+            {
+                if (newScript != null && !IsValidStateBehaviour(newScript))
+                {
+                    EditorUtility.DisplayDialog("Invalid Script",
+                        "The selected script must inherit from StateBehaviour.", "OK");
+                    newScript = state.BehaviourScript;
+                }
+                state.BehaviourScript = newScript;
+                Changed?.Invoke();
+            }
+            y += UITheme.RowHeight + 4f;
+
+            if (state.BehaviourScript != null)
+            {
+                Rect typeRect = new Rect(12f, y, iw - 24f, UITheme.RowHeight);
+                var typeStyle = new GUIStyle(UITheme.SecondaryStyle)
+                {
+                    normal = { textColor = UITheme.TextMuted },
+                    fontSize = 11,
+                    fontStyle = FontStyle.Italic
+                };
+                var scriptType = state.BehaviourScript.GetClass();
+                string typeName = scriptType != null ? scriptType.Name : state.BehaviourScript.name;
+                GUI.Label(typeRect, typeName, typeStyle);
+                y += UITheme.RowHeight;
+
+                Rect openBtnRect = new Rect(12f, y, 100f, 24f);
+                if (GUI.Button(openBtnRect, "Open Script"))
+                {
+                    AssetDatabase.OpenAsset(state.BehaviourScript);
+                }
+                y += 32f;
+            }
+            else
+            {
+                Rect hintRect = new Rect(12f, y, iw - 24f, UITheme.RowHeight);
+                var hintStyle = new GUIStyle(UITheme.SecondaryStyle)
+                {
+                    normal = { textColor = UITheme.TextMuted },
+                    fontSize = 11,
+                    fontStyle = FontStyle.Italic
+                };
+                GUI.Label(hintRect, "Assign a StateBehaviour script to define state logic", hintStyle);
+                y += UITheme.RowHeight;
+            }
 
             GUI.EndScrollView();
-
-            float availableHeight = rect.height - ey - 4f;
-            if (availableHeight < 60f) availableHeight = 60f;
-            Rect stateClassRect = new Rect(rect.x, rect.y + ey, rect.width, availableHeight);
-
-            _stateClassEditor.Draw(stateClassRect, state.StateClass, ref _stateClassScroll);
         }
 
-        private void DrawConnectionContent(Rect rect, ConnectionView conn,
-            List<BlackboardVariable> blackboardVariables)
+        private void DrawConnectionContent(Rect rect, ConnectionView conn)
         {
-            if (conn.Conditions == null)
-                conn.Conditions = new List<TransitionCondition>();
-
             float w = rect.width;
-            float totalInfoHeight = UITheme.RowHeight * 2f + 40f;
-            float editorHeight = rect.height - totalInfoHeight - 4f;
-            if (editorHeight < 120f) editorHeight = 120f;
-
-            Rect viewRect = new Rect(0f, 0f, w - 14f, totalInfoHeight + editorHeight);
+            float totalHeight = UITheme.RowHeight * 3f + 80f;
+            Rect viewRect = new Rect(0f, 0f, w - 14f, Mathf.Max(totalHeight, rect.height));
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
             float y = 12f;
+            float iw = viewRect.width;
 
-            // --- Info ---
-            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            Rect titleRect = new Rect(8f, y, iw - 16f, 24f);
             GUI.Label(titleRect, "Connection Information", UITheme.LargeTitleStyle);
             y += 28f;
 
-            float iw = viewRect.width;
             DrawInfoRow(ref y, iw, "From", conn.From?.Name ?? "—");
             DrawInfoRow(ref y, iw, "To", conn.To?.Name ?? "—");
 
             y += 12f;
-
             UITheme.DrawSectionDivider(y, iw);
             y += 12f;
 
-            // --- Conditions ---
             Rect condTitleRect = new Rect(8f, y, iw - 16f, 24f);
-            GUI.Label(condTitleRect, "Transition Conditions", UITheme.LargeTitleStyle);
+            GUI.Label(condTitleRect, "Transition Condition", UITheme.LargeTitleStyle);
             y += 28f;
 
-            float cy = y;
+            Rect labelRect = new Rect(12f, y, 80f, UITheme.RowHeight);
+            GUI.Label(labelRect, "Condition", UITheme.LabelStyle);
+
+            Rect fieldRect = new Rect(96f, y + 4f, iw - 112f, UITheme.RowHeight - 8f);
+            var newScript = (MonoScript)EditorGUI.ObjectField(fieldRect, conn.ConditionScript, typeof(MonoScript), false);
+
+            if (newScript != conn.ConditionScript)
+            {
+                if (newScript != null && !IsValidConditionScript(newScript))
+                {
+                    EditorUtility.DisplayDialog("Invalid Script",
+                        "The selected script must inherit from ConditionScript.", "OK");
+                    newScript = conn.ConditionScript;
+                }
+                conn.ConditionScript = newScript;
+                Changed?.Invoke();
+            }
+            y += UITheme.RowHeight + 4f;
+
+            if (conn.ConditionScript != null)
+            {
+                Rect typeRect = new Rect(12f, y, iw - 24f, UITheme.RowHeight);
+                var typeStyle = new GUIStyle(UITheme.SecondaryStyle)
+                {
+                    normal = { textColor = UITheme.TextMuted },
+                    fontSize = 11,
+                    fontStyle = FontStyle.Italic
+                };
+                var scriptType = conn.ConditionScript.GetClass();
+                string typeName = scriptType != null ? scriptType.Name : conn.ConditionScript.name;
+                GUI.Label(typeRect, typeName, typeStyle);
+                y += UITheme.RowHeight;
+
+                Rect openBtnRect = new Rect(12f, y, 100f, 24f);
+                if (GUI.Button(openBtnRect, "Open Script"))
+                {
+                    AssetDatabase.OpenAsset(conn.ConditionScript);
+                }
+                y += 32f;
+            }
+            else
+            {
+                Rect hintRect = new Rect(12f, y, iw - 24f, UITheme.RowHeight);
+                var hintStyle = new GUIStyle(UITheme.SecondaryStyle)
+                {
+                    normal = { textColor = UITheme.TextMuted },
+                    fontSize = 11,
+                    fontStyle = FontStyle.Italic
+                };
+                GUI.Label(hintRect, "Assign a ConditionScript to control this transition", hintStyle);
+                y += UITheme.RowHeight;
+            }
 
             GUI.EndScrollView();
+        }
 
-            float availableHeight = rect.height - cy - 4f;
-            if (availableHeight < 60f) availableHeight = 60f;
-            Rect conditionRect = new Rect(rect.x, rect.y + cy, rect.width, availableHeight);
+        private static bool IsValidStateBehaviour(MonoScript script)
+        {
+            var type = script.GetClass();
+            return type != null && type.IsSubclassOf(typeof(StateBehaviour));
+        }
 
-            _conditionEditor.Draw(conditionRect, conn.Conditions, blackboardVariables, ref _conditionScroll);
+        private static bool IsValidConditionScript(MonoScript script)
+        {
+            var type = script.GetClass();
+            return type != null && type.IsSubclassOf(typeof(ConditionScript));
         }
 
         private static void DrawGroupContent(Rect rect, CommentGroupView group)
@@ -202,7 +270,6 @@ namespace CleanStateMachine
             var scrollPos = Vector2.zero;
             scrollPos = GUI.BeginScrollView(rect, scrollPos, viewRect);
 
-            // --- Info ---
             Rect titleRect = new Rect(8f, y, w - 16f, 24f);
             GUI.Label(titleRect, "Group Information", UITheme.LargeTitleStyle);
             y += 28f;
@@ -212,11 +279,9 @@ namespace CleanStateMachine
             DrawInfoRow(ref y, iw, "Members", group.Members.Count.ToString());
 
             y += 12f;
-
             UITheme.DrawSectionDivider(y, iw);
             y += 12f;
 
-            // --- Members ---
             Rect memTitleRect = new Rect(8f, y, iw - 16f, 24f);
             GUI.Label(memTitleRect, "Members", UITheme.LargeTitleStyle);
             y += 28f;
@@ -278,7 +343,7 @@ namespace CleanStateMachine
                 {
                     StateView sv => sv.Name,
                     CommentGroupView gv => gv.Label,
-                    ConnectionView cv => $"{cv.From?.Name ?? "?"} → {cv.To?.Name ?? "?"}",
+                    ConnectionView cv => $"{cv.From?.Name ?? "?"} \u2192 {cv.To?.Name ?? "?"}",
                     _ => selected[i].GetType().Name
                 };
 

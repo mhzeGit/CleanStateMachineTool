@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -12,8 +13,10 @@ namespace CleanStateMachine
         private int _currentStateIndex = -1;
         private string _currentStateName = "None";
         private bool _initialized = false;
-        private float _waitTimer = 0f;
         private List<TransitionRecord> _recentTransitions = new List<TransitionRecord>();
+
+        private readonly Dictionary<int, StateBehaviour> _behaviourInstances = new Dictionary<int, StateBehaviour>();
+        private readonly Dictionary<string, ConditionScript> _conditionInstances = new Dictionary<string, ConditionScript>();
 
         public StateMachineController Controller
         {
@@ -43,7 +46,9 @@ namespace CleanStateMachine
 
             if (_currentStateIndex >= 0)
             {
-                ExecuteSection("OnStateEnter");
+                var behaviour = GetOrCreateBehaviour(_currentStateIndex);
+                if (behaviour != null)
+                    behaviour.OnStateEnter(this);
             }
         }
 
@@ -84,60 +89,34 @@ namespace CleanStateMachine
         {
             if (!_initialized || _currentStateIndex < 0) return;
 
-            if (_waitTimer > 0f)
-            {
-                _waitTimer -= Time.deltaTime;
-                return;
-            }
+            var behaviour = GetOrCreateBehaviour(_currentStateIndex);
+            if (behaviour != null)
+                behaviour.OnStateUpdate(this);
 
-            ExecuteSection("OnStateUpdate");
             CheckTransitions();
         }
 
-        private void ExecuteSection(string sectionName)
+        private StateBehaviour GetOrCreateBehaviour(int stateIndex)
         {
-            if (_currentStateIndex < 0 || _currentStateIndex >= Data.States.Count) return;
+            if (_behaviourInstances.TryGetValue(stateIndex, out var existing))
+                return existing;
 
-            var state = Data.States[_currentStateIndex];
-            if (state.StateClass == null) return;
+            if (Data == null || stateIndex < 0 || stateIndex >= Data.States.Count)
+                return null;
 
-            for (int s = 0; s < state.StateClass.Sections.Count; s++)
-            {
-                var section = state.StateClass.Sections[s];
-                if (section.SectionName != sectionName) continue;
+            var state = Data.States[stateIndex];
+            if (string.IsNullOrEmpty(state.BehaviourType))
+                return null;
 
-                for (int e = 0; e < section.Events.Count; e++)
-                {
-                    var evt = section.Events[e];
-                    switch (evt.Type)
-                    {
-                        case StateMachineEventType.DebugLog:
-                            Debug.Log(evt.DebugMessage);
-                            break;
+            var type = ResolveType(state.BehaviourType);
+            if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
+                return null;
 
-                        case StateMachineEventType.Wait:
-                            _waitTimer = evt.WaitDuration;
-                            return;
-
-                        case StateMachineEventType.UnityEvent:
-                            for (int c = 0; c < evt.UnityEventCallbacks.Count; c++)
-                            {
-                                var callback = evt.UnityEventCallbacks[c];
-                                if (callback.Target != null && !string.IsNullOrEmpty(callback.MethodName))
-                                {
-                                    var targetType = callback.Target.GetType();
-                                    var method = targetType.GetMethod(callback.MethodName,
-                                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                                    if (method != null)
-                                    {
-                                        method.Invoke(callback.Target, null);
-                                    }
-                                }
-                            }
-                            break;
-                    }
-                }
-            }
+            var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+            instance.name = $"{state.Name}_Behaviour";
+            instance.hideFlags = HideFlags.HideAndDontSave;
+            _behaviourInstances[stateIndex] = instance;
+            return instance;
         }
 
         private void CheckTransitions()
@@ -148,24 +127,47 @@ namespace CleanStateMachine
             {
                 var connection = Data.Connections[c];
                 if (connection.FromIndex != _currentStateIndex) continue;
-                if (connection.Conditions.Count == 0) continue;
+                if (string.IsNullOrEmpty(connection.ConditionType)) continue;
 
-                bool allMet = true;
-                for (int d = 0; d < connection.Conditions.Count; d++)
-                {
-                    if (!EvaluateCondition(connection.Conditions[d]))
-                    {
-                        allMet = false;
-                        break;
-                    }
-                }
-
-                if (allMet)
+                if (EvaluateCondition(connection.ConditionType))
                 {
                     TransitionToState(connection.ToIndex);
                     break;
                 }
             }
+        }
+
+        private bool EvaluateCondition(string conditionType)
+        {
+            if (!_conditionInstances.TryGetValue(conditionType, out var condition))
+            {
+                var type = ResolveType(conditionType);
+                if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
+                    return false;
+
+                condition = (ConditionScript)ScriptableObject.CreateInstance(type);
+                condition.name = $"{conditionType}_Condition";
+                condition.hideFlags = HideFlags.HideAndDontSave;
+                _conditionInstances[conditionType] = condition;
+            }
+
+            return condition.Evaluate(this);
+        }
+
+        private static Type ResolveType(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName)) return null;
+
+            var type = Type.GetType(typeName);
+            if (type != null) return type;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                type = assembly.GetType(typeName);
+                if (type != null) return type;
+            }
+
+            return null;
         }
 
         private void TransitionToState(int toIndex)
@@ -174,11 +176,12 @@ namespace CleanStateMachine
 
             int fromIndex = _currentStateIndex;
 
-            ExecuteSection("OnStateExit");
+            var exitBehaviour = GetOrCreateBehaviour(_currentStateIndex);
+            if (exitBehaviour != null)
+                exitBehaviour.OnStateExit(this);
 
             _currentStateIndex = toIndex;
             _currentStateName = Data.States[toIndex].Name;
-            _waitTimer = 0f;
 
             _recentTransitions.Add(new TransitionRecord
             {
@@ -186,70 +189,26 @@ namespace CleanStateMachine
                 ToIndex = toIndex
             });
 
-            ExecuteSection("OnStateEnter");
+            var enterBehaviour = GetOrCreateBehaviour(_currentStateIndex);
+            if (enterBehaviour != null)
+                enterBehaviour.OnStateEnter(this);
         }
 
-        private bool EvaluateCondition(TransitionCondition condition)
+        private void OnDestroy()
         {
-            var variable = _runtimeVariables.Find(v => v.Name == condition.BlackboardVariableName);
-            if (variable == null) return false;
-
-            switch (variable.Type)
+            foreach (var instance in _behaviourInstances.Values)
             {
-                case BlackboardVariableType.Bool:
-                {
-                    bool val = variable.BoolValue;
-                    bool.TryParse(condition.CompareValue, out bool compareVal);
-                    return condition.Comparison switch
-                    {
-                        ConditionComparison.EqualTo => val == compareVal,
-                        ConditionComparison.NotEqualTo => val != compareVal,
-                        _ => false
-                    };
-                }
-                case BlackboardVariableType.Int:
-                {
-                    int val = variable.IntValue;
-                    int.TryParse(condition.CompareValue, out int compareVal);
-                    return condition.Comparison switch
-                    {
-                        ConditionComparison.EqualTo => val == compareVal,
-                        ConditionComparison.NotEqualTo => val != compareVal,
-                        ConditionComparison.GreaterThan => val > compareVal,
-                        ConditionComparison.LessThan => val < compareVal,
-                        ConditionComparison.GreaterOrEqual => val >= compareVal,
-                        ConditionComparison.LessOrEqual => val <= compareVal,
-                        _ => false
-                    };
-                }
-                case BlackboardVariableType.Float:
-                {
-                    float val = variable.FloatValue;
-                    float.TryParse(condition.CompareValue, out float compareVal);
-                    return condition.Comparison switch
-                    {
-                        ConditionComparison.EqualTo => Mathf.Approximately(val, compareVal),
-                        ConditionComparison.NotEqualTo => !Mathf.Approximately(val, compareVal),
-                        ConditionComparison.GreaterThan => val > compareVal,
-                        ConditionComparison.LessThan => val < compareVal,
-                        ConditionComparison.GreaterOrEqual => val >= compareVal,
-                        ConditionComparison.LessOrEqual => val <= compareVal,
-                        _ => false
-                    };
-                }
-                case BlackboardVariableType.String:
-                {
-                    string val = variable.StringValue;
-                    return condition.Comparison switch
-                    {
-                        ConditionComparison.EqualTo => val == condition.CompareValue,
-                        ConditionComparison.NotEqualTo => val != condition.CompareValue,
-                        _ => false
-                    };
-                }
+                if (instance != null)
+                    Destroy(instance);
             }
+            _behaviourInstances.Clear();
 
-            return false;
+            foreach (var instance in _conditionInstances.Values)
+            {
+                if (instance != null)
+                    Destroy(instance);
+            }
+            _conditionInstances.Clear();
         }
 
         public void SetBoolParameter(string name, bool value)
@@ -398,8 +357,21 @@ namespace CleanStateMachine
 
         public void ResetStateMachine()
         {
+            foreach (var instance in _behaviourInstances.Values)
+            {
+                if (instance != null)
+                    Destroy(instance);
+            }
+            _behaviourInstances.Clear();
+
+            foreach (var instance in _conditionInstances.Values)
+            {
+                if (instance != null)
+                    Destroy(instance);
+            }
+            _conditionInstances.Clear();
+
             _initialized = false;
-            _waitTimer = 0f;
             _recentTransitions.Clear();
             Initialize();
         }

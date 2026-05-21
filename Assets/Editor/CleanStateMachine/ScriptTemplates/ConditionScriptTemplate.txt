@@ -1,0 +1,10 @@
+using UnityEngine;
+using CleanStateMachine;
+
+public class #SCRIPTNAME# : ConditionScript
+{
+    public override bool Evaluate(StateMachineComponent stateMachine)
+    {
+        return true;
+    }
+}

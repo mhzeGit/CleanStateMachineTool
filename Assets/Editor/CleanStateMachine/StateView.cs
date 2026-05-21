@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 
 namespace CleanStateMachine
@@ -12,7 +13,7 @@ namespace CleanStateMachine
         public bool IsEntry { get; }
         public bool IsEditing { get; set; }
         public string EditingBuffer { get; set; }
-        public StateClassData StateClass { get; set; }
+        public MonoScript BehaviourScript { get; set; }
         public bool IsActive { get; set; }
         public int DataIndex { get; set; } = -1;
 

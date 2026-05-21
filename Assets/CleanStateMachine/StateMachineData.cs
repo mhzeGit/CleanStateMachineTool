@@ -4,73 +4,6 @@ using UnityEngine;
 
 namespace CleanStateMachine
 {
-    public enum StateMachineEventType
-    {
-        DebugLog,
-        Wait,
-        UnityEvent,
-        Custom
-    }
-
-    [Serializable]
-    public class UnityEventCallbackData
-    {
-        public UnityEngine.Object Target;
-        public string MethodName = "";
-    }
-
-    [Serializable]
-    public class StateMachineEventData
-    {
-        [System.NonSerialized] public int EditorId;
-        public StateMachineEventType Type;
-        public string DebugMessage = "";
-        public float WaitDuration;
-        public List<UnityEventCallbackData> UnityEventCallbacks = new List<UnityEventCallbackData>();
-        public string CustomText = "";
-    }
-
-    [Serializable]
-    public class StateSectionData
-    {
-        public string SectionName = "";
-        public List<StateMachineEventData> Events = new List<StateMachineEventData>();
-    }
-
-    [Serializable]
-    public class StateClassData
-    {
-        public List<StateSectionData> Sections;
-
-        public StateClassData()
-        {
-            Sections = new List<StateSectionData>
-            {
-                new StateSectionData { SectionName = "OnStateEnter" },
-                new StateSectionData { SectionName = "OnStateUpdate" },
-                new StateSectionData { SectionName = "OnStateExit" },
-            };
-        }
-    }
-
-    public enum ConditionComparison
-    {
-        EqualTo,
-        NotEqualTo,
-        GreaterThan,
-        LessThan,
-        GreaterOrEqual,
-        LessOrEqual
-    }
-
-    [Serializable]
-    public class TransitionCondition
-    {
-        public string BlackboardVariableName = "";
-        public ConditionComparison Comparison;
-        public string CompareValue = "";
-    }
-
     [Serializable]
     public class StateData
     {
@@ -78,7 +11,7 @@ namespace CleanStateMachine
         public Vector2 Position;
         public Vector2 Size = new Vector2(160f, 40f);
         public bool IsEntry;
-        public StateClassData StateClass;
+        public string BehaviourType;
     }
 
     [Serializable]
@@ -86,7 +19,7 @@ namespace CleanStateMachine
     {
         public int FromIndex;
         public int ToIndex;
-        public List<TransitionCondition> Conditions = new List<TransitionCondition>();
+        public string ConditionType;
     }
 
     [Serializable]

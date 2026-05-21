@@ -1247,7 +1247,7 @@ namespace CleanStateMachine
                     var state = new StateView(sd.Position, sd.Name, sd.IsEntry)
                     {
                         Size = sd.Size,
-                        StateClass = sd.StateClass,
+                        BehaviourScript = ScriptReferenceUtility.FindScriptByTypeName(sd.BehaviourType),
                         DataIndex = i
                     };
                     _states.Add(state);
@@ -1261,9 +1261,10 @@ namespace CleanStateMachine
                         cd.ToIndex >= 0 && cd.ToIndex < stateLookup.Count)
                     {
                         var conn = new ConnectionView(
-                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex]);
-                        if (cd.Conditions != null)
-                            conn.Conditions = cd.Conditions;
+                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex])
+                        {
+                            ConditionScript = ScriptReferenceUtility.FindScriptByTypeName(cd.ConditionType)
+                        };
                         _connections.Add(conn);
                     }
                 }
@@ -1315,7 +1316,7 @@ namespace CleanStateMachine
                     Position = state.Position,
                     Size = state.Size,
                     IsEntry = state.IsEntry,
-                    StateClass = state.StateClass
+                    BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript)
                 });
             }
 
@@ -1325,7 +1326,7 @@ namespace CleanStateMachine
                 {
                     FromIndex = stateToIndex[conn.From],
                     ToIndex = stateToIndex[conn.To],
-                    Conditions = conn.Conditions ?? new List<TransitionCondition>()
+                    ConditionType = ScriptReferenceUtility.GetTypeName(conn.ConditionScript)
                 });
             }
 
