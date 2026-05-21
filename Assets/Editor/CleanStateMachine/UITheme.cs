@@ -70,7 +70,6 @@ namespace CleanStateMachine
         private static GUIStyle _sectionStyle;
         private static GUIStyle _labelStyle;
         private static GUIStyle _secondaryStyle;
-        private static GUIStyle _closeButtonStyle;
         private static GUIStyle _collapsedTabStyle;
         private static GUIStyle _emptyStyle;
         private static GUIStyle _variableLabelStyle;
@@ -209,26 +208,6 @@ namespace CleanStateMachine
                     };
                 }
                 return _secondaryStyle;
-            }
-        }
-
-        public static GUIStyle CloseButtonStyle
-        {
-            get
-            {
-                if (_closeButtonStyle == null)
-                {
-                    _closeButtonStyle = new GUIStyle
-                    {
-                        alignment = TextAnchor.MiddleCenter,
-                        fontSize = 16,
-                        fontStyle = FontStyle.Bold,
-                        normal = { textColor = IconColor },
-                        hover = { textColor = TextColor },
-                        padding = new RectOffset(0, 0, 0, 0)
-                    };
-                }
-                return _closeButtonStyle;
             }
         }
 
@@ -453,6 +432,55 @@ namespace CleanStateMachine
             EditorGUI.DrawRect(rect, Gray(0.13f));
             EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, 1f), Gray(0.18f));
             EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), Gray(0.08f));
+        }
+
+        public static void DrawPlusIcon(Rect rect, Color color)
+        {
+            Vector2 c = rect.center;
+            float thickness = 2f;
+            float armLen = Mathf.Min(rect.width, rect.height) * 0.3f;
+            EditorGUI.DrawRect(new Rect(c.x - armLen, c.y - thickness * 0.5f, armLen * 2f, thickness), color);
+            EditorGUI.DrawRect(new Rect(c.x - thickness * 0.5f, c.y - armLen, thickness, armLen * 2f), color);
+        }
+
+        public static void DrawArrowLeft(Rect rect, Color color)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            float s = Mathf.Min(rect.width, rect.height) * 0.4f;
+            Vector2 c = rect.center;
+            float rightX = s * 0.5f;
+            float leftX = s;
+            var pts = new Vector3[]
+            {
+                new Vector3(c.x - leftX, c.y, 0f),
+                new Vector3(c.x + rightX, c.y - s * 0.6f, 0f),
+                new Vector3(c.x + rightX, c.y + s * 0.6f, 0f)
+            };
+            Handles.BeginGUI();
+            Handles.color = color;
+            Handles.DrawAAConvexPolygon(pts);
+            Handles.EndGUI();
+        }
+
+        public static void DrawArrowRight(Rect rect, Color color)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            float s = Mathf.Min(rect.width, rect.height) * 0.4f;
+            Vector2 c = rect.center;
+            float leftX = s * 0.5f;
+            float rightX = s;
+            var pts = new Vector3[]
+            {
+                new Vector3(c.x + rightX, c.y, 0f),
+                new Vector3(c.x - leftX, c.y - s * 0.6f, 0f),
+                new Vector3(c.x - leftX, c.y + s * 0.6f, 0f)
+            };
+            Handles.BeginGUI();
+            Handles.color = color;
+            Handles.DrawAAConvexPolygon(pts);
+            Handles.EndGUI();
         }
 
         public static void DrawGroupLabel(Rect rect, string label)

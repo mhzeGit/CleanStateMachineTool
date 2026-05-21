@@ -54,10 +54,12 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(rect.x, rect.y, addRect.x - rect.x - 4f, rect.height);
             GUI.Label(labelRect, "Blackboard", UITheme.HeaderStyle);
 
-            bool hover = addRect.Contains(Event.current.mousePosition);
-            UITheme.DrawSmallButton(addRect, hover);
+            var e = Event.current;
+            if (e.type == EventType.Repaint)
+                UITheme.DrawPlusIcon(addRect,
+                    addRect.Contains(e.mousePosition) ? UITheme.TextColor : UITheme.IconColor);
 
-            if (GUI.Button(addRect, "+", UITheme.CloseButtonStyle))
+            if (e.type == EventType.MouseDown && e.button == 0 && addRect.Contains(e.mousePosition))
             {
                 var menu = new GenericMenu();
                 foreach (BlackboardVariableType type in Enum.GetValues(typeof(BlackboardVariableType)))
@@ -76,8 +78,8 @@ namespace CleanStateMachine
                         _scrollPos.y = float.MaxValue;
                     });
                 }
-                menu.ShowAsContext();
-                Event.current.Use();
+                e.Use();
+                menu.DropDown(addRect);
             }
         }
 

@@ -45,8 +45,6 @@ namespace CleanStateMachine
         private bool _hasUnsavedChanges;
         private bool _isLoading;
         private StateMachineController _pendingController;
-        private const float ToolbarHeight = 20f;
-
         private BlackboardView _blackboardView;
         private DetailsPanelView _detailsView;
         private bool _isDraggingLeftSplitter;
@@ -148,9 +146,7 @@ namespace CleanStateMachine
 
             var e = Event.current;
 
-            DrawToolbar();
-
-            Rect contentRect = new Rect(0f, ToolbarHeight, position.width, position.height - ToolbarHeight);
+            Rect contentRect = new Rect(0f, 0f, position.width, position.height);
 
             ComputeLayout(contentRect, out Rect graphRect, out Rect leftRect, out Rect rightRect,
                 out Rect leftSplitterRect, out Rect rightSplitterRect);
@@ -250,7 +246,7 @@ namespace CleanStateMachine
                 DrawBlackboardToggle(leftRect);
             }
             else
-                DrawCollapsedPanel(leftRect, ">", ref _showBlackboard);
+                DrawCollapsedPanel(leftRect, ref _showBlackboard);
 
             if (_selectionController.Count > 0)
                 _detailsView.Draw(rightRect, _selectionController.Selected, _states, _connections, _blackboardVariables);
@@ -314,16 +310,8 @@ namespace CleanStateMachine
             );
 
             bool hover = toggleRect.Contains(Event.current.mousePosition);
-            UITheme.DrawSmallButton(toggleRect, hover);
-
-            var style = new GUIStyle
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 12,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = hover ? UITheme.TextColor : UITheme.IconColor }
-            };
-            GUI.Label(toggleRect, "â—€", style);
+            if (Event.current.type == EventType.Repaint)
+                UITheme.DrawArrowLeft(toggleRect, hover ? UITheme.TextColor : UITheme.IconColor);
 
             if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && toggleRect.Contains(Event.current.mousePosition))
             {
@@ -333,22 +321,14 @@ namespace CleanStateMachine
             }
         }
 
-        private static void DrawCollapsedPanel(Rect rect, string label, ref bool showPanel)
+        private static void DrawCollapsedPanel(Rect rect, ref bool showPanel)
         {
             EditorGUI.DrawRect(rect, UITheme.PanelHeaderBg);
             EditorGUI.DrawRect(new Rect(rect.x + rect.width - 1f, rect.y, 1f, rect.height), UITheme.RowBorder);
 
-            float labelH = 22f;
-            Rect labelRect = new Rect(rect.x, rect.y + 4f, rect.width, labelH);
-            bool hover = labelRect.Contains(Event.current.mousePosition);
-            var style = new GUIStyle
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 12,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = hover ? UITheme.TextColor : UITheme.IconColor }
-            };
-            GUI.Label(labelRect, label, style);
+            bool hover = rect.Contains(Event.current.mousePosition);
+            if (Event.current.type == EventType.Repaint)
+                UITheme.DrawArrowRight(rect, hover ? UITheme.TextColor : UITheme.IconColor);
 
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 0 && rect.Contains(e.mousePosition))
@@ -503,6 +483,18 @@ namespace CleanStateMachine
             if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
             {
                 DeleteSelected();
+                e.Use();
+                Repaint();
+            }
+
+            if (e.keyCode == KeyCode.S && e.control)
+            {
+                if (_controller != null)
+                {
+                    SaveToController();
+                    _controller.Save();
+                    MarkSaved();
+                }
                 e.Use();
                 Repaint();
             }
@@ -1157,72 +1149,6 @@ namespace CleanStateMachine
                     if (_groups[i].IsSelected)
                         _groups.RemoveAt(i);
                 _groups.AddRange(pickedGroups);
-            }
-        }
-
-        private void DrawToolbar()
-        {
-            Rect toolbarRect = new Rect(0f, 0f, position.width, ToolbarHeight);
-            EditorGUI.DrawRect(toolbarRect, UITheme.PanelHeaderBg);
-            EditorGUI.DrawRect(new Rect(0f, ToolbarHeight - 1f, position.width, 1f), UITheme.RowBorder);
-
-            float x = 6f;
-            float y = 2f;
-            float buttonHeight = ToolbarHeight - 4f;
-
-            bool hasController = _controller != null;
-            bool canSave = hasController && _hasUnsavedChanges;
-
-            GUI.enabled = canSave;
-            Rect saveRect = new Rect(x, y, 50f, buttonHeight);
-            EditorGUI.DrawRect(saveRect, UITheme.ButtonColor);
-            if (GUI.Button(saveRect, "Save"))
-            {
-                SaveToController();
-                _controller.Save();
-                MarkSaved();
-            }
-            GUI.enabled = true;
-
-            x += 56f;
-            Rect saveAsRect = new Rect(x, y, 70f, buttonHeight);
-            EditorGUI.DrawRect(saveAsRect, UITheme.ButtonColor);
-            if (GUI.Button(saveAsRect, "Save As..."))
-            {
-                SaveAs();
-            }
-
-            x += 76f;
-            Rect newRect = new Rect(x, y, 50f, buttonHeight);
-            EditorGUI.DrawRect(newRect, UITheme.ButtonColor);
-            if (GUI.Button(newRect, "New"))
-            {
-                NewFile();
-            }
-
-            string nameText = hasController ? _controller.name : "No Controller";
-            if (_hasUnsavedChanges) nameText += " *";
-
-            float labelX = x + 56f;
-            var labelStyle = new GUIStyle(EditorStyles.boldLabel)
-            {
-                alignment = TextAnchor.MiddleRight,
-                normal = { textColor = UITheme.TextColor }
-            };
-            Rect labelRect = new Rect(labelX, y, toolbarRect.width - labelX - 6f, buttonHeight);
-            GUI.Label(labelRect, nameText, labelStyle);
-
-            var e = Event.current;
-            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.S && e.control)
-            {
-                if (hasController)
-                {
-                    SaveToController();
-                    _controller.Save();
-                    MarkSaved();
-                }
-                e.Use();
-                Repaint();
             }
         }
 
