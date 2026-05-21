@@ -27,13 +27,14 @@ namespace CleanStateMachine
 
             if (conditions.Count == 0)
             {
-                Rect emptyRect = new Rect(UITheme.Padding * 4f, y, w - UITheme.Padding * 8f, UITheme.RowHeight);
+                Rect emptyRect = new Rect(0f, y, w, UITheme.RowHeight);
                 var emptyStyle = new GUIStyle(UITheme.SecondaryStyle)
                 {
                     normal = { textColor = UITheme.TextMuted },
-                    fontStyle = FontStyle.Italic
+                    fontStyle = FontStyle.Italic,
+                    alignment = TextAnchor.MiddleCenter
                 };
-                GUI.Label(emptyRect, "  No conditions — click + to add", emptyStyle);
+                GUI.Label(emptyRect, "No conditions — click + to add", emptyStyle);
                 y += UITheme.RowHeight;
             }
 
@@ -49,10 +50,10 @@ namespace CleanStateMachine
 
         private void DrawAddButton(ref float y, float width, List<TransitionCondition> conditions)
         {
-            Rect addRect = new Rect(4f, y, width - 8f, UITheme.RowHeight);
-            EditorGUI.DrawRect(addRect, UITheme.RowOdd);
+            Rect addRect = new Rect(0f, y, width, UITheme.RowHeight);
+            EditorGUI.DrawRect(addRect, UITheme.RowEven);
 
-            Rect btnRect = new Rect(addRect.x + 6f, addRect.y + 3f, 20f, addRect.height - 6f);
+            Rect btnRect = new Rect(8f, addRect.y + 4f, 24f, addRect.height - 8f);
             bool btnHover = btnRect.Contains(Event.current.mousePosition);
             UITheme.DrawSmallButton(btnRect, btnHover);
 
@@ -61,7 +62,7 @@ namespace CleanStateMachine
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = UITheme.Accent }
+                normal = { textColor = UITheme.TextColor }
             };
 
             if (GUI.Button(btnRect, "+", btnStyle))
@@ -70,50 +71,46 @@ namespace CleanStateMachine
                 Changed?.Invoke();
             }
 
-            Rect labelRect = new Rect(btnRect.xMax + 6f, addRect.y, width - btnRect.xMax - 16f, addRect.height);
+            Rect labelRect = new Rect(btnRect.xMax + 8f, addRect.y, width - btnRect.xMax - 16f, addRect.height);
             GUI.Label(labelRect, "Add Condition", new GUIStyle(UITheme.SecondaryStyle)
             {
                 normal = { textColor = UITheme.TextSecondary },
-                fontSize = 10
+                fontSize = 11,
+                fontStyle = FontStyle.Bold
             });
 
-            y += UITheme.RowHeight + 4f;
+            y += UITheme.RowHeight;
+            UITheme.DrawSectionDivider(y, width);
+            y += 4f;
         }
 
         private void DrawConditionRow(ref float y, float width, List<TransitionCondition> conditions,
             int index, TransitionCondition condition, List<BlackboardVariable> blackboardVariables,
             bool isExpanded)
         {
-            float indent = 8f;
-            float rowW = width - indent * 2f;
+            float rowW = width;
             float rowHeight = isExpanded ? GetExpandedHeight() : UITheme.RowHeight;
 
-            Rect rowRect = new Rect(indent, y, rowW, rowHeight);
+            Rect rowRect = new Rect(0f, y, rowW, rowHeight);
             EditorGUI.DrawRect(rowRect, index % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd);
 
-            if (isExpanded)
-            {
-                EditorGUI.DrawRect(rowRect, new Color(1f, 1f, 1f, 0.03f));
-            }
-
             // Condition type badge
-            Rect badgeRect = new Rect(indent + 4f, rowRect.y + 4f, 72f, UITheme.RowHeight - 8f);
+            Rect badgeRect = new Rect(8f, rowRect.y + 6f, 50f, UITheme.RowHeight - 12f);
             EditorGUI.DrawRect(badgeRect, UITheme.TypeBadgeBg);
-            var badgeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 7 };
-            string condLabel = string.IsNullOrEmpty(condition.BlackboardVariableName) ? "IF" : "IF";
+            var badgeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 8 };
+            string condLabel = "IF";
             GUI.Label(badgeRect, condLabel, badgeStyle);
 
             // Summary / expand
-            Rect expandRect = new Rect(indent + 80f, rowRect.y,
-                rowW - 104f, UITheme.RowHeight);
-            string arrow = isExpanded ? " ▲" : " ▼";
+            Rect expandRect = new Rect(64f, rowRect.y, rowW - 90f, UITheme.RowHeight);
+            string arrow = isExpanded ? " ▼" : " ▶";
             var summaryStyle = new GUIStyle(UITheme.SecondaryStyle)
             {
                 clipping = TextClipping.Clip,
                 padding = new RectOffset(4, 0, 0, 0)
             };
 
-            if (GUI.Button(expandRect, GetConditionSummary(condition) + arrow, summaryStyle))
+            if (GUI.Button(expandRect, arrow + GetConditionSummary(condition), summaryStyle))
             {
                 if (isExpanded)
                     _expandedConditions.Remove(index);
@@ -122,7 +119,7 @@ namespace CleanStateMachine
             }
 
             // Delete
-            Rect deleteRect = new Rect(indent + rowW - 22f, rowRect.y + 3f, 18f, UITheme.RowHeight - 6f);
+            Rect deleteRect = new Rect(rowW - 24f, rowRect.y + 6f, 16f, UITheme.RowHeight - 12f);
             if (GUI.Button(deleteRect, "✕", UITheme.DeleteButtonStyle))
             {
                 conditions.RemoveAt(index);
@@ -134,14 +131,14 @@ namespace CleanStateMachine
 
             if (isExpanded)
             {
-                DrawConditionFields(ref y, width, indent + 8f, condition, blackboardVariables);
+                DrawConditionFields(ref y, width, 12f, condition, blackboardVariables);
             }
         }
 
         private void DrawConditionFields(ref float y, float width, float margin,
             TransitionCondition condition, List<BlackboardVariable> blackboardVariables)
         {
-            float fieldWidth = width - margin - 12f;
+            float fieldWidth = width - margin;
 
             DrawVariableSelector(ref y, margin, fieldWidth, condition, blackboardVariables);
 
@@ -153,7 +150,7 @@ namespace CleanStateMachine
             }
             else
             {
-                Rect msgRect = new Rect(margin + 4f, y, fieldWidth, UITheme.RowHeight);
+                Rect msgRect = new Rect(margin, y, fieldWidth, UITheme.RowHeight);
                 var msgStyle = new GUIStyle(UITheme.LabelStyle)
                 {
                     normal = { textColor = UITheme.Warning }
@@ -161,7 +158,7 @@ namespace CleanStateMachine
                 GUI.Label(msgRect, "Select a variable first", msgStyle);
                 y += UITheme.RowHeight;
             }
-
+            
             y += 4f;
         }
 
@@ -171,8 +168,8 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(margin, y, 76f, UITheme.RowHeight);
             GUI.Label(labelRect, "Variable", UITheme.LabelStyle);
 
-            Rect selectorRect = new Rect(margin + 80f, y + 2f,
-                fieldWidth - 80f, UITheme.RowHeight - 4f);
+            Rect selectorRect = new Rect(margin + 80f, y + 4f,
+                fieldWidth - 88f, UITheme.RowHeight - 8f);
 
             string currentName = condition.BlackboardVariableName ?? "";
             int selectedIndex = -1;
@@ -210,8 +207,8 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(margin, y, 76f, UITheme.RowHeight);
             GUI.Label(labelRect, "Compare", UITheme.LabelStyle);
 
-            Rect selectorRect = new Rect(margin + 80f, y + 2f,
-                fieldWidth - 80f, UITheme.RowHeight - 4f);
+            Rect selectorRect = new Rect(margin + 80f, y + 4f,
+                fieldWidth - 88f, UITheme.RowHeight - 8f);
 
             List<ConditionComparison> validComparisons = GetValidComparisons(variable.Type);
 
@@ -244,8 +241,8 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(margin, y, 76f, UITheme.RowHeight);
             GUI.Label(labelRect, "Value", UITheme.LabelStyle);
 
-            Rect fieldRect = new Rect(margin + 80f, y + 2f,
-                fieldWidth - 80f, UITheme.RowHeight - 4f);
+            Rect fieldRect = new Rect(margin + 80f, y + 4f,
+                fieldWidth - 88f, UITheme.RowHeight - 8f);
 
             string currentValue = condition.CompareValue ?? "";
 

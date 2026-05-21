@@ -27,7 +27,7 @@ namespace CleanStateMachine
             List<StateView> states, List<ConnectionView> connections,
             List<BlackboardVariable> blackboardVariables)
         {
-            EditorGUI.DrawRect(rect, UITheme.PanelBg);
+            UITheme.DrawPanelBackground(rect);
 
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, UITheme.HeaderHeight);
             DrawHeader(headerRect);
@@ -45,7 +45,7 @@ namespace CleanStateMachine
         private void DrawHeader(Rect rect)
         {
             UITheme.DrawHeaderBackground(rect);
-            GUI.Label(rect, "Details", UITheme.HeaderStyle);
+            GUI.Label(rect, "Inspector", UITheme.HeaderStyle);
         }
 
         private void DrawContent(Rect rect, IReadOnlyList<ISelectable> selected,
@@ -70,7 +70,6 @@ namespace CleanStateMachine
         private static void DrawEmptyState(Rect rect)
         {
             Rect infoRect = new Rect(rect.x + 20f, rect.y + 20f, rect.width - 40f, 80f);
-            UITheme.DrawCard(infoRect);
             GUI.Label(infoRect, "Select an item to inspect", UITheme.InfoBoxStyle);
         }
 
@@ -100,23 +99,22 @@ namespace CleanStateMachine
             if (state.StateClass == null)
                 state.StateClass = new StateClassData();
 
-            float w = rect.width - 14f;
-            float totalInfoHeight = UITheme.RowHeight * 4f + 20f;
+            float w = rect.width;
+            float totalInfoHeight = UITheme.RowHeight * 4f + 40f;
             float editorHeight = rect.height - totalInfoHeight - 4f;
-            if (editorHeight < 80f) editorHeight = 80f;
+            if (editorHeight < 120f) editorHeight = 120f;
 
-            Rect viewRect = new Rect(0f, 0f, w, totalInfoHeight + editorHeight);
+            Rect viewRect = new Rect(0f, 0f, w - 14f, totalInfoHeight + editorHeight);
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
-            float y = 0f;
+            float y = 12f;
 
-            // --- Info card ---
-            Rect infoCardRect = new Rect(4f, y, w - 8f, UITheme.RowHeight * 4f + 12f);
-            UITheme.DrawSmallCard(infoCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "STATE INFO");
+            // --- Info ---
+            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            GUI.Label(titleRect, "State Information", UITheme.LargeTitleStyle);
+            y += 28f;
 
-            y += UITheme.RowHeight + 2f;
-            float iw = w - 24f;
+            float iw = viewRect.width;
 
             DrawInfoRow(ref y, iw, "Name", state.Name);
             DrawInfoRow(ref y, iw, "Position", $"({state.Position.x:F1}, {state.Position.y:F1})");
@@ -125,21 +123,23 @@ namespace CleanStateMachine
             int connectionCount = CountStateConnections(state, connections);
             DrawInfoRow(ref y, iw, "Connections", connectionCount.ToString());
 
-            y += 8f;
+            y += 12f;
 
-            // --- Events card ---
-            Rect eventsCardRect = new Rect(4f, y, w - 8f, editorHeight + UITheme.RowHeight + 8f);
-            UITheme.DrawSmallCard(eventsCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "STATE CLASS EVENTS");
+            UITheme.DrawSectionDivider(y, iw);
+            y += 12f;
 
-            y += UITheme.RowHeight + 4f;
+            // --- Events ---
+            Rect eventsTitleRect = new Rect(8f, y, iw - 16f, 24f);
+            GUI.Label(eventsTitleRect, "State Class Events", UITheme.LargeTitleStyle);
+            y += 28f;
+
             float ey = y;
 
             GUI.EndScrollView();
 
             float availableHeight = rect.height - ey - 4f;
             if (availableHeight < 60f) availableHeight = 60f;
-            Rect stateClassRect = new Rect(rect.x + 4f, rect.y + ey, rect.width - 4f, availableHeight);
+            Rect stateClassRect = new Rect(rect.x, rect.y + ey, rect.width, availableHeight);
 
             _stateClassEditor.Draw(stateClassRect, state.StateClass, ref _stateClassScroll);
         }
@@ -150,85 +150,85 @@ namespace CleanStateMachine
             if (conn.Conditions == null)
                 conn.Conditions = new List<TransitionCondition>();
 
-            float w = rect.width - 14f;
-            float totalInfoHeight = UITheme.RowHeight * 3f + 20f;
+            float w = rect.width;
+            float totalInfoHeight = UITheme.RowHeight * 2f + 40f;
             float editorHeight = rect.height - totalInfoHeight - 4f;
-            if (editorHeight < 80f) editorHeight = 80f;
+            if (editorHeight < 120f) editorHeight = 120f;
 
-            Rect viewRect = new Rect(0f, 0f, w, totalInfoHeight + editorHeight);
+            Rect viewRect = new Rect(0f, 0f, w - 14f, totalInfoHeight + editorHeight);
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
-            float y = 0f;
+            float y = 12f;
 
-            // --- Info card ---
-            Rect infoCardRect = new Rect(4f, y, w - 8f, UITheme.RowHeight * 2f + 12f);
-            UITheme.DrawSmallCard(infoCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "CONNECTION INFO");
+            // --- Info ---
+            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            GUI.Label(titleRect, "Connection Information", UITheme.LargeTitleStyle);
+            y += 28f;
 
-            y += UITheme.RowHeight + 2f;
-            float iw = w - 24f;
+            float iw = viewRect.width;
             DrawInfoRow(ref y, iw, "From", conn.From?.Name ?? "—");
             DrawInfoRow(ref y, iw, "To", conn.To?.Name ?? "—");
 
-            y += 8f;
+            y += 12f;
 
-            // --- Conditions card ---
-            Rect condCardRect = new Rect(4f, y, w - 8f, editorHeight + UITheme.RowHeight + 8f);
-            UITheme.DrawSmallCard(condCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "CONDITIONS");
+            UITheme.DrawSectionDivider(y, iw);
+            y += 12f;
 
-            y += UITheme.RowHeight + 4f;
+            // --- Conditions ---
+            Rect condTitleRect = new Rect(8f, y, iw - 16f, 24f);
+            GUI.Label(condTitleRect, "Transition Conditions", UITheme.LargeTitleStyle);
+            y += 28f;
+
             float cy = y;
 
             GUI.EndScrollView();
 
             float availableHeight = rect.height - cy - 4f;
             if (availableHeight < 60f) availableHeight = 60f;
-            Rect conditionRect = new Rect(rect.x + 4f, rect.y + cy, rect.width - 4f, availableHeight);
+            Rect conditionRect = new Rect(rect.x, rect.y + cy, rect.width, availableHeight);
 
             _conditionEditor.Draw(conditionRect, conn.Conditions, blackboardVariables, ref _conditionScroll);
         }
 
         private static void DrawGroupContent(Rect rect, CommentGroupView group)
         {
-            float y = 0f;
+            float y = 12f;
             float w = rect.width - 14f;
 
             float listHeight = Mathf.Min(group.Members.Count, 20) * UITheme.RowHeight;
-            float totalHeight = UITheme.RowHeight * 3f + 20f + listHeight;
+            float totalHeight = UITheme.RowHeight * 2f + 80f + listHeight;
             Rect viewRect = new Rect(0f, 0f, w, Mathf.Max(totalHeight, rect.height));
 
             var scrollPos = Vector2.zero;
             scrollPos = GUI.BeginScrollView(rect, scrollPos, viewRect);
 
-            // --- Info card ---
-            Rect infoCardRect = new Rect(4f, y, w - 8f, UITheme.RowHeight * 2f + 12f);
-            UITheme.DrawSmallCard(infoCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "GROUP INFO");
+            // --- Info ---
+            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            GUI.Label(titleRect, "Group Information", UITheme.LargeTitleStyle);
+            y += 28f;
 
-            y += UITheme.RowHeight + 2f;
-            float iw = w - 24f;
+            float iw = viewRect.width;
             DrawInfoRow(ref y, iw, "Label", group.Label);
             DrawInfoRow(ref y, iw, "Members", group.Members.Count.ToString());
 
-            y += 8f;
+            y += 12f;
 
-            // --- Members card ---
-            float membersCardH = UITheme.RowHeight + 8f + listHeight;
-            Rect membersCardRect = new Rect(4f, y, w - 8f, membersCardH);
-            UITheme.DrawSmallCard(membersCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "MEMBERS");
+            UITheme.DrawSectionDivider(y, iw);
+            y += 12f;
 
-            y += UITheme.RowHeight + 4f;
+            // --- Members ---
+            Rect memTitleRect = new Rect(8f, y, iw - 16f, 24f);
+            GUI.Label(memTitleRect, "Members", UITheme.LargeTitleStyle);
+            y += 28f;
 
             for (int i = 0; i < group.Members.Count; i++)
             {
                 if (y + UITheme.RowHeight > viewRect.height)
                     break;
 
-                Rect rowRect = new Rect(12f, y, w - 24f, UITheme.RowHeight);
+                Rect rowRect = new Rect(0f, y, w, UITheme.RowHeight);
                 EditorGUI.DrawRect(rowRect, i % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd);
-                GUI.Label(new Rect(20f, rowRect.y, w - 28f, rowRect.height),
+                GUI.Label(new Rect(16f, rowRect.y, w - 32f, rowRect.height),
                     group.Members[i].Name, UITheme.SecondaryStyle);
                 y += UITheme.RowHeight;
             }
@@ -238,43 +238,40 @@ namespace CleanStateMachine
 
         private static void DrawOtherContent(Rect rect, ISelectable item)
         {
-            float y = 0f;
+            float y = 12f;
             float w = rect.width - 14f;
 
             Rect viewRect = new Rect(0f, 0f, w, UITheme.RowHeight * 4f);
             var scrollPos = Vector2.zero;
             scrollPos = GUI.BeginScrollView(rect, scrollPos, viewRect);
 
-            Rect infoCardRect = new Rect(4f, y, w - 8f, UITheme.RowHeight + 12f);
-            UITheme.DrawSmallCard(infoCardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), "INSPECTOR");
+            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            GUI.Label(titleRect, "Inspector", UITheme.LargeTitleStyle);
+            y += 28f;
 
-            y += UITheme.RowHeight + 4f;
-            DrawInfoRow(ref y, w - 16f, "Type", item.GetType().Name);
+            DrawInfoRow(ref y, w, "Type", item.GetType().Name);
 
             GUI.EndScrollView();
         }
 
         private static void DrawMultiSelection(Rect rect, IReadOnlyList<ISelectable> selected)
         {
-            float y = 0f;
+            float y = 12f;
             float w = rect.width - 14f;
 
-            float totalHeight = UITheme.RowHeight * 2f + 20f + selected.Count * UITheme.RowHeight;
+            float totalHeight = 40f + selected.Count * UITheme.RowHeight;
             Rect viewRect = new Rect(0f, 0f, w, totalHeight);
 
             var scrollPos = Vector2.zero;
             scrollPos = GUI.BeginScrollView(rect, scrollPos, viewRect);
 
-            Rect cardRect = new Rect(4f, y, w - 8f, totalHeight - 8f);
-            UITheme.DrawSmallCard(cardRect);
-            UITheme.DrawGroupLabel(new Rect(4f, y, w - 8f, UITheme.RowHeight), $"SELECTED ({selected.Count})");
-
-            y += UITheme.RowHeight + 4f;
+            Rect titleRect = new Rect(8f, y, w - 16f, 24f);
+            GUI.Label(titleRect, $"Selected ({selected.Count})", UITheme.LargeTitleStyle);
+            y += 28f;
 
             for (int i = 0; i < selected.Count; i++)
             {
-                Rect rowRect = new Rect(12f, y, w - 24f, UITheme.RowHeight);
+                Rect rowRect = new Rect(0f, y, w, UITheme.RowHeight);
                 EditorGUI.DrawRect(rowRect, i % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd);
 
                 string label = selected[i] switch
@@ -293,12 +290,13 @@ namespace CleanStateMachine
                     _ => "ITEM"
                 };
 
-                Rect typeRect = new Rect(18f, rowRect.y + 3f, 56f, UITheme.RowHeight - 6f);
+                float badgeW = 60f;
+                Rect typeRect = new Rect(8f, rowRect.y + 6f, badgeW, UITheme.RowHeight - 12f);
                 EditorGUI.DrawRect(typeRect, UITheme.TypeBadgeBg);
-                var typeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 7 };
+                var typeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 8 };
                 GUI.Label(typeRect, typeLabel, typeStyle);
 
-                Rect labelRect = new Rect(80f, rowRect.y, w - 92f, rowRect.height);
+                Rect labelRect = new Rect(badgeW + 16f, rowRect.y, w - badgeW - 24f, rowRect.height);
                 GUI.Label(labelRect, label, UITheme.SecondaryStyle);
 
                 y += UITheme.RowHeight;
@@ -320,12 +318,12 @@ namespace CleanStateMachine
 
         private static void DrawInfoRow(ref float y, float width, string label, string value)
         {
-            Rect rect = new Rect(8f, y, width, UITheme.RowHeight);
+            Rect rect = new Rect(0f, y, width, UITheme.RowHeight);
             EditorGUI.DrawRect(rect, UITheme.RowEven);
 
-            float labelWidth = 80f;
-            Rect labelRect = new Rect(rect.x + 6f, rect.y, labelWidth, rect.height);
-            Rect valueRect = new Rect(rect.x + labelWidth + 2f, rect.y, width - labelWidth - 8f, rect.height);
+            float labelWidth = 100f;
+            Rect labelRect = new Rect(12f, rect.y, labelWidth, rect.height);
+            Rect valueRect = new Rect(12f + labelWidth, rect.y, width - labelWidth - 24f, rect.height);
 
             GUI.Label(labelRect, label, UITheme.LabelStyle);
             GUI.Label(valueRect, value, UITheme.SecondaryStyle);

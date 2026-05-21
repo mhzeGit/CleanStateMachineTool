@@ -40,7 +40,7 @@ namespace CleanStateMachine
 
             if (stateClass.Sections.Count == 0)
             {
-                Rect emptyRect = new Rect(UITheme.Padding * 2f, y, w - UITheme.Padding * 4f, UITheme.RowHeight * 2f);
+                Rect emptyRect = new Rect(0f, y, w, UITheme.RowHeight * 2f);
                 GUI.Label(emptyRect, "No sections defined", UITheme.EmptyStyle);
             }
 
@@ -51,56 +51,55 @@ namespace CleanStateMachine
             StateSectionData section, int sectionIndex)
         {
             bool isExpanded = _expandedSections.Contains(section.SectionName);
-            float contentHeight = ComputeSectionContentHeight(section);
-            float totalCardH = contentHeight + UITheme.RowHeight + 8f;
-
-            Rect cardRect = new Rect(4f, y, width - 8f, totalCardH);
-            UITheme.DrawSmallCard(cardRect);
 
             // --- Section foldout header ---
             DrawSectionFoldoutHeader(ref y, width, section.SectionName, isExpanded);
 
-            // --- Add event button ---
-            DrawAddEventButton(ref y, width, section, sectionIndex, isExpanded);
-
             if (!isExpanded)
             {
-                // skip over the rest of the card space
-                y += contentHeight;
+                UITheme.DrawSectionDivider(y, width);
+                y += 6f;
                 return;
             }
+
+            // --- Add event button ---
+            DrawAddEventButton(ref y, width, section, sectionIndex);
 
             if (section.Events.Count == 0)
             {
-                float ey = y;
-                Rect emptyRect = new Rect(UITheme.Padding * 4f, y, width - UITheme.Padding * 8f, UITheme.RowHeight);
+                Rect emptyRect = new Rect(0f, y, width, UITheme.RowHeight);
                 var emptyStyle = new GUIStyle(UITheme.SecondaryStyle)
                 {
                     normal = { textColor = UITheme.TextMuted },
-                    fontStyle = FontStyle.Italic
+                    fontStyle = FontStyle.Italic,
+                    alignment = TextAnchor.MiddleCenter
                 };
-                GUI.Label(emptyRect, "  No events — click + to add", emptyStyle);
+                GUI.Label(emptyRect, "No events — click + to add", emptyStyle);
                 y += UITheme.RowHeight;
-                return;
+            }
+            else
+            {
+                for (int i = 0; i < section.Events.Count; i++)
+                {
+                    var evt = section.Events[i];
+                    int eventId = evt.EditorId;
+                    bool eventExpanded = _expandedEvents.Contains(eventId);
+                    DrawEventRow(ref y, width, section, i, evt, eventId, eventExpanded);
+                }
             }
 
-            for (int i = 0; i < section.Events.Count; i++)
-            {
-                var evt = section.Events[i];
-                int eventId = evt.EditorId;
-                bool eventExpanded = _expandedEvents.Contains(eventId);
-                DrawEventRow(ref y, width, section, i, evt, eventId, eventExpanded);
-            }
+            y += 4f;
+            UITheme.DrawSectionDivider(y, width);
+            y += 6f;
         }
 
         private void DrawSectionFoldoutHeader(ref float y, float width, string sectionName, bool isExpanded)
         {
-            Rect headerRect = new Rect(8f, y, width - 16f, UITheme.RowHeight);
+            Rect headerRect = new Rect(0f, y, width, UITheme.RowHeight);
             EditorGUI.DrawRect(headerRect, UITheme.RowEven);
 
             string label = (isExpanded ? "▼ " : "▶ ") + sectionName;
-            Rect foldoutRect = new Rect(headerRect.x + 4f, headerRect.y,
-                headerRect.width - 8f, headerRect.height);
+            Rect foldoutRect = new Rect(8f, headerRect.y, headerRect.width - 16f, headerRect.height);
 
             if (GUI.Button(foldoutRect, label, UITheme.FoldoutHeaderStyle))
             {
@@ -110,15 +109,15 @@ namespace CleanStateMachine
                     _expandedSections.Add(sectionName);
             }
 
-            y += UITheme.RowHeight + 2f;
+            y += UITheme.RowHeight;
         }
 
-        private void DrawAddEventButton(ref float y, float width, StateSectionData section, int sectionIndex, bool isExpanded)
+        private void DrawAddEventButton(ref float y, float width, StateSectionData section, int sectionIndex)
         {
-            Rect addRect = new Rect(12f, y, width - 24f, UITheme.RowHeight);
+            Rect addRect = new Rect(0f, y, width, UITheme.RowHeight);
             EditorGUI.DrawRect(addRect, UITheme.RowOdd);
 
-            Rect btnRect = new Rect(addRect.x + 4f, addRect.y + 3f, 20f, addRect.height - 6f);
+            Rect btnRect = new Rect(8f, addRect.y + 4f, 24f, addRect.height - 8f);
             bool btnHover = btnRect.Contains(Event.current.mousePosition);
             UITheme.DrawSmallButton(btnRect, btnHover);
 
@@ -127,7 +126,7 @@ namespace CleanStateMachine
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 14,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = UITheme.Accent }
+                normal = { textColor = UITheme.TextColor }
             };
 
             if (GUI.Button(btnRect, "+", btnStyle))
@@ -135,14 +134,15 @@ namespace CleanStateMachine
                 ShowAddEventMenu(section, btnRect);
             }
 
-            Rect labelRect = new Rect(btnRect.xMax + 6f, addRect.y, width - btnRect.xMax - 20f, addRect.height);
+            Rect labelRect = new Rect(btnRect.xMax + 8f, addRect.y, width - btnRect.xMax - 16f, addRect.height);
             GUI.Label(labelRect, "Add Event", new GUIStyle(UITheme.SecondaryStyle)
             {
                 normal = { textColor = UITheme.TextSecondary },
-                fontSize = 10
+                fontSize = 11,
+                fontStyle = FontStyle.Bold
             });
 
-            y += UITheme.RowHeight + 2f;
+            y += UITheme.RowHeight;
         }
 
         private void ShowAddEventMenu(StateSectionData section, Rect buttonRect)
@@ -195,35 +195,28 @@ namespace CleanStateMachine
             int index, StateMachineEventData evt, int eventId, bool isExpanded)
         {
             float rowHeight = isExpanded ? GetExpandedEventHeight(evt) : UITheme.RowHeight;
-            float indent = 20f;
-            float rowW = width - indent * 2f;
+            float rowW = width;
 
-            Rect rowRect = new Rect(indent, y, rowW, rowHeight);
+            Rect rowRect = new Rect(0f, y, rowW, rowHeight);
             EditorGUI.DrawRect(rowRect, index % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd);
-
-            if (isExpanded)
-            {
-                EditorGUI.DrawRect(rowRect, new Color(1f, 1f, 1f, 0.03f));
-            }
 
             // Event type badge
             string typeBadge = GetEventTypeBadge(evt.Type);
-            Rect badgeRect = new Rect(indent + 4f, rowRect.y + 4f, 72f, UITheme.RowHeight - 8f);
+            Rect badgeRect = new Rect(8f, rowRect.y + 6f, 60f, UITheme.RowHeight - 12f);
             EditorGUI.DrawRect(badgeRect, UITheme.TypeBadgeBg);
-            var badgeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 7 };
+            var badgeStyle = new GUIStyle(UITheme.TypeBadgeStyle) { fontSize = 8 };
             GUI.Label(badgeRect, typeBadge, badgeStyle);
 
             // Summary / expand button
-            Rect expandRect = new Rect(indent + 80f, rowRect.y,
-                rowW - 104f, UITheme.RowHeight);
-            string arrow = isExpanded ? " ▲" : " ▼";
+            Rect expandRect = new Rect(76f, rowRect.y, rowW - 100f, UITheme.RowHeight);
+            string arrow = isExpanded ? " ▼" : " ▶";
             var summaryStyle = new GUIStyle(UITheme.SecondaryStyle)
             {
                 clipping = TextClipping.Clip,
                 padding = new RectOffset(4, 0, 0, 0)
             };
 
-            if (GUI.Button(expandRect, GetEventLabel(evt) + arrow, summaryStyle))
+            if (GUI.Button(expandRect, arrow + GetEventLabel(evt), summaryStyle))
             {
                 if (isExpanded)
                     _expandedEvents.Remove(eventId);
@@ -232,7 +225,7 @@ namespace CleanStateMachine
             }
 
             // Delete button
-            Rect deleteRect = new Rect(indent + rowW - 22f, rowRect.y + 3f, 18f, UITheme.RowHeight - 6f);
+            Rect deleteRect = new Rect(rowW - 24f, rowRect.y + 6f, 16f, UITheme.RowHeight - 12f);
             if (GUI.Button(deleteRect, "✕", UITheme.DeleteButtonStyle))
             {
                 section.Events.RemoveAt(index);
@@ -244,13 +237,13 @@ namespace CleanStateMachine
 
             if (isExpanded)
             {
-                DrawEventFields(ref y, width, indent + 8f, evt);
+                DrawEventFields(ref y, width, 16f, evt);
             }
         }
 
         private void DrawEventFields(ref float y, float width, float leftMargin, StateMachineEventData evt)
         {
-            float fieldWidth = width - leftMargin - 12f;
+            float fieldWidth = width - leftMargin;
 
             switch (evt.Type)
             {
@@ -282,7 +275,7 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(margin, y, 76f, UITheme.RowHeight);
             GUI.Label(labelRect, label, UITheme.LabelStyle);
 
-            Rect fieldRect = new Rect(margin + 80f, y + 2f, fieldWidth - 80f, UITheme.RowHeight - 4f);
+            Rect fieldRect = new Rect(margin + 80f, y + 4f, fieldWidth - 88f, UITheme.RowHeight - 8f);
             EditorGUI.DrawRect(fieldRect, UITheme.FieldBg);
             string newValue = GUI.TextField(fieldRect, value ?? "", UITheme.RowFieldStyle);
             if (newValue != value)
@@ -299,7 +292,7 @@ namespace CleanStateMachine
             Rect labelRect = new Rect(margin, y, 76f, UITheme.RowHeight);
             GUI.Label(labelRect, label, UITheme.LabelStyle);
 
-            Rect fieldRect = new Rect(margin + 80f, y + 2f, fieldWidth - 80f, UITheme.RowHeight - 4f);
+            Rect fieldRect = new Rect(margin + 80f, y + 4f, fieldWidth - 88f, UITheme.RowHeight - 8f);
             EditorGUI.DrawRect(fieldRect, UITheme.FieldBg);
             float newValue = EditorGUI.FloatField(fieldRect, value);
             if (!Mathf.Approximately(newValue, value))
@@ -317,7 +310,7 @@ namespace CleanStateMachine
                 evt.UnityEventCallbacks = new List<UnityEventCallbackData>();
 
             Rect addRect = new Rect(margin, y, fieldWidth, UITheme.RowHeight);
-            Rect addBtnRect = new Rect(addRect.x, addRect.y + 3f, 20f, addRect.height - 6f);
+            Rect addBtnRect = new Rect(addRect.x, addRect.y + 4f, 24f, addRect.height - 8f);
             bool btnHover = addBtnRect.Contains(Event.current.mousePosition);
             UITheme.DrawSmallButton(addBtnRect, btnHover);
 
@@ -326,7 +319,7 @@ namespace CleanStateMachine
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 12,
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = UITheme.Accent }
+                normal = { textColor = UITheme.TextColor }
             };
 
             if (GUI.Button(addBtnRect, "+", btnStyle))
@@ -335,19 +328,20 @@ namespace CleanStateMachine
                 Changed?.Invoke();
             }
 
-            GUI.Label(new Rect(addBtnRect.xMax + 6f, addRect.y, addRect.width - 30f, addRect.height),
+            GUI.Label(new Rect(addBtnRect.xMax + 8f, addRect.y, addRect.width - 32f, addRect.height),
                 "Callbacks", new GUIStyle(UITheme.SecondaryStyle)
                 {
                     normal = { textColor = UITheme.TextSecondary },
-                    fontSize = 10
+                    fontSize = 11,
+                    fontStyle = FontStyle.Bold
                 });
             y += UITheme.RowHeight;
 
             for (int i = 0; i < evt.UnityEventCallbacks.Count; i++)
             {
                 var cb = evt.UnityEventCallbacks[i];
-                DrawUnityCallbackRow(ref y, width, margin + UITheme.Padding,
-                    fieldWidth - UITheme.Padding, evt.UnityEventCallbacks, i, cb);
+                DrawUnityCallbackRow(ref y, width, margin,
+                    fieldWidth, evt.UnityEventCallbacks, i, cb);
             }
         }
 
@@ -355,11 +349,11 @@ namespace CleanStateMachine
             List<UnityEventCallbackData> callbacks, int index, UnityEventCallbackData cb)
         {
             float rowX = indent;
-            float rowW = width - indent - 12f;
+            float rowW = fieldWidth - 8f;
             Rect bgRect = new Rect(rowX, y, rowW, UITheme.RowHeight);
             EditorGUI.DrawRect(bgRect, index % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd);
 
-            Rect targetRect = new Rect(rowX + 2f, y + 2f, rowW * 0.44f - 2f, UITheme.RowHeight - 4f);
+            Rect targetRect = new Rect(rowX + 4f, y + 4f, rowW * 0.44f - 4f, UITheme.RowHeight - 8f);
             var newTarget = EditorGUI.ObjectField(targetRect, cb.Target, typeof(UnityEngine.Object), true);
             if (newTarget != cb.Target)
             {
@@ -367,7 +361,7 @@ namespace CleanStateMachine
                 Changed?.Invoke();
             }
 
-            Rect methodRect = new Rect(rowX + rowW * 0.44f + 2f, y + 2f, rowW * 0.40f - 2f, UITheme.RowHeight - 4f);
+            Rect methodRect = new Rect(rowX + rowW * 0.44f + 4f, y + 4f, rowW * 0.40f - 4f, UITheme.RowHeight - 8f);
             EditorGUI.DrawRect(methodRect, UITheme.FieldBg);
             string newMethod = GUI.TextField(methodRect, cb.MethodName ?? "", UITheme.RowFieldStyle);
             if (newMethod != cb.MethodName)
@@ -376,7 +370,7 @@ namespace CleanStateMachine
                 Changed?.Invoke();
             }
 
-            Rect delRect = new Rect(rowX + rowW - 18f, y + 2f, 16f, UITheme.RowHeight - 4f);
+            Rect delRect = new Rect(rowX + rowW - 20f, y + 4f, 16f, UITheme.RowHeight - 8f);
             if (GUI.Button(delRect, "✕", UITheme.DeleteButtonStyle))
             {
                 callbacks.RemoveAt(index);
@@ -445,7 +439,8 @@ namespace CleanStateMachine
             if (!_expandedSections.Contains(section.SectionName))
                 return 0f;
 
-            float h = 0f;
+            float h = UITheme.RowHeight; // Add button
+            
             if (section.Events.Count == 0)
             {
                 h += UITheme.RowHeight;
@@ -470,7 +465,7 @@ namespace CleanStateMachine
             {
                 var section = stateClass.Sections[i];
                 float contentH = ComputeSectionContentHeight(section);
-                h += UITheme.RowHeight + 2f + UITheme.RowHeight + 2f + contentH + 6f;
+                h += UITheme.RowHeight + contentH + 10f; // Foldout header + content + divider space
             }
             return h + 20f;
         }

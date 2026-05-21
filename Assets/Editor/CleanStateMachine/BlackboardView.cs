@@ -18,7 +18,7 @@ namespace CleanStateMachine
 
             var e = Event.current;
 
-            EditorGUI.DrawRect(rect, UITheme.PanelBg);
+            UITheme.DrawPanelBackground(rect);
 
             Rect headerRect = new Rect(rect.x, rect.y, rect.width, UITheme.HeaderHeight);
             DrawHeader(headerRect, variables);
@@ -40,8 +40,8 @@ namespace CleanStateMachine
             UITheme.DrawHeaderBackground(rect);
 
             float toggleSize = 20f;
-            float addSize = 22f;
-            float gap = 6f;
+            float addSize = 24f;
+            float gap = 8f;
             float rightEdge = rect.x + rect.width;
 
             Rect addRect = new Rect(
@@ -71,6 +71,7 @@ namespace CleanStateMachine
                             Name = GetUniqueName(variables, "New Variable"),
                             Type = captured
                         });
+                        ResetValueForType(variables[variables.Count - 1]);
                         VariablesChanged?.Invoke();
                         _scrollPos.y = float.MaxValue;
                     });
@@ -84,24 +85,6 @@ namespace CleanStateMachine
         {
             var e = Event.current;
 
-            if (e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
-            {
-                float contentY = e.mousePosition.y - rect.y + _scrollPos.y;
-                int index = (int)(contentY / UITheme.RowHeight);
-                if (index >= 0 && index < variables.Count)
-                {
-                    int capturedIndex = index;
-                    var menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Delete"), false, () =>
-                    {
-                        variables.RemoveAt(capturedIndex);
-                        VariablesChanged?.Invoke();
-                    });
-                    menu.ShowAsContext();
-                    e.Use();
-                }
-            }
-
             if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
                 DefocusTextField();
 
@@ -110,10 +93,21 @@ namespace CleanStateMachine
 
             _scrollPos = GUI.BeginScrollView(rect, _scrollPos, viewRect);
 
+            int deleteIndex = -1;
+
             for (int i = 0; i < variables.Count; i++)
             {
                 Rect rowRect = new Rect(0f, i * UITheme.RowHeight, viewRect.width, UITheme.RowHeight);
-                DrawVariableRow(rowRect, variables[i], i);
+                if (DrawVariableRow(rowRect, variables[i], i))
+                {
+                    deleteIndex = i;
+                }
+            }
+
+            if (deleteIndex >= 0)
+            {
+                variables.RemoveAt(deleteIndex);
+                VariablesChanged?.Invoke();
             }
 
             if (e.type == EventType.KeyDown &&
@@ -131,24 +125,30 @@ namespace CleanStateMachine
             GUI.FocusControl("");
         }
 
-        private void DrawVariableRow(Rect rect, BlackboardVariable variable, int index)
+        // Returns true if delete was clicked
+        private bool DrawVariableRow(Rect rect, BlackboardVariable variable, int index)
         {
             Color rowBg = index % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd;
             EditorGUI.DrawRect(rect, rowBg);
 
-            float pad = 6f;
-            float innerW = rect.width - pad * 2;
-            float fieldH = rect.height - pad;
-            float fieldY = rect.y + pad * 0.5f;
+            float pad = 8f;
+            float innerW = rect.width - pad * 2f;
+            float fieldH = rect.height - 8f;
+            float fieldY = rect.y + 4f;
 
-            Rect fieldBg = new Rect(rect.x + pad, fieldY, innerW, fieldH);
-            EditorGUI.DrawRect(fieldBg, UITheme.FieldBg);
+            float typeW = 54f;
+            float delW = 16f;
+            float gap = 4f;
 
-            float gap = 3f;
-            float nameW = (innerW - gap) * 0.35f;
-            float valueW = innerW - gap - nameW;
+            Rect typeRect = new Rect(rect.x + pad, fieldY, typeW, fieldH);
+            EditorGUI.DrawRect(typeRect, UITheme.TypeBadgeBg);
+            GUI.Label(typeRect, variable.Type.ToString().ToUpper(), UITheme.TypeBadgeStyle);
 
-            Rect nameRect = new Rect(rect.x + pad + 2f, fieldY, nameW - 2f, fieldH);
+            float remainingW = innerW - typeW - delW - gap * 2f;
+            float nameW = remainingW * 0.45f;
+            float valueW = remainingW * 0.55f;
+
+            Rect nameRect = new Rect(typeRect.xMax + gap, fieldY, nameW, fieldH);
             EditorGUI.BeginChangeCheck();
             string newName = EditorGUI.TextField(nameRect, variable.Name, UITheme.RowFieldStyle);
             if (EditorGUI.EndChangeCheck())
@@ -157,8 +157,16 @@ namespace CleanStateMachine
                 VariablesChanged?.Invoke();
             }
 
-            Rect valueRect = new Rect(rect.x + pad + nameW + gap + 2f, fieldY, valueW - 2f, fieldH);
+            Rect valueRect = new Rect(nameRect.xMax + gap, fieldY, valueW, fieldH);
             DrawValueField(valueRect, variable);
+
+            Rect delRect = new Rect(valueRect.xMax + gap, fieldY, delW, fieldH);
+            if (GUI.Button(delRect, "✕", UITheme.DeleteButtonStyle))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private static void ResetValueForType(BlackboardVariable v)
@@ -182,12 +190,12 @@ namespace CleanStateMachine
                 case BlackboardVariableType.Bool:
                 {
                     bool val = variable.BoolValue;
-                    float toggleWidth = 15f;
+                    float toggleWidth = 16f;
                     Rect toggleRect = new Rect(
                         rect.x + (rect.width - toggleWidth) * 0.5f,
-                        rect.y,
+                        rect.y + (rect.height - 16f) * 0.5f,
                         toggleWidth,
-                        rect.height
+                        16f
                     );
                     bool result = EditorGUI.Toggle(toggleRect, val);
                     if (result != val)
