@@ -94,6 +94,7 @@ namespace CleanStateMachine
             _blackboardView = new BlackboardView();
             _detailsView = new DetailsPanelView();
 
+            _blackboardView.RepaintRequested += Repaint;
             _blackboardView.VariablesChanged += OnBlackboardVariablesChanged;
             _detailsView.Changed += OnDetailsChanged;
 
@@ -123,6 +124,7 @@ namespace CleanStateMachine
             _contextMenu.DeleteRequested -= DeleteSelected;
             _selectionController.SelectionChanged -= OnSelectionChanged;
 
+            _blackboardView.RepaintRequested -= Repaint;
             _blackboardView.VariablesChanged -= OnBlackboardVariablesChanged;
             _detailsView.Changed -= OnDetailsChanged;
 

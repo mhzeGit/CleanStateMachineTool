@@ -15,6 +15,7 @@ namespace CleanStateMachine
         private int _dragIndex = -1;
 
         public event System.Action VariablesChanged;
+        public event System.Action RepaintRequested;
 
         public void Draw(Rect rect, List<BlackboardVariable> variables)
         {
@@ -140,13 +141,21 @@ namespace CleanStateMachine
                 int clickedIndex = Mathf.FloorToInt(e.mousePosition.y / UITheme.RowHeight);
                 if (clickedIndex >= 0 && clickedIndex < variables.Count)
                 {
-                    _selectedIndex = clickedIndex;
+                    if (_selectedIndex != clickedIndex)
+                    {
+                        _selectedIndex = clickedIndex;
+                        RepaintRequested?.Invoke();
+                    }
                 }
                 else
                 {
-                    _selectedIndex = -1;
-                    _editingIndex = -1;
-                    DefocusTextField();
+                    if (_selectedIndex != -1)
+                    {
+                        _selectedIndex = -1;
+                        _editingIndex = -1;
+                        DefocusTextField();
+                        RepaintRequested?.Invoke();
+                    }
                 }
             }
 
