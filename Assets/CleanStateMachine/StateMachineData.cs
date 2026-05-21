@@ -55,12 +55,10 @@ namespace CleanStateMachine
 
     public enum ConditionComparison
     {
-        IsTrue,
-        IsFalse,
-        GreaterThan,
-        LessThan,
         EqualTo,
         NotEqualTo,
+        GreaterThan,
+        LessThan,
         GreaterOrEqual,
         LessOrEqual
     }

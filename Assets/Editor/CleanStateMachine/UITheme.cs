@@ -10,6 +10,7 @@ namespace CleanStateMachine
         public static readonly Color PanelBorder = new Color(0.10f, 0.10f, 0.12f);
         public static readonly Color SplitterBg = new Color(0.08f, 0.08f, 0.09f);
         public static readonly Color SplitterHover = new Color(0.25f, 0.28f, 0.32f);
+        public static readonly Color SplitterActive = new Color(0.40f, 0.45f, 0.55f);
         public static readonly Color RowEven = new Color(0.055f, 0.055f, 0.058f);
         public static readonly Color RowOdd = new Color(0.048f, 0.048f, 0.050f);
         public static readonly Color RowSelected = new Color(0.12f, 0.14f, 0.18f);
@@ -20,6 +21,10 @@ namespace CleanStateMachine
         public static readonly Color ButtonColor = new Color(0.13f, 0.13f, 0.15f);
         public static readonly Color ButtonHover = new Color(0.18f, 0.20f, 0.25f);
         public static readonly Color IconColor = new Color(0.60f, 0.60f, 0.62f);
+        public static readonly Color RowBorder = new Color(0.060f, 0.060f, 0.063f);
+        public static readonly Color TypeBadgeBg = new Color(0.11f, 0.12f, 0.15f);
+        public static readonly Color TypeBadgeText = new Color(0.48f, 0.56f, 0.70f);
+        public static readonly Color RowFieldBg = new Color(0.070f, 0.070f, 0.075f);
 
         public const float HeaderHeight = 28f;
         public const float SplitterWidth = 5f;
@@ -40,9 +45,12 @@ namespace CleanStateMachine
         private static GUIStyle _valueStyle;
         private static GUIStyle _emptyStyle;
         private static GUIStyle _variableLabelStyle;
+        private static GUIStyle _typeBadgeStyle;
+        private static GUIStyle _rowFieldStyle;
 
         private static Texture2D _panelBgTex;
         private static Texture2D _fieldBgTex;
+        private static Texture2D _rowFieldTex;
 
         private static void EnsureTextures()
         {
@@ -55,6 +63,11 @@ namespace CleanStateMachine
             {
                 _fieldBgTex = MakeTex(1, 1, FieldBg);
                 _fieldBgTex.hideFlags = HideFlags.HideAndDontSave;
+            }
+            if (_rowFieldTex == null)
+            {
+                _rowFieldTex = MakeTex(1, 1, RowFieldBg);
+                _rowFieldTex.hideFlags = HideFlags.HideAndDontSave;
             }
         }
 
@@ -190,6 +203,47 @@ namespace CleanStateMachine
             }
         }
 
+        public static GUIStyle TypeBadgeStyle
+        {
+            get
+            {
+                if (_typeBadgeStyle == null)
+                {
+                    _typeBadgeStyle = new GUIStyle
+                    {
+                        alignment = TextAnchor.MiddleCenter,
+                        fontSize = 9,
+                        fontStyle = FontStyle.Bold,
+                        normal = { textColor = TypeBadgeText },
+                        padding = new RectOffset(4, 4, 0, 0)
+                    };
+                }
+                return _typeBadgeStyle;
+            }
+        }
+
+        public static GUIStyle RowFieldStyle
+        {
+            get
+            {
+                if (_rowFieldStyle == null)
+                {
+                    EnsureTextures();
+                    _rowFieldStyle = new GUIStyle
+                    {
+                        fontSize = 10,
+                        alignment = TextAnchor.MiddleLeft,
+                        normal = { textColor = TextColor, background = _rowFieldTex },
+                        focused = { textColor = TextColor, background = _rowFieldTex },
+                        padding = new RectOffset(4, 2, 0, 0),
+                        border = new RectOffset(1, 1, 1, 1),
+                        clipping = TextClipping.Clip
+                    };
+                }
+                return _rowFieldStyle;
+            }
+        }
+
         public static GUIStyle EmptyStyle
         {
             get
@@ -212,11 +266,6 @@ namespace CleanStateMachine
         {
             EditorGUI.DrawRect(rect, PanelBg);
             EditorGUI.DrawRect(new Rect(rect.x, rect.y, 1f, rect.height), PanelBorder);
-        }
-
-        public static void DrawSplitter(Rect rect, bool hover)
-        {
-            EditorGUI.DrawRect(rect, hover ? SplitterHover : SplitterBg);
         }
 
         private static Texture2D MakeTex(int w, int h, Color c)

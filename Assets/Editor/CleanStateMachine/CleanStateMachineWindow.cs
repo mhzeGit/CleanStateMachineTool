@@ -245,8 +245,8 @@ namespace CleanStateMachine
             if (_selectionController.Count > 0)
                 _detailsView.Draw(rightRect, _selectionController.Selected, _states, _connections, _blackboardVariables);
 
-            HandleSplitter(leftSplitterRect, _showBlackboard, ref _isDraggingLeftSplitter, isLeft: true);
-            HandleSplitter(rightSplitterRect, _selectionController.Count > 0, ref _isDraggingRightSplitter, isLeft: false);
+            HandleSplitter(leftSplitterRect, contentRect, _showBlackboard, ref _isDraggingLeftSplitter, isLeft: true);
+            HandleSplitter(rightSplitterRect, contentRect, _selectionController.Count > 0, ref _isDraggingRightSplitter, isLeft: false);
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
                 Repaint();
@@ -347,30 +347,52 @@ namespace CleanStateMachine
             }
         }
 
-        private void HandleSplitter(Rect rect, bool visible, ref bool isDragging, bool isLeft)
+        private void HandleSplitter(Rect splitterRect, Rect contentRect, bool visible, ref bool isDragging, bool isLeft)
         {
-            if (!visible || rect.width <= 0f)
+            if (!visible || splitterRect.width <= 0f)
                 return;
 
-            bool hover = rect.Contains(Event.current.mousePosition);
-            UITheme.DrawSplitter(rect, hover || isDragging);
-            EditorGUIUtility.AddCursorRect(rect, MouseCursor.ResizeHorizontal);
+            float hotZoneHalf = 5f;
+            float centerX = splitterRect.x + splitterRect.width * 0.5f;
+            Rect hotRect = new Rect(centerX - hotZoneHalf, splitterRect.y, hotZoneHalf * 2f, splitterRect.height);
+
+            bool hover = hotRect.Contains(Event.current.mousePosition);
+            Color splitterColor = isDragging ? UITheme.SplitterActive : (hover ? UITheme.SplitterHover : UITheme.SplitterBg);
+            EditorGUI.DrawRect(splitterRect, splitterColor);
+            EditorGUIUtility.AddCursorRect(hotRect, MouseCursor.ResizeHorizontal);
 
             var e = Event.current;
             switch (e.type)
             {
-                case EventType.MouseDown when e.button == 0 && rect.Contains(e.mousePosition):
+                case EventType.MouseDown when e.button == 0 && hotRect.Contains(e.mousePosition):
                     isDragging = true;
                     e.Use();
                     break;
                 case EventType.MouseDrag when isDragging:
                 {
+                    float minW = UITheme.MinPanelWidth;
+                    float maxW = UITheme.MaxPanelWidth;
+                    float minGraph = 200f;
+                    float splitter = UITheme.SplitterWidth;
+
                     if (isLeft)
-                        _blackboardWidth = Mathf.Clamp(e.mousePosition.x, UITheme.MinPanelWidth, UITheme.MaxPanelWidth);
+                    {
+                        float rightW = _selectionController.Count > 0 ? _detailsWidth : 0f;
+                        float taken = rightW + (_selectionController.Count > 0 ? splitter : 0f) + minGraph + splitter;
+                        float available = contentRect.width - taken;
+                        float actualMax = Mathf.Min(maxW, available);
+                        _blackboardWidth = Mathf.Clamp(e.mousePosition.x, minW, actualMax);
+                    }
                     else
+                    {
+                        float leftW = _showBlackboard ? _blackboardWidth : UITheme.CollapsedWidth;
+                        float taken = leftW + (_showBlackboard ? splitter : 0f) + minGraph + splitter;
+                        float available = contentRect.width - taken;
+                        float actualMax = Mathf.Min(maxW, available);
                         _detailsWidth = Mathf.Clamp(
-                            position.width - e.mousePosition.x - UITheme.SplitterWidth,
-                            UITheme.MinPanelWidth, UITheme.MaxPanelWidth);
+                            contentRect.width - e.mousePosition.x - splitter,
+                            minW, actualMax);
+                    }
                     e.Use();
                     Repaint();
                     break;

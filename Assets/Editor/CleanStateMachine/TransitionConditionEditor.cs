@@ -279,13 +279,12 @@ namespace CleanStateMachine
             switch (type)
             {
                 case BlackboardVariableType.Bool:
-                    return new List<ConditionComparison> { ConditionComparison.IsTrue, ConditionComparison.IsFalse };
                 case BlackboardVariableType.Int:
                 case BlackboardVariableType.Float:
                     return new List<ConditionComparison>
                     {
-                        ConditionComparison.GreaterThan, ConditionComparison.LessThan,
                         ConditionComparison.EqualTo, ConditionComparison.NotEqualTo,
+                        ConditionComparison.GreaterThan, ConditionComparison.LessThan,
                         ConditionComparison.GreaterOrEqual, ConditionComparison.LessOrEqual
                     };
                 case BlackboardVariableType.String:
@@ -305,7 +304,7 @@ namespace CleanStateMachine
             switch (type)
             {
                 case BlackboardVariableType.Bool:
-                    return ConditionComparison.IsTrue;
+                    return ConditionComparison.EqualTo;
                 case BlackboardVariableType.Int:
                 case BlackboardVariableType.Float:
                     return ConditionComparison.GreaterThan;
@@ -318,8 +317,6 @@ namespace CleanStateMachine
         {
             switch (comparison)
             {
-                case ConditionComparison.IsTrue: return "is True";
-                case ConditionComparison.IsFalse: return "is False";
                 case ConditionComparison.GreaterThan: return "greater than";
                 case ConditionComparison.LessThan: return "less than";
                 case ConditionComparison.EqualTo: return "equal to";
@@ -352,10 +349,8 @@ namespace CleanStateMachine
             string comp = FormatComparison(condition.Comparison);
 
             string value = condition.CompareValue;
-            bool showsValue = condition.Comparison != ConditionComparison.IsTrue
-                           && condition.Comparison != ConditionComparison.IsFalse;
 
-            if (showsValue && !string.IsNullOrEmpty(value))
+            if (!string.IsNullOrEmpty(value))
                 return $"  {varName} {comp} {value}";
             else
                 return $"  {varName} {comp}";

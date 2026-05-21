@@ -99,6 +99,9 @@ namespace CleanStateMachine
                 }
             }
 
+            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
+                GUIUtility.keyboardControl = 0;
+
             float totalHeight = variables.Count * UITheme.RowHeight;
             Rect viewRect = new Rect(0f, 0f, rect.width - 14f, totalHeight);
 
@@ -107,9 +110,14 @@ namespace CleanStateMachine
             for (int i = 0; i < variables.Count; i++)
             {
                 Rect rowRect = new Rect(0f, i * UITheme.RowHeight, viewRect.width, UITheme.RowHeight);
-                Color rowBg = i % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd;
-                EditorGUI.DrawRect(rowRect, rowBg);
                 DrawVariableRow(rowRect, variables[i]);
+            }
+
+            if (e.type == EventType.KeyDown &&
+                (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter))
+            {
+                GUIUtility.keyboardControl = 0;
+                e.Use();
             }
 
             GUI.EndScrollView();
@@ -117,21 +125,54 @@ namespace CleanStateMachine
 
         private void DrawVariableRow(Rect rect, BlackboardVariable variable)
         {
-            float nameWidth = rect.width * 0.35f;
-            float valueWidth = rect.width - nameWidth - 2f;
+            EditorGUI.DrawRect(rect, UITheme.RowEven);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, 1f), UITheme.RowBorder);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), UITheme.RowBorder);
 
-            Rect nameRect = new Rect(rect.x, rect.y, nameWidth, rect.height);
-            Rect valueRect = new Rect(rect.x + nameWidth + 2f, rect.y, valueWidth, rect.height);
+            float x = rect.x + 4f;
+            float fieldHeight = rect.height - 4f;
+            float fieldY = rect.y + 2f;
 
+            string typeLabel = GetTypeShortName(variable.Type);
+            float badgeWidth = 8f + UITheme.TypeBadgeStyle.CalcSize(new GUIContent(typeLabel)).x;
+            Rect badgeRect = new Rect(x, fieldY, badgeWidth, fieldHeight);
+            EditorGUI.DrawRect(badgeRect, UITheme.TypeBadgeBg);
+            GUI.Label(badgeRect, typeLabel, UITheme.TypeBadgeStyle);
+            x += badgeWidth + 4f;
+
+            float fieldAreaWidth = rect.xMax - 4f - x;
+            Rect fieldBgRect = new Rect(x, fieldY, fieldAreaWidth, fieldHeight);
+            EditorGUI.DrawRect(fieldBgRect, UITheme.RowFieldBg);
+
+            float gap = 2f;
+            float nameWidth = (fieldAreaWidth - gap) * 0.35f;
+            float valueWidth = fieldAreaWidth - gap - nameWidth;
+
+            Rect nameRect = new Rect(x, fieldY, nameWidth, fieldHeight);
             EditorGUI.BeginChangeCheck();
-            string newName = EditorGUI.TextField(nameRect, variable.Name);
+            string newName = GUI.TextField(nameRect, variable.Name, UITheme.RowFieldStyle);
             if (EditorGUI.EndChangeCheck())
             {
                 variable.Name = newName;
                 VariablesChanged?.Invoke();
             }
 
+            Rect valueRect = new Rect(x + nameWidth + gap, fieldY, valueWidth, fieldHeight);
             DrawValueField(valueRect, variable);
+        }
+
+        private static string GetTypeShortName(BlackboardVariableType type)
+        {
+            return type switch
+            {
+                BlackboardVariableType.Bool => "bool",
+                BlackboardVariableType.Int => "int",
+                BlackboardVariableType.Float => "float",
+                BlackboardVariableType.String => "string",
+                BlackboardVariableType.Vector2 => "Vector2",
+                BlackboardVariableType.Vector3 => "Vector3",
+                _ => type.ToString()
+            };
         }
 
         private static void ResetValueForType(BlackboardVariable v)
@@ -148,14 +189,21 @@ namespace CleanStateMachine
             };
         }
 
-        private static void DrawValueField(Rect rect, BlackboardVariable variable)
+        private void DrawValueField(Rect rect, BlackboardVariable variable)
         {
             switch (variable.Type)
             {
                 case BlackboardVariableType.Bool:
                 {
                     bool val = variable.BoolValue;
-                    bool result = EditorGUI.Toggle(rect, val);
+                    float toggleWidth = 15f;
+                    Rect toggleRect = new Rect(
+                        rect.x + (rect.width - toggleWidth) * 0.5f,
+                        rect.y,
+                        toggleWidth,
+                        rect.height
+                    );
+                    bool result = EditorGUI.Toggle(toggleRect, val);
                     if (result != val)
                     {
                         variable.BoolValue = result;
@@ -187,7 +235,7 @@ namespace CleanStateMachine
                 }
                 case BlackboardVariableType.String:
                 {
-                    string result = EditorGUI.TextField(rect, variable.StringValue);
+                    string result = GUI.TextField(rect, variable.StringValue, UITheme.RowFieldStyle);
                     if (result != variable.StringValue)
                     {
                         variable.StringValue = result;

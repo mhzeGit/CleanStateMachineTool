@@ -18,25 +18,66 @@ MonoBehaviour:
       Position: {x: 50, y: 200}
       Size: {x: 160, y: 40}
       IsEntry: 1
+      StateClass:
+        Sections:
+        - SectionName: OnStateEnter
+          Events: []
+        - SectionName: OnStateUpdate
+          Events: []
+        - SectionName: OnStateExit
+          Events: []
     - Name: GIGAGAG
       Position: {x: 391.7456, y: 184.60912}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      StateClass:
+        Sections:
+        - SectionName: OnStateEnter
+          Events: []
+        - SectionName: OnStateUpdate
+          Events: []
+        - SectionName: OnStateExit
+          Events: []
     - Name: GIGAGAG
       Position: {x: 434.90002, y: 317.97122}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      StateClass:
+        Sections:
+        - SectionName: OnStateEnter
+          Events: []
+        - SectionName: OnStateUpdate
+          Events: []
+        - SectionName: OnStateExit
+          Events: []
     - Name: GIGAGAG
       Position: {x: 605.6897, y: 225.02448}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      StateClass:
+        Sections:
+        - SectionName: OnStateEnter
+          Events: []
+        - SectionName: OnStateUpdate
+          Events: []
+        - SectionName: OnStateExit
+          Events: []
     - Name: GIGAGAG
       Position: {x: 583.6148, y: 44.94017}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      StateClass:
+        Sections:
+        - SectionName: OnStateEnter
+          Events: []
+        - SectionName: OnStateUpdate
+          Events: []
+        - SectionName: OnStateExit
+          Events: []
     Connections:
     - FromIndex: 0
       ToIndex: 1
+      Conditions: []
     Groups: []
     BlackboardVariables: []
     PanOffset: {x: 206.8214, y: 70.10547}
