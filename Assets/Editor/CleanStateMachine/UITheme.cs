@@ -20,6 +20,9 @@ namespace CleanStateMachine
         public static readonly Color RowOdd = Gray(0.12f);
         public static readonly Color RowSelected = Gray(0.22f);
         public static readonly Color RowBorder = Gray(0.08f);
+        public static readonly Color RowBoundary = Gray(0.25f);
+        public static readonly Color RowBg = Gray(0.17f);
+        public static readonly Color RowBgSelected = Gray(0.27f);
 
         // Text
         public static readonly Color TextColor = Gray(0.95f);
@@ -77,6 +80,7 @@ namespace CleanStateMachine
         private static GUIStyle _rowFieldStyle;
         private static GUIStyle _infoBoxStyle;
         private static GUIStyle _deleteButtonStyle;
+        private static GUIStyle _rowNameFieldStyle;
         private static GUIStyle _toolbarButtonStyle;
         private static GUIStyle _foldoutHeaderStyle;
         private static GUIStyle _largeTitleStyle;
@@ -311,6 +315,30 @@ namespace CleanStateMachine
                     };
                 }
                 return _rowFieldStyle;
+            }
+        }
+
+        public static GUIStyle RowNameFieldStyle
+        {
+            get
+            {
+                if (_rowNameFieldStyle == null)
+                {
+                    EnsureTextures();
+                    _rowNameFieldStyle = new GUIStyle
+                    {
+                        fontSize = 12,
+                        alignment = TextAnchor.MiddleLeft,
+                        normal = { textColor = TextColor, background = null },
+                        focused = { textColor = TextColor, background = _fieldFocusedTex },
+                        active = { textColor = TextColor, background = _fieldFocusedTex },
+                        hover = { textColor = TextColor },
+                        padding = new RectOffset(8, 4, 0, 0),
+                        border = new RectOffset(1, 1, 1, 1),
+                        clipping = TextClipping.Clip
+                    };
+                }
+                return _rowNameFieldStyle;
             }
         }
 

@@ -141,8 +141,8 @@ MonoBehaviour:
     - Name: WrongState
       Type: 3
       StringValue: ITS ON A WRONG STATE!!!
-    PanOffset: {x: 300.66183, y: 252.11508}
-    Zoom: 0.74082035
+    PanOffset: {x: 400.0402, y: 120.36784}
+    Zoom: 1.1618376
     ShowBlackboard: 1
     BlackboardWidth: 368
     DetailsWidth: 286

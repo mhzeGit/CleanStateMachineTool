@@ -8,6 +8,11 @@ namespace CleanStateMachine
     public class BlackboardView
     {
         private Vector2 _scrollPos;
+        private int _selectedIndex = -1;
+        private int _editingIndex = -1;
+        private bool _focusNameField;
+        private bool _isDragging;
+        private int _dragIndex = -1;
 
         public event System.Action VariablesChanged;
 
@@ -15,8 +20,6 @@ namespace CleanStateMachine
         {
             if (variables == null)
                 return;
-
-            var e = Event.current;
 
             UITheme.DrawPanelBackground(rect);
 
@@ -30,9 +33,6 @@ namespace CleanStateMachine
                 rect.height - UITheme.HeaderHeight
             );
             DrawVariableList(listRect, variables);
-
-            if (listRect.Contains(e.mousePosition))
-                EditorGUIUtility.AddCursorRect(listRect, MouseCursor.Text);
         }
 
         private void DrawHeader(Rect rect, List<BlackboardVariable> variables)
@@ -87,8 +87,12 @@ namespace CleanStateMachine
         {
             var e = Event.current;
 
-            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
+            if (e.type == EventType.MouseDown && e.button == 0 && rect.Contains(e.mousePosition))
+            {
+                _selectedIndex = -1;
+                _editingIndex = -1;
                 DefocusTextField();
+            }
 
             float totalHeight = variables.Count * UITheme.RowHeight;
             Rect viewRect = new Rect(0f, 0f, rect.width - 14f, totalHeight);
@@ -100,21 +104,49 @@ namespace CleanStateMachine
             for (int i = 0; i < variables.Count; i++)
             {
                 Rect rowRect = new Rect(0f, i * UITheme.RowHeight, viewRect.width, UITheme.RowHeight);
-                if (DrawVariableRow(rowRect, variables[i], i))
-                {
-                    deleteIndex = i;
-                }
+                DrawVariableRow(rowRect, variables[i], i, (idx) => deleteIndex = idx);
             }
 
             if (deleteIndex >= 0)
             {
                 variables.RemoveAt(deleteIndex);
                 VariablesChanged?.Invoke();
+                DefocusTextField();
+            }
+
+            if (_isDragging)
+            {
+                if (e.type == EventType.MouseDrag)
+                {
+                    int targetIndex = Mathf.Clamp(
+                        Mathf.FloorToInt(e.mousePosition.y / UITheme.RowHeight),
+                        0, variables.Count - 1
+                    );
+
+                    if (targetIndex != _dragIndex)
+                    {
+                        var item = variables[_dragIndex];
+                        variables.RemoveAt(_dragIndex);
+                        variables.Insert(targetIndex, item);
+                        _dragIndex = targetIndex;
+                        VariablesChanged?.Invoke();
+                    }
+                    e.Use();
+                }
+
+                if (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp)
+                {
+                    _isDragging = false;
+                    e.Use();
+                }
             }
 
             if (e.type == EventType.KeyDown &&
                 (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter))
+            {
+                _editingIndex = -1;
                 DefocusTextField();
+            }
 
             GUI.EndScrollView();
         }
@@ -127,48 +159,115 @@ namespace CleanStateMachine
             GUI.FocusControl("");
         }
 
-        // Returns true if delete was clicked
-        private bool DrawVariableRow(Rect rect, BlackboardVariable variable, int index)
+        private void DrawVariableRow(Rect rect, BlackboardVariable variable, int index, Action<int> onDeleteRequested)
         {
+            var e = Event.current;
+
+            if (e.type == EventType.MouseDown && e.button == 1 && rect.Contains(e.mousePosition))
+            {
+                int captured = index;
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Delete Variable"), false, () => onDeleteRequested?.Invoke(captured));
+                menu.ShowAsContext();
+                e.Use();
+            }
+
             Color rowBg = index % 2 == 0 ? UITheme.RowEven : UITheme.RowOdd;
             EditorGUI.DrawRect(rect, rowBg);
 
             float pad = 8f;
-            float innerW = rect.width - pad * 2f;
             float fieldH = rect.height - 8f;
             float fieldY = rect.y + 4f;
-
-            float typeW = 54f;
-            float delW = 16f;
             float gap = 4f;
+            float innerW = rect.width - pad * 2f;
+            float handleW = 20f;
+            float valueW = innerW * 0.45f;
+            float nameW = innerW - handleW - gap - valueW;
 
-            Rect typeRect = new Rect(rect.x + pad, fieldY, typeW, fieldH);
-            EditorGUI.DrawRect(typeRect, UITheme.TypeBadgeBg);
-            GUI.Label(typeRect, variable.Type.ToString().ToUpper(), UITheme.TypeBadgeStyle);
+            Rect handleRect = new Rect(rect.x + pad, fieldY, handleW, fieldH);
+            DrawDragHandle(handleRect);
 
-            float remainingW = innerW - typeW - delW - gap * 2f;
-            float nameW = remainingW * 0.45f;
-            float valueW = remainingW * 0.55f;
-
-            Rect nameRect = new Rect(typeRect.xMax + gap, fieldY, nameW, fieldH);
-            EditorGUI.BeginChangeCheck();
-            string newName = EditorGUI.TextField(nameRect, variable.Name, UITheme.RowFieldStyle);
-            if (EditorGUI.EndChangeCheck())
+            if (e.type == EventType.MouseDown && e.button == 0 && handleRect.Contains(e.mousePosition))
             {
-                variable.Name = newName;
-                VariablesChanged?.Invoke();
+                _isDragging = true;
+                _dragIndex = index;
+                e.Use();
             }
 
-            Rect valueRect = new Rect(nameRect.xMax + gap, fieldY, valueW, fieldH);
+            if (e.type == EventType.Repaint && handleRect.Contains(e.mousePosition))
+                EditorGUIUtility.AddCursorRect(handleRect, MouseCursor.MoveArrow);
+
+            Rect nameRect = new Rect(handleRect.xMax + gap, fieldY, nameW, fieldH);
+
+            if (_editingIndex == index)
+            {
+                string nameCtrl = $"bb_name_{index}";
+                GUI.SetNextControlName(nameCtrl);
+                EditorGUI.BeginChangeCheck();
+                string newName = EditorGUI.TextField(nameRect, variable.Name, UITheme.RowNameFieldStyle);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    variable.Name = newName;
+                    VariablesChanged?.Invoke();
+                }
+
+                if (_focusNameField)
+                {
+                    EditorGUI.FocusTextInControl(nameCtrl);
+                    _focusNameField = false;
+                }
+
+                if (e.isKey && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.keyCode == KeyCode.Escape))
+                {
+                    _editingIndex = -1;
+                    DefocusTextField();
+                    e.Use();
+                }
+            }
+            else
+            {
+                GUI.Label(nameRect, variable.Name, UITheme.VariableLabelStyle);
+
+                if (e.type == EventType.MouseDown && e.button == 0 && e.clickCount == 2 && nameRect.Contains(e.mousePosition))
+                {
+                    _editingIndex = index;
+                    _focusNameField = true;
+                    e.Use();
+                }
+            }
+
+            Rect valueRect = new Rect(rect.xMax - pad - valueW, fieldY, valueW, fieldH);
             DrawValueField(valueRect, variable);
 
-            Rect delRect = new Rect(valueRect.xMax + gap, fieldY, delW, fieldH);
-            if (GUI.Button(delRect, "✕", UITheme.DeleteButtonStyle))
-            {
-                return true;
-            }
+            EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), UITheme.RowBoundary);
+        }
 
-            return false;
+        private void DrawDragHandle(Rect rect)
+        {
+            int cols = 2;
+            int rows = 3;
+            float dotSize = 2f;
+            float spacingX = 4f;
+            float spacingY = 3f;
+
+            float totalW = cols * dotSize + (cols - 1) * spacingX;
+            float totalH = rows * dotSize + (rows - 1) * spacingY;
+            float startX = rect.x + (rect.width - totalW) * 0.5f;
+            float startY = rect.y + (rect.height - totalH) * 0.5f;
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int col = 0; col < cols; col++)
+                {
+                    Rect dotRect = new Rect(
+                        startX + col * (dotSize + spacingX),
+                        startY + row * (dotSize + spacingY),
+                        dotSize,
+                        dotSize
+                    );
+                    EditorGUI.DrawRect(dotRect, UITheme.TextMuted);
+                }
+            }
         }
 
         private static void ResetValueForType(BlackboardVariable v)
