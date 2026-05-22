@@ -13,6 +13,8 @@ namespace CleanStateMachine
         private readonly ScrollView _scrollView;
         private readonly List<VisualElement> _rows = new();
         private int _editingIndex = -1;
+        private int _selectedIndex = -1;
+        private bool _isMouseOver;
         private int _dragStartIndex = -1;
         private int _dragIndex = -1;
         private bool _isDragging;
@@ -22,7 +24,6 @@ namespace CleanStateMachine
         private const float AutoScrollEdgeThreshold = 20f;
         private const float AutoScrollSpeed = 30f;
         private const float RowHeight = 30f;
-        private IVisualElementScheduledItem _pendingSmoothMove;
 
         public BlackboardPanel(CleanStateMachineWindow window)
         {
@@ -45,6 +46,11 @@ namespace CleanStateMachine
             _scrollView = new ScrollView();
             _scrollView.AddToClassList("blackboard-scroll");
             Add(_scrollView);
+
+            focusable = true;
+            RegisterCallback<MouseEnterEvent>(e => _isMouseOver = true);
+            RegisterCallback<MouseLeaveEvent>(e => _isMouseOver = false);
+            RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
         }
 
         public void UpdateVariables(List<BlackboardVariable> variables)
@@ -260,6 +266,8 @@ namespace CleanStateMachine
                 {
                     ClearRowSelection();
                     row.AddToClassList("variable-row-selected");
+                    _selectedIndex = index;
+                    Focus();
                 }
             });
 
@@ -309,6 +317,8 @@ namespace CleanStateMachine
             if (_variables == null || _variables.Count <= 1) return;
             var handle = evt.currentTarget as VisualElement;
             int index = (int)handle.parent.userData;
+            ClearRowSelection();
+            _selectedIndex = -1;
             _isDragging = true;
             _dragPastThreshold = false;
             _dragStartIndex = index;
@@ -345,14 +355,6 @@ namespace CleanStateMachine
 
             if (targetIndex == _dragIndex) return;
 
-            _pendingSmoothMove?.Pause();
-
-            // FLIP: record old world positions before layout change
-            var oldPositions = new Dictionary<VisualElement, Vector2>(_rows.Count);
-            for (int i = 0; i < _rows.Count; i++)
-                oldPositions[_rows[i]] = _rows[i].LocalToWorld(Vector2.zero);
-
-            // Perform the remove/insert (layout snaps)
             var row = _rows[_dragIndex];
             _scrollView.Remove(row);
 
@@ -364,32 +366,6 @@ namespace CleanStateMachine
             _rows.RemoveAt(_dragIndex);
             _rows.Insert(targetIndex, row);
 
-            // INVERT: apply inverse translate so rows stay visually where they were
-            for (int i = 0; i < _rows.Count; i++)
-            {
-                Vector2 newWorldPos = _rows[i].LocalToWorld(Vector2.zero);
-                if (oldPositions.TryGetValue(_rows[i], out Vector2 oldWorldPos))
-                {
-                    float deltaY = oldWorldPos.y - newWorldPos.y;
-                    if (Mathf.Abs(deltaY) > 0.5f)
-                    {
-                        _rows[i].AddToClassList("variable-row-no-animate");
-                        _rows[i].style.translate = new Translate(0, deltaY);
-                    }
-                }
-            }
-
-            // PLAY: on next frame, remove no-animate class and clear translate to animate back
-            _pendingSmoothMove = schedule.Execute(() =>
-            {
-                for (int i = 0; i < _rows.Count; i++)
-                {
-                    _rows[i].RemoveFromClassList("variable-row-no-animate");
-                    _rows[i].style.translate = new Translate(0, 0);
-                }
-                _pendingSmoothMove = null;
-            }).StartingIn(16);
-
             _dragIndex = targetIndex;
             evt.StopPropagation();
         }
@@ -398,17 +374,8 @@ namespace CleanStateMachine
         {
             _isDragging = false;
             _dragPastThreshold = false;
-            _pendingSmoothMove?.Pause();
-            _pendingSmoothMove = null;
             this.UnregisterCallback<MouseMoveEvent>(OnDragMove);
             this.UnregisterCallback<MouseUpEvent>(OnDragUp);
-
-            // Reset all translates immediately (no animation on drop)
-            for (int i = 0; i < _rows.Count; i++)
-            {
-                _rows[i].RemoveFromClassList("variable-row-no-animate");
-                _rows[i].style.translate = new Translate(0, 0);
-            }
 
             if (_dragIndex >= 0 && _dragIndex < _rows.Count)
                 _rows[_dragIndex].RemoveFromClassList("variable-row-drag");
@@ -428,6 +395,25 @@ namespace CleanStateMachine
             _dragStartIndex = -1;
             _dragIndex = -1;
             evt.StopPropagation();
+        }
+
+        private void OnKeyDown(KeyDownEvent e)
+        {
+            if (e.keyCode != KeyCode.Delete && e.keyCode != KeyCode.Backspace) return;
+            if (!_isMouseOver) return;
+            if (_editingIndex >= 0) return;
+
+            var focused = focusController?.focusedElement as VisualElement;
+            if (focused != null && focused != this && this.Contains(focused))
+                return;
+
+            if (_selectedIndex < 0 || _selectedIndex >= (_variables?.Count ?? 0)) return;
+
+            var cmd = new DeleteBlackboardVariableCommand(_variables, _selectedIndex);
+            _window.UndoRedoSystem.Execute(cmd);
+            _selectedIndex = -1;
+            Rebuild();
+            e.StopPropagation();
         }
 
         private void AddAxisField(VisualElement parent, string axisName, float initialValue, Action<float> onChanged)
