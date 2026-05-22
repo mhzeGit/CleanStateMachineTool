@@ -17,6 +17,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: 2
+--- !u!114 &-7818873207643368340
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: WrongState_Behaviour
+  m_EditorClassIdentifier: Assembly-CSharp::DebugLog_StateBehaviour
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: Hello World
 --- !u!114 &-7696514207278436980
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -61,23 +78,6 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
---- !u!114 &-2306008434130728459
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
-  m_Name: WrongState_Behaviour
-  m_EditorClassIdentifier: Assembly-CSharp::DebugLog_StateBehaviour
-  message:
-    UseBlackboard: 1
-    BlackboardVariableName: WrongState
-    ValueType: 3
-    DefaultValue: Hello World
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99,53 +99,65 @@ MonoBehaviour:
       BehaviourType: 
       Behaviour: {fileID: 0}
     - Name: Correct State 2
-      Position: {x: 370.9039, y: 174.85403}
+      Position: {x: 392.61832, y: 179.28993}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -9205999975491014197}
-    - Name: WrongState
-      Position: {x: 488.22833, y: -27.462921}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: -2306008434130728459}
     - Name: Correct State 1
-      Position: {x: 233.15326, y: 15.343563}
+      Position: {x: 209.56708, y: 9.275673}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: 6409677120155523139}
+    - Name: WrongState
+      Position: {x: 463.8763, y: -33.50933}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -7818873207643368340}
     Connections:
-    - FromIndex: 1
+    - FromIndex: 0
       ToIndex: 2
       ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: -7696514207278436980}
+      Condition: {fileID: -6324071765435123549}
     - FromIndex: 3
+      ToIndex: 2
+      ConditionType: SimpleBool_ConditionBehaviours
+      Condition: {fileID: 6912135157052429415}
+    - FromIndex: 2
       ToIndex: 1
       ConditionType: SimpleBool_ConditionBehaviours
       Condition: {fileID: 8216924739884770493}
-    - FromIndex: 0
+    - FromIndex: 1
       ToIndex: 3
       ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: -6324071765435123549}
-    - FromIndex: 2
-      ToIndex: 3
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: 6912135157052429415}
+      Condition: {fileID: -7696514207278436980}
     Groups: []
     BlackboardVariables:
-    - Name: WrongState
-      Type: 3
-      StringValue: ITS ON A WRONG STATE!!!
-    - Name: State1or2
+    - Name: New Variable 4
       Type: 0
       StringValue: False
-    PanOffset: {x: 46.94644, y: 352.84717}
-    Zoom: 0.7408212
+    - Name: WrongState
+      Type: 3
+      StringValue: ITS ON A WROvNG STATE!!!
+    - Name: New Variable
+      Type: 1
+      StringValue: 0
+    - Name: New Variable 1
+      Type: 2
+      StringValue: 0
+    - Name: New Variable 2
+      Type: 4
+      StringValue: 0,0
+    - Name: New Variable 3
+      Type: 5
+      StringValue: 0,0,0
+    PanOffset: {x: -193.22522, y: 497.8269}
+    Zoom: 1.1618388
     ShowSidePanel: 1
-    SidePanelWidth: 308
-    DetailsHeightRatio: 0.35422885
+    SidePanelWidth: 365
+    DetailsHeightRatio: 0.6218656
 --- !u!114 &6409677120155523139
 MonoBehaviour:
   m_ObjectHideFlags: 1

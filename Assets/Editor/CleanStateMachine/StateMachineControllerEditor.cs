@@ -1,28 +1,38 @@
 using UnityEditor;
-using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace CleanStateMachine
 {
     [CustomEditor(typeof(StateMachineController))]
     public class StateMachineControllerEditor : Editor
     {
-        public override void OnInspectorGUI()
+        public override VisualElement CreateInspectorGUI()
         {
-            var controller = (StateMachineController)target;
+            var root = new VisualElement();
+            root.AddToClassList("controller-inspector");
 
-            EditorGUILayout.Space(4);
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                "Assets/Editor/CleanStateMachine/Styles/ControllerInspector.uss");
+            if (styleSheet != null)
+                root.styleSheets.Add(styleSheet);
 
-            if (GUILayout.Button("Open in Graph Editor", GUILayout.Height(30)))
+            var openBtn = new Button(() =>
             {
+                var controller = (StateMachineController)target;
                 CleanStateMachineWindow.OpenWithController(controller);
-            }
+            });
+            openBtn.text = "Open in Graph Editor";
+            openBtn.AddToClassList("controller-open-button");
+            root.Add(openBtn);
 
-            EditorGUILayout.Space(4);
-            EditorGUILayout.HelpBox(
+            var helpText = new Label(
                 "Assign StateBehaviour scripts to states and ConditionScript scripts to transitions " +
                 "in the Graph Editor. Their public fields can be edited on the " +
-                "StateMachineComponent inspector attached to any GameObject using this controller.",
-                MessageType.Info);
+                "StateMachineComponent inspector attached to any GameObject using this controller.");
+            helpText.AddToClassList("controller-help-text");
+            root.Add(helpText);
+
+            return root;
         }
     }
 }
