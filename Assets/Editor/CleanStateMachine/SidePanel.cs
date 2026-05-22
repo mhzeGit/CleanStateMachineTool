@@ -14,11 +14,14 @@ namespace CleanStateMachine
         private readonly VisualElement _expandedView;
         private readonly VisualElement _internalSplitter;
         private readonly VisualElement _expandedContent;
+        private readonly VisualElement _panelEdgeSplitter;
 
         private bool _isDraggingInternalSplitter;
         private bool _isDraggingPanelSplitter;
         private float _dragStartMouseX;
         private float _dragStartWidth;
+        private float _dragStartMouseY;
+        private float _dragStartDetailsHeight;
         private float _detailsHeightRatio = 0.5f;
 
         public DetailsPanel DetailsPanel => _detailsPanel;
@@ -88,14 +91,14 @@ namespace CleanStateMachine
             _expandedView.Add(_expandedContent);
             Add(_expandedView);
 
-            var edgeSplitter = new VisualElement();
-            edgeSplitter.AddToClassList("panel-edge-splitter");
-            Add(edgeSplitter);
+            _panelEdgeSplitter = new VisualElement();
+            _panelEdgeSplitter.AddToClassList("panel-edge-splitter");
+            Add(_panelEdgeSplitter);
 
             RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
-            RegisterCallback<MouseDownEvent>(OnPanelSplitterDown);
-            RegisterCallback<MouseMoveEvent>(OnPanelSplitterMove);
-            RegisterCallback<MouseUpEvent>(OnPanelSplitterUp);
+            _panelEdgeSplitter.RegisterCallback<MouseDownEvent>(OnPanelSplitterDown);
+            _panelEdgeSplitter.RegisterCallback<MouseMoveEvent>(OnPanelSplitterMove);
+            _panelEdgeSplitter.RegisterCallback<MouseUpEvent>(OnPanelSplitterUp);
 
             UpdateVisibility();
         }
@@ -183,6 +186,8 @@ namespace CleanStateMachine
             if (evt.button == 0)
             {
                 _isDraggingInternalSplitter = true;
+                _dragStartMouseY = evt.mousePosition.y;
+                _dragStartDetailsHeight = _detailsPanel.resolvedStyle.height;
                 _internalSplitter.AddToClassList("internal-splitter-active");
                 _internalSplitter.CaptureMouse();
                 evt.StopPropagation();
@@ -193,7 +198,7 @@ namespace CleanStateMachine
         {
             if (!_isDraggingInternalSplitter) return;
 
-            float mouseY = evt.mousePosition.y;
+            float delta = evt.mousePosition.y - _dragStartMouseY;
             float parentHeight = _expandedContent.resolvedStyle.height;
             if (parentHeight < 1f) return;
 
@@ -201,7 +206,7 @@ namespace CleanStateMachine
             if (splitterH < 1f) splitterH = 8f;
             float available = parentHeight - splitterH;
 
-            float detailsH = Mathf.Clamp(mouseY - splitterH * 0.5f, 60f, available - 60f);
+            float detailsH = Mathf.Clamp(_dragStartDetailsHeight + delta, 60f, available - 60f);
             _detailsHeightRatio = detailsH / available;
 
             _detailsPanel.style.height = detailsH;
@@ -224,12 +229,12 @@ namespace CleanStateMachine
 
         private void OnPanelSplitterDown(MouseDownEvent evt)
         {
-            if (evt.button == 0 && evt.mousePosition.x < 6f)
+            if (evt.button == 0)
             {
                 _isDraggingPanelSplitter = true;
                 _dragStartMouseX = evt.mousePosition.x;
                 _dragStartWidth = resolvedStyle.width;
-                this.CaptureMouse();
+                _panelEdgeSplitter.CaptureMouse();
                 evt.StopPropagation();
             }
         }
@@ -251,7 +256,7 @@ namespace CleanStateMachine
             if (_isDraggingPanelSplitter)
             {
                 _isDraggingPanelSplitter = false;
-                this.ReleaseMouse();
+                _panelEdgeSplitter.ReleaseMouse();
                 evt.StopPropagation();
             }
         }

@@ -130,6 +130,13 @@ namespace CleanStateMachine
             _sidePanelElement.style.top = 0f;
             _sidePanelElement.style.bottom = 0f;
             rootVisualElement.Add(_sidePanelElement);
+
+            rootVisualElement.schedule.Execute(() =>
+            {
+                _sidePanelElement?.SyncFromWindow();
+                _sidePanelElement?.UpdateBlackboard();
+                _sidePanelElement?.UpdateSelection();
+            }).StartingIn(10);
         }
 
         private void OnGUI()

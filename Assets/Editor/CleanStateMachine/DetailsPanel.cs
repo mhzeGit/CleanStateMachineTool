@@ -407,7 +407,7 @@ namespace CleanStateMachine
 
                     if (prop2.type == "BlackboardVariableReference")
                     {
-                        DetailsPanelView.DrawBlackboardVariableRefField(rowRect, prop2, _blackboardVariables);
+                        DrawBlackboardVariableRefField(rowRect, prop2, _blackboardVariables);
                     }
                     else
                     {
@@ -457,6 +457,182 @@ namespace CleanStateMachine
                     count++;
             }
             return count;
+        }
+
+        // ─── STATIC HELPERS (Blackboard Variable Ref) ──────────────────
+
+        internal static void DrawBlackboardVariableRefField(Rect rect, SerializedProperty prop,
+            List<BlackboardVariable> blackboardVariables)
+        {
+            var useBbProp = prop.FindPropertyRelative("UseBlackboard");
+            var varNameProp = prop.FindPropertyRelative("BlackboardVariableName");
+            var valueTypeProp = prop.FindPropertyRelative("ValueType");
+            var defaultValueProp = prop.FindPropertyRelative("DefaultValue");
+
+            var bbType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
+            bool useBb = useBbProp.boolValue;
+
+            float modeWidth = 120f;
+            float gap = 4f;
+
+            Rect labelRect = new Rect(8f, rect.y + 1f, 72f, rect.height - 2f);
+            GUI.Label(labelRect, prop.displayName, UITheme.VariableLabelStyle);
+
+            float modeX = 84f;
+            Rect modeRect = new Rect(modeX, rect.y + 3f, modeWidth, rect.height - 6f);
+            DrawModeToggle(modeRect, useBb, useBbProp);
+
+            float fieldX = modeRect.xMax + gap;
+            float fieldW = rect.width - fieldX - 8f;
+
+            Rect fieldRect = new Rect(fieldX, rect.y + 3f, fieldW, rect.height - 6f);
+
+            if (useBb)
+            {
+                DrawBbDropdown(fieldRect, varNameProp, useBbProp, bbType, blackboardVariables);
+            }
+            else
+            {
+                DrawValueField(fieldRect, bbType, defaultValueProp);
+            }
+        }
+
+        private static void DrawModeToggle(Rect rect, bool useBb, SerializedProperty useBbProp)
+        {
+            float halfW = rect.width * 0.5f;
+
+            Rect bgRect = new Rect(rect.x, rect.y, rect.width, rect.height);
+            EditorGUI.DrawRect(bgRect, UITheme.RowFieldBg);
+
+            Rect valRect = new Rect(rect.x + 2f, rect.y + 2f, halfW - 3f, rect.height - 4f);
+            Rect bindRect = new Rect(rect.x + halfW + 1f, rect.y + 2f, halfW - 3f, rect.height - 4f);
+
+            if (!useBb)
+                EditorGUI.DrawRect(valRect, UITheme.ButtonColor);
+            else
+                EditorGUI.DrawRect(bindRect, UITheme.ButtonColor);
+
+            var active = new GUIStyle
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = UITheme.TextColor }
+            };
+            var inactive = new GUIStyle
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = UITheme.TextMuted }
+            };
+
+            GUI.Label(valRect, "Val", useBb ? inactive : active);
+            GUI.Label(bindRect, "Bind", useBb ? active : inactive);
+
+            if (GUI.Button(bgRect, GUIContent.none, GUIStyle.none))
+            {
+                useBbProp.boolValue = !useBb;
+                useBbProp.serializedObject.ApplyModifiedProperties();
+            }
+        }
+
+        private static void DrawBbDropdown(Rect rect, SerializedProperty varNameProp,
+            SerializedProperty useBbProp, BlackboardVariableType bbType,
+            List<BlackboardVariable> blackboardVariables)
+        {
+            string current = varNameProp.stringValue;
+            string display = string.IsNullOrEmpty(current) ? "Select variable..." : current;
+
+            var dropStyle = new GUIStyle(EditorStyles.popup)
+            {
+                fontSize = 11,
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = UITheme.TextColor, background = null },
+                hover = { textColor = UITheme.TextColor },
+                focused = { textColor = UITheme.TextColor }
+            };
+
+            if (GUI.Button(rect, new GUIContent(display), dropStyle))
+            {
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("None (direct)"), string.IsNullOrEmpty(current), () =>
+                {
+                    varNameProp.stringValue = "";
+                    useBbProp.boolValue = false;
+                    varNameProp.serializedObject.ApplyModifiedProperties();
+                });
+                menu.AddSeparator("");
+                bool hasMatch = false;
+                for (int i = 0; i < blackboardVariables.Count; i++)
+                {
+                    var bv = blackboardVariables[i];
+                    if (bv.Type == bbType)
+                    {
+                        hasMatch = true;
+                        string varName = bv.Name;
+                        bool selected = varName == current;
+                        string captured = varName;
+                        menu.AddItem(new GUIContent(varName), selected, (object n) =>
+                        {
+                            varNameProp.stringValue = (string)n;
+                            varNameProp.serializedObject.ApplyModifiedProperties();
+                        }, captured);
+                    }
+                }
+                if (!hasMatch)
+                {
+                    menu.AddDisabledItem(new GUIContent("No matching variables"));
+                }
+                menu.DropDown(rect);
+            }
+        }
+
+        private static void DrawValueField(Rect rect, BlackboardVariableType bbType,
+            SerializedProperty defaultValueProp)
+        {
+            switch (bbType)
+            {
+                case BlackboardVariableType.Bool:
+                {
+                    bool val = bool.TryParse(defaultValueProp.stringValue, out var v) && v;
+                    bool result = EditorGUI.Toggle(rect, val);
+                    if (result != val)
+                        defaultValueProp.stringValue = result.ToString();
+                    break;
+                }
+                case BlackboardVariableType.Int:
+                {
+                    int val = int.TryParse(defaultValueProp.stringValue, out var v) ? v : 0;
+                    int result = EditorGUI.IntField(rect, val);
+                    if (result != val)
+                        defaultValueProp.stringValue = result.ToString();
+                    break;
+                }
+                case BlackboardVariableType.Float:
+                {
+                    float val = float.TryParse(defaultValueProp.stringValue, out var v) ? v : 0f;
+                    float result = EditorGUI.FloatField(rect, val);
+                    if (Mathf.Abs(result - val) > 1e-6f)
+                        defaultValueProp.stringValue = result.ToString("G");
+                    break;
+                }
+                case BlackboardVariableType.String:
+                {
+                    string result = EditorGUI.TextField(rect, defaultValueProp.stringValue);
+                    if (result != defaultValueProp.stringValue)
+                        defaultValueProp.stringValue = result;
+                    break;
+                }
+                case BlackboardVariableType.Vector2:
+                case BlackboardVariableType.Vector3:
+                {
+                    string result = EditorGUI.TextField(rect, defaultValueProp.stringValue);
+                    if (result != defaultValueProp.stringValue)
+                        defaultValueProp.stringValue = result;
+                    break;
+                }
+            }
         }
     }
 }
