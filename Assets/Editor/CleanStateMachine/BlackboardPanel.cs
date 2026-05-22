@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -13,12 +12,9 @@ namespace CleanStateMachine
         private readonly ScrollView _scrollView;
         private readonly List<VisualElement> _rows = new();
         private int _editingIndex = -1;
+        private int _dragStartIndex = -1;
         private int _dragIndex = -1;
         private bool _isDragging;
-        private bool _focusNameField;
-
-        private static readonly string[] TypeLabels =
-            { "bool", "int", "float", "string", "V2", "V3" };
 
         public BlackboardPanel(CleanStateMachineWindow window)
         {
@@ -58,8 +54,7 @@ namespace CleanStateMachine
 
             for (int i = 0; i < _variables.Count; i++)
             {
-                int index = i;
-                var row = CreateRow(_variables[i], index);
+                var row = CreateRow(_variables[i], i);
                 _scrollView.Add(row);
                 _rows.Add(row);
             }
@@ -72,15 +67,11 @@ namespace CleanStateMachine
             row.userData = index;
 
             // Drag handle
-            var handle = new Label("\u2022\u2022");
+            var handle = new Label("\u22EE\u22EE");
             handle.AddToClassList("drag-handle");
-            handle.RegisterCallback<MouseDownEvent>(e => OnHandleDown(e, index));
+            int captured = index;
+            handle.RegisterCallback<MouseDownEvent>(e => OnHandleDown(e, captured));
             row.Add(handle);
-
-            // Type badge
-            var badge = new Label(GetTypeLabel(variable.Type));
-            badge.AddToClassList("type-badge");
-            row.Add(badge);
 
             // Name label (or input when editing)
             var nameContainer = new VisualElement();
@@ -121,6 +112,10 @@ namespace CleanStateMachine
 
             row.Add(nameContainer);
 
+            // Right-aligned group: value + delete
+            var rightGroup = new VisualElement();
+            rightGroup.AddToClassList("variable-right");
+
             if (variable.Type == BlackboardVariableType.Bool)
             {
                 var toggleContainer = new VisualElement();
@@ -133,7 +128,7 @@ namespace CleanStateMachine
                     _window.NotifySidePanelChanged();
                 });
                 toggleContainer.Add(toggle);
-                row.Add(toggleContainer);
+                rightGroup.Add(toggleContainer);
             }
             else
             {
@@ -145,7 +140,7 @@ namespace CleanStateMachine
                     variable.StringValue = e.newValue;
                     _window.NotifySidePanelChanged();
                 });
-                row.Add(valueField);
+                rightGroup.Add(valueField);
             }
 
             // Delete button
@@ -159,17 +154,19 @@ namespace CleanStateMachine
                 Rebuild();
                 e.StopPropagation();
             });
-            row.Add(deleteBtn);
+            rightGroup.Add(deleteBtn);
+
+            row.Add(rightGroup);
 
             // Right-click context menu
             row.RegisterCallback<ContextClickEvent>(e =>
             {
                 var menu = new GenericMenu();
-                int captured = index;
+                int capturedIdx = index;
                 menu.AddItem(new GUIContent("Delete Variable"), false, () =>
                 {
                     if (_variables == null) return;
-                    _variables.RemoveAt(captured);
+                    _variables.RemoveAt(capturedIdx);
                     _window.NotifySidePanelChanged();
                     Rebuild();
                 });
@@ -231,8 +228,9 @@ namespace CleanStateMachine
         private void OnHandleDown(MouseDownEvent evt, int index)
         {
             if (_variables == null || _variables.Count <= 1) return;
-            _dragIndex = index;
             _isDragging = true;
+            _dragStartIndex = index;
+            _dragIndex = index;
             _rows[index].AddToClassList("variable-row-drag");
             this.RegisterCallback<MouseMoveEvent>(OnDragMove);
             this.RegisterCallback<MouseUpEvent>(OnDragUp);
@@ -244,24 +242,26 @@ namespace CleanStateMachine
             if (!_isDragging || _variables == null) return;
 
             Vector2 localPos = this.WorldToLocal(evt.mousePosition);
-            float rowHeight = 32f;
+            float rowHeight = 30f;
             int targetIndex = Mathf.Clamp(
                 Mathf.FloorToInt((localPos.y + _scrollView.scrollOffset.y) / rowHeight),
                 0, _variables.Count - 1);
 
-            if (targetIndex != _dragIndex)
-            {
-                var item = _variables[_dragIndex];
-                _variables.RemoveAt(_dragIndex);
-                _variables.Insert(targetIndex, item);
-                _window.NotifySidePanelChanged();
-                Rebuild();
+            if (targetIndex == _dragIndex) return;
 
-                if (targetIndex < _rows.Count)
-                    _rows[targetIndex].AddToClassList("variable-row-drag");
-                _dragIndex = targetIndex;
-            }
+            // Move row element in the scroll view (no rebuild)
+            var row = _rows[_dragIndex];
+            _scrollView.Remove(row);
 
+            if (targetIndex >= _scrollView.childCount)
+                _scrollView.Add(row);
+            else
+                _scrollView.Insert(targetIndex, row);
+
+            _rows.RemoveAt(_dragIndex);
+            _rows.Insert(targetIndex, row);
+
+            _dragIndex = targetIndex;
             evt.StopPropagation();
         }
 
@@ -273,6 +273,17 @@ namespace CleanStateMachine
 
             if (_dragIndex >= 0 && _dragIndex < _rows.Count)
                 _rows[_dragIndex].RemoveFromClassList("variable-row-drag");
+
+            if (_dragStartIndex >= 0 && _dragStartIndex != _dragIndex && _variables != null)
+            {
+                var item = _variables[_dragStartIndex];
+                _variables.RemoveAt(_dragStartIndex);
+                _variables.Insert(_dragIndex, item);
+                _window.NotifySidePanelChanged();
+                Rebuild();
+            }
+
+            _dragStartIndex = -1;
             _dragIndex = -1;
             evt.StopPropagation();
         }
@@ -308,12 +319,6 @@ namespace CleanStateMachine
                     return candidate;
             }
             return baseName;
-        }
-
-        private static string GetTypeLabel(BlackboardVariableType type)
-        {
-            int idx = (int)type;
-            return idx >= 0 && idx < TypeLabels.Length ? TypeLabels[idx] : type.ToString();
         }
     }
 }

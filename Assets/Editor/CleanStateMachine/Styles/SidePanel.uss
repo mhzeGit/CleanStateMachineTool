@@ -14,9 +14,7 @@
     background-color: rgba(0,0,0,0);
 }
 
-.panel-edge-splitter:hover {
-    background-color: rgba(255,255,255,0.04);
-}
+
 
 .side-panel-collapsed {
     justify-content: center;
@@ -127,110 +125,144 @@
 
 /* --- Variable Row --- */
 .variable-row {
-    height: 32px;
+    height: 30px;
     flex-direction: row;
     align-items: center;
-    padding-left: 8px;
-    padding-right: 8px;
-    border-bottom: 1px solid #141414;
+    padding-left: 4px;
+    padding-right: 4px;
     flex-shrink: 0;
-}
-
-.variable-row-selected {
-    background-color: #2e2e2e;
-}
-
-.variable-row-drag {
-    background-color: #333333;
+    background-color: rgba(255, 255, 255, 0.025);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .variable-row:hover {
-    background-color: #222222;
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
+.variable-row-selected {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.variable-row-selected:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+}
+
+.variable-row-drag {
+    background-color: rgba(255, 255, 255, 0.12);
+    opacity: 0.85;
+}
+
+/* Drag handle - vertical dots */
 .drag-handle {
-    width: 20px;
-    height: 28px;
+    width: 18px;
+    height: 24px;
     cursor: grab;
     justify-content: center;
     align-items: center;
     flex-shrink: 0;
-    font-size: 8px;
-    color: #808080;
-    letter-spacing: 2px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.15);
+    opacity: 0.5;
+    -unity-text-align: middle-center;
 }
 
 .drag-handle:hover {
-    color: #f2f2f2;
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 1;
 }
 
-.type-badge {
-    font-size: 9px;
-    -unity-font-style: bold;
-    color: #d9d9d9;
-    background-color: #383838;
-    width: 32px;
-    height: 22px;
-    justify-content: center;
-    align-items: center;
-    margin-left: 2px;
-    margin-right: 4px;
-    flex-shrink: 0;
-}
-
+/* Variable name */
 .variable-name {
     font-size: 12px;
-    color: #f2f2f2;
+    color: rgba(255, 255, 255, 0.85);
     flex-grow: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     padding-left: 4px;
-    height: 28px;
+    padding-right: 4px;
+    height: 22px;
     align-items: center;
 }
 
 .variable-name-input {
     font-size: 12px;
-    color: #f2f2f2;
-    background-color: #171717;
+    color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(0, 0, 0, 0.3);
     flex-grow: 1;
-    height: 24px;
+    height: 22px;
     margin-left: 4px;
     padding-left: 4px;
-    border-color: #444444;
+    border-color: rgba(255, 255, 255, 0.2);
     border-width: 1px;
 }
 
-.variable-value {
-    width: 90px;
-    flex-shrink: 0;
-    height: 24px;
-    margin-left: 4px;
+.variable-name-input:focus {
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
-.variable-value-toggle {
-    width: 90px;
+/* Right-aligned group (value + delete) */
+.variable-right {
+    flex-direction: row;
+    align-items: center;
     flex-shrink: 0;
-    height: 24px;
-    margin-left: 4px;
+}
+
+/* Variable value TextField */
+.variable-value {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.variable-value .unity-text-field__input,
+.variable-value .unity-base-text-field__input {
+    font-size: 11px;
+    -unity-text-align: middle-left;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px;
+    padding-left: 6px;
+    padding-right: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    height: 22px;
+}
+
+.variable-value .unity-text-field__input:focus,
+.variable-value .unity-base-text-field__input:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Variable value Toggle (Bool) */
+.variable-value-toggle {
+    width: 80px;
+    flex-shrink: 0;
+    height: 22px;
     justify-content: center;
     align-items: center;
 }
 
+/* Delete button - dim by default, visible on row hover */
 .variable-delete {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
-    color: #808080;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.2);
     flex-shrink: 0;
+    opacity: 0;
+}
+
+.variable-row:hover .variable-delete {
+    opacity: 1;
 }
 
 .variable-delete:hover {
-    color: #f2f2f2;
+    color: rgba(255, 120, 120, 0.9);
+    background-color: rgba(255, 0, 0, 0.1);
+    border-radius: 3px;
 }
 
 /* --- Add Button --- */
