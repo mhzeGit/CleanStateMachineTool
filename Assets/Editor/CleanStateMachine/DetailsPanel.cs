@@ -359,72 +359,91 @@ namespace CleanStateMachine
         {
             if (_currentSO == null) return;
 
-            float width = _scrollView.resolvedStyle.width - 14f;
-            if (width < 1f) width = 200f;
+            float pad = 4f;
+            float labelH = 18f;
+            float fieldH = 22f;
+            float gap = 4f;
+            float border = 1f;
 
+            float totalHeight = 2f;
             var so = new SerializedObject(_currentSO);
-            float totalHeight = 0f;
             var prop = so.GetIterator();
             bool enterChildren = true;
             while (prop.NextVisible(enterChildren))
             {
                 enterChildren = false;
                 if (prop.name == "m_Script") continue;
-                float propH = prop.type == "BlackboardVariableReference"
-                    ? 32f
-                    : EditorGUI.GetPropertyHeight(prop, true);
-                totalHeight += Mathf.Max(32f, propH) + 1f;
+                bool isBbRef = prop.type == "BlackboardVariableReference";
+                float contentH = isBbRef ? labelH + gap + fieldH : labelH + gap + fieldH;
+                totalHeight += pad + contentH + pad + border * 2f;
             }
-            totalHeight += 2f;
-
-            float containerWidth = width;
 
             var imContainer = new IMGUIContainer(() =>
             {
                 if (_currentSO == null) return;
 
+                float w = _scrollView.resolvedStyle.width - 14f;
+                if (w < 1f) w = 200f;
+
                 var so2 = new SerializedObject(_currentSO);
                 so2.Update();
 
                 float y = 0f;
-                float w = containerWidth;
 
                 var prop2 = so2.GetIterator();
-                bool enter2 = true;
-                while (prop2.NextVisible(enter2))
+                bool enter = true;
+                while (prop2.NextVisible(enter))
                 {
-                    enter2 = false;
+                    enter = false;
                     if (prop2.name == "m_Script") continue;
 
-                    float propH = prop2.type == "BlackboardVariableReference"
-                        ? 32f
-                        : EditorGUI.GetPropertyHeight(prop2, true);
-                    float rowH = Mathf.Max(32f, propH);
+                    bool isBbRef = prop2.type == "BlackboardVariableReference";
+                    float contentH = isBbRef ? labelH + gap + fieldH : labelH + gap + fieldH;
+                    float cardH = pad + contentH + pad;
+                    float rowH = cardH + border * 2f;
 
-                    var rowRect = new Rect(0f, y, w, rowH);
-                    EditorGUI.DrawRect(rowRect, UITheme.RowBg);
-                    EditorGUI.DrawRect(new Rect(rowRect.x, rowRect.yMax - 1f, rowRect.width, 1f), UITheme.RowBoundary);
+                    EditorGUI.DrawRect(new Rect(0f, y, w, rowH), UITheme.PanelBorder);
+                    EditorGUI.DrawRect(new Rect(border, y + border, w - border * 2f, cardH), UITheme.PanelBg);
 
-                    if (prop2.type == "BlackboardVariableReference")
+                    float innerX = 8f;
+                    float innerW = w - 16f;
+                    float cy = y + border + pad;
+
+                    EditorGUI.LabelField(new Rect(innerX, cy, innerW, labelH),
+                        prop2.displayName, UITheme.VariableLabelStyle);
+                    cy += labelH + gap;
+
+                    if (isBbRef)
                     {
-                        DrawBlackboardVariableRefField(rowRect, prop2, _blackboardVariables);
+                        var useBbProp = prop2.FindPropertyRelative("UseBlackboard");
+                        var varNameProp = prop2.FindPropertyRelative("BlackboardVariableName");
+                        var valueTypeProp = prop2.FindPropertyRelative("ValueType");
+                        var defaultValueProp = prop2.FindPropertyRelative("DefaultValue");
+                        var bbType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
+                        bool useBb = useBbProp.boolValue;
+
+                        float modeW = Mathf.Min(130f, innerW * 0.4f);
+                        DrawModeToggle(new Rect(innerX, cy, modeW, fieldH), useBb, useBbProp);
+
+                        float fieldX = innerX + modeW + 4f;
+                        float fieldW = innerW - modeW - 4f;
+                        var fRect = new Rect(fieldX, cy, fieldW, fieldH);
+                        if (useBb)
+                            DrawBbDropdown(fRect, varNameProp, useBbProp, bbType, _blackboardVariables);
+                        else
+                            DrawValueField(fRect, bbType, defaultValueProp);
                     }
                     else
                     {
-                        var labelRect = new Rect(8f, y + 1f, 72f, rowH - 2f);
-                        EditorGUI.LabelField(labelRect, prop2.displayName, UITheme.VariableLabelStyle);
-
-                        var fieldRect = new Rect(84f, y + 3f, w - 96f, rowH - 6f);
-                        EditorGUI.PropertyField(fieldRect, prop2, GUIContent.none, true);
+                        EditorGUI.PropertyField(new Rect(innerX, cy, innerW, fieldH),
+                            prop2, GUIContent.none, true);
                     }
 
-                    y += rowH + 1f;
+                    y += rowH;
                 }
 
                 if (so2.ApplyModifiedProperties())
-                {
                     EditorUtility.SetDirty(_currentSO);
-                }
             });
 
             imContainer.style.height = totalHeight;
@@ -462,7 +481,7 @@ namespace CleanStateMachine
         // ─── STATIC HELPERS (Blackboard Variable Ref) ──────────────────
 
         internal static void DrawBlackboardVariableRefField(Rect rect, SerializedProperty prop,
-            List<BlackboardVariable> blackboardVariables)
+            List<BlackboardVariable> blackboardVariables, float labelWidth = 72f)
         {
             var useBbProp = prop.FindPropertyRelative("UseBlackboard");
             var varNameProp = prop.FindPropertyRelative("BlackboardVariableName");
@@ -472,13 +491,14 @@ namespace CleanStateMachine
             var bbType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
             bool useBb = useBbProp.boolValue;
 
-            float modeWidth = 120f;
             float gap = 4f;
 
-            Rect labelRect = new Rect(8f, rect.y + 1f, 72f, rect.height - 2f);
+            Rect labelRect = new Rect(8f, rect.y + 1f, labelWidth, rect.height - 2f);
             GUI.Label(labelRect, prop.displayName, UITheme.VariableLabelStyle);
 
-            float modeX = 84f;
+            float modeX = 8f + labelWidth + 8f;
+            float modeWidth = rect.width - modeX - 8f;
+            if (modeWidth > 120f) modeWidth = 120f;
             Rect modeRect = new Rect(modeX, rect.y + 3f, modeWidth, rect.height - 6f);
             DrawModeToggle(modeRect, useBb, useBbProp);
 
@@ -499,41 +519,31 @@ namespace CleanStateMachine
 
         private static void DrawModeToggle(Rect rect, bool useBb, SerializedProperty useBbProp)
         {
-            float halfW = rect.width * 0.5f;
+            string display = useBb ? "Blackboard" : "Direct";
 
-            Rect bgRect = new Rect(rect.x, rect.y, rect.width, rect.height);
-            EditorGUI.DrawRect(bgRect, UITheme.RowFieldBg);
-
-            Rect valRect = new Rect(rect.x + 2f, rect.y + 2f, halfW - 3f, rect.height - 4f);
-            Rect bindRect = new Rect(rect.x + halfW + 1f, rect.y + 2f, halfW - 3f, rect.height - 4f);
-
-            if (!useBb)
-                EditorGUI.DrawRect(valRect, UITheme.ButtonColor);
-            else
-                EditorGUI.DrawRect(bindRect, UITheme.ButtonColor);
-
-            var active = new GUIStyle
+            var popupStyle = new GUIStyle(EditorStyles.popup)
             {
-                alignment = TextAnchor.MiddleCenter,
                 fontSize = 11,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = UITheme.TextColor }
-            };
-            var inactive = new GUIStyle
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 11,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = UITheme.TextMuted }
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = UITheme.TextColor, background = null },
+                hover = { textColor = UITheme.TextColor },
+                focused = { textColor = UITheme.TextColor }
             };
 
-            GUI.Label(valRect, "Val", useBb ? inactive : active);
-            GUI.Label(bindRect, "Bind", useBb ? active : inactive);
-
-            if (GUI.Button(bgRect, GUIContent.none, GUIStyle.none))
+            if (GUI.Button(rect, new GUIContent(display), popupStyle))
             {
-                useBbProp.boolValue = !useBb;
-                useBbProp.serializedObject.ApplyModifiedProperties();
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Direct"), !useBb, () =>
+                {
+                    useBbProp.boolValue = false;
+                    useBbProp.serializedObject.ApplyModifiedProperties();
+                });
+                menu.AddItem(new GUIContent("Blackboard"), useBb, () =>
+                {
+                    useBbProp.boolValue = true;
+                    useBbProp.serializedObject.ApplyModifiedProperties();
+                });
+                menu.DropDown(rect);
             }
         }
 

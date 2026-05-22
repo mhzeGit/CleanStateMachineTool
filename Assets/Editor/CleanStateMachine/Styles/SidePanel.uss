@@ -437,20 +437,6 @@
     height: 20px;
 }
 
-/* --- Properties Section --- */
-.properties-section {
-    flex-direction: column;
-}
-
-.properties-title {
-    font-size: 16px;
-    -unity-font-style: bold;
-    color: #f2f2f2;
-    padding-left: 8px;
-    padding-top: 8px;
-    padding-bottom: 4px;
-}
-
 /* --- Multi Selection --- */
 .multi-select-row {
     height: 32px;
