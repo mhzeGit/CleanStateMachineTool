@@ -103,8 +103,8 @@ namespace CleanStateMachine
         private const float GlowPulseSpeed = 2.5f;
         private const int GlowBlurKernel = 4;
 
-        private const float ShadowExpandPx = 10f;
-        private static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.45f);
+        private const float ShadowExpandPx = 30f;
+        private static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.20f);
 
         public StateView(Vector2 position, string name = "State", bool isEntry = false)
         {
