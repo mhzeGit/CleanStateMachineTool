@@ -308,35 +308,50 @@ namespace CleanStateMachine
             label.AddToClassList("script-row-label");
             contentRow.Add(label);
 
-            var field = new ObjectField();
-            field.AddToClassList("script-field");
-            field.objectType = typeof(MonoScript);
-            field.value = currentScript;
-            field.RegisterValueChangedCallback(e =>
+            var pickerBtn = new Button();
+            pickerBtn.AddToClassList("script-picker-button");
+            pickerBtn.text = currentScript != null ? currentScript.name : "None (Select...)";
+            pickerBtn.clicked += () =>
             {
-                var newScript = e.newValue as MonoScript;
-                if (newScript != null && !isValid(newScript))
+                var filtered = FindFilteredScripts(isValid);
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("None"), currentScript == null, () =>
                 {
-                    field.SetValueWithoutNotify(e.previousValue);
-                    EditorUtility.DisplayDialog("Invalid Script",
-                        "The selected script must inherit from the required base class.", "OK");
-                    return;
+                    onAssign(currentScript, null);
+                });
+                menu.AddSeparator("");
+                foreach (var script in filtered)
+                {
+                    string path = AssetDatabase.GetAssetPath(script);
+                    string displayPath = path.Replace("Assets/", "");
+                    var captured = script;
+                    menu.AddItem(new GUIContent(script.name + "  (" + displayPath + ")"),
+                        script == currentScript, () =>
+                    {
+                        onAssign(currentScript, captured);
+                    });
                 }
-                onAssign(e.previousValue as MonoScript, newScript);
-            });
-            contentRow.Add(field);
-
-            if (currentScript != null)
-            {
-                var openBtn = new Button(() => AssetDatabase.OpenAsset(currentScript));
-                openBtn.text = "Open";
-                openBtn.AddToClassList("script-open-button");
-                contentRow.Add(openBtn);
-            }
+                if (filtered.Count == 0)
+                    menu.AddDisabledItem(new GUIContent("No matching scripts found"));
+                menu.DropDown(pickerBtn.worldBound);
+            };
+            contentRow.Add(pickerBtn);
 
             row.Add(contentRow);
 
-            // Type name / hint below
+            // Open button row (below the picker)
+            if (currentScript != null)
+            {
+                var openRow = new VisualElement();
+                openRow.AddToClassList("script-open-row");
+                var openBtn = new Button(() => AssetDatabase.OpenAsset(currentScript));
+                openBtn.text = "Open Script";
+                openBtn.AddToClassList("script-field-open-button");
+                openRow.Add(openBtn);
+                row.Add(openRow);
+            }
+
+            // Type name / hint
             if (currentScript != null)
             {
                 var scriptType = currentScript.GetClass();
@@ -353,6 +368,21 @@ namespace CleanStateMachine
             }
 
             _scrollView.Add(row);
+        }
+
+        private static List<MonoScript> FindFilteredScripts(Func<MonoScript, bool> isValid)
+        {
+            var results = new List<MonoScript>();
+            var guids = AssetDatabase.FindAssets("t:MonoScript");
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var script = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
+                if (script != null && isValid(script))
+                    results.Add(script);
+            }
+            results.Sort((a, b) => a.name.CompareTo(b.name));
+            return results;
         }
 
         private void AddSOProperties()
