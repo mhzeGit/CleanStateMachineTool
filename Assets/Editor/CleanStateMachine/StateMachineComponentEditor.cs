@@ -19,6 +19,8 @@ namespace CleanStateMachine
         private Label _helpLabel;
         private readonly List<VisualElement> _variableRows = new();
         private double _nextUpdateTime;
+        private int _lastVariableCount = -1;
+        private string _lastVariableHash = "";
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -106,6 +108,15 @@ namespace CleanStateMachine
 
             UpdateStateLabel();
             UpdateRuntimeVariableValues();
+
+            if (!Application.isPlaying && currentController != null)
+            {
+                var currentVariables = currentController.Data.BlackboardVariables;
+                if (HaveVariablesChanged(currentVariables))
+                {
+                    RebuildVariables(currentController);
+                }
+            }
         }
 
         private void OnControllerChanged()
@@ -174,6 +185,39 @@ namespace CleanStateMachine
                 _variablesScroll.Add(row);
                 _variableRows.Add(row);
             }
+
+            TrackCurrentVariables(variables);
+        }
+
+        private void TrackCurrentVariables(List<BlackboardVariable> variables)
+        {
+            _lastVariableCount = variables?.Count ?? 0;
+            var sb = new System.Text.StringBuilder();
+            if (variables != null)
+            {
+                for (int i = 0; i < variables.Count; i++)
+                {
+                    sb.Append(variables[i].Name);
+                    sb.Append((int)variables[i].Type);
+                    sb.Append(variables[i].StringValue);
+                }
+            }
+            _lastVariableHash = sb.ToString();
+        }
+
+        private bool HaveVariablesChanged(List<BlackboardVariable> current)
+        {
+            int count = current?.Count ?? 0;
+            if (count != _lastVariableCount) return true;
+
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < count; i++)
+            {
+                sb.Append(current[i].Name);
+                sb.Append((int)current[i].Type);
+                sb.Append(current[i].StringValue);
+            }
+            return sb.ToString() != _lastVariableHash;
         }
 
         private VisualElement CreateVariableRow(BlackboardVariable variable)
