@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,13 +14,9 @@ namespace CleanStateMachine
         public MonoScript ConditionScript { get; set; }
         public ConditionScript ConditionInstance { get; set; }
 
-        private static readonly Color ConnectionColor = new Color(0.537f, 0.706f, 0.980f, 0.85f);
-        private static readonly Color SelectedColor = new Color(0.537f, 0.706f, 0.980f, 1f);
         private const float HitTestThreshold = 10f;
         private const float ArrowGraphSize = 10f;
         private const float ArrowGraphWidth = 5f;
-        private const float BaseWidth = 2f;
-        private const float SelectedBaseWidth = 3f;
 
         public ConnectionView(StateView from, StateView to)
         {
@@ -175,102 +170,6 @@ namespace CleanStateMachine
 
         public void DrawSelectionOverlay(float zoom, Vector2 panOffset)
         {
-        }
-
-        public void Draw(float zoom, Vector2 panOffset)
-        {
-            Vector2 offsetVec = GetOffsetVector() * zoom;
-            Vector3 startPos = (Vector3)(From.GetCenter() * zoom + panOffset + offsetVec);
-            Vector3 endPos = (Vector3)(To.GetCenter() * zoom + panOffset + offsetVec);
-
-            bool isActive = IsActive;
-            Color color = IsSelected ? SelectedColor : (isActive ? UITheme.ActiveConnection : ConnectionColor);
-            float width = Mathf.Max(1f, (IsSelected ? SelectedBaseWidth : BaseWidth) * zoom);
-
-            DrawLine(startPos, endPos, color, width);
-            DrawMidArrowhead(startPos, endPos, color, zoom);
-
-            if (isActive)
-                DrawActiveWave(startPos, endPos, zoom);
-        }
-
-        private static void DrawLine(Vector3 start, Vector3 end, Color color, float width)
-        {
-            Vector3 dir = (end - start).normalized;
-            Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
-            float halfW = width * 0.5f;
-
-            Color prev = Handles.color;
-            Handles.color = color;
-            Handles.DrawAAConvexPolygon(
-                start + perp * halfW,
-                start - perp * halfW,
-                end - perp * halfW,
-                end + perp * halfW
-            );
-            Handles.color = prev;
-        }
-
-        private static void DrawMidArrowhead(Vector3 start, Vector3 end, Color color, float zoom)
-        {
-            Vector3 mid = (start + end) * 0.5f;
-            Vector3 dir = (end - start).normalized;
-            Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
-
-            float arrowSize = Mathf.Max(6f, 10f * zoom);
-            float arrowWidth = arrowSize * 0.5f;
-            Vector3 basePt = mid - dir * arrowSize;
-
-            Color prev = Handles.color;
-            Handles.color = color;
-            Handles.DrawAAConvexPolygon(mid, basePt + perp * arrowWidth, basePt - perp * arrowWidth);
-            Handles.color = prev;
-        }
-
-        private void DrawActiveWave(Vector3 start, Vector3 end, float zoom)
-        {
-            double elapsed = Time.realtimeSinceStartup - ActivationTime;
-            float fade = Mathf.Clamp01(1f - (float)(elapsed / 1.8));
-            if (fade <= 0.01f)
-            {
-                IsActive = false;
-                return;
-            }
-            fade = fade * fade;
-
-            Vector3 dir = (end - start).normalized;
-            float totalLen = Vector3.Distance(start, end);
-            if (totalLen < 0.01f) return;
-
-            float speed = 1.5f;
-            int circleCount = 5;
-            float circleRadius = Mathf.Max(1.5f, 3f * zoom);
-
-            Color prevColor = Handles.color;
-
-            for (int i = 0; i < circleCount; i++)
-            {
-                float phase = (float)i / circleCount;
-                float t = (Time.realtimeSinceStartup * speed + phase) % 1.0f;
-
-                Vector3 pos = start + dir * (t * totalLen);
-
-                Color circleColor = UITheme.ActiveConnectionWave;
-                circleColor.a *= fade * (0.5f + 0.3f * Mathf.Sin(i * 2.5f + 1f));
-                Handles.color = circleColor;
-                Handles.DrawSolidDisc(pos, Vector3.forward, circleRadius);
-            }
-
-            if (fade < 0.5f)
-            {
-                Color color = UITheme.ActiveConnection;
-                color.a *= fade * 2f;
-                float width = Mathf.Max(1f, 2f * zoom);
-                DrawLine(start, end, color, width);
-                DrawMidArrowhead(start, end, color, zoom);
-            }
-
-            Handles.color = prevColor;
         }
     }
 }

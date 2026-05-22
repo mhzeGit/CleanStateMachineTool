@@ -38,7 +38,6 @@ namespace CleanStateMachine
             IsActive = true;
             _startGraphPos = graphPos;
             _endGraphPos = graphPos;
-            Element.style.display = DisplayStyle.Flex;
         }
 
         public void Update(Vector2 graphPos)
@@ -65,6 +64,9 @@ namespace CleanStateMachine
         {
             if (!IsActive)
                 return;
+
+            if (Element.style.display == DisplayStyle.None)
+                Element.style.display = DisplayStyle.Flex;
 
             Vector2 startScreen = _startGraphPos * zoom + panOffset;
             Vector2 endScreen = _endGraphPos * zoom + panOffset;

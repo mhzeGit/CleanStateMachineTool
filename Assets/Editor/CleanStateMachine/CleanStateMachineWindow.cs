@@ -51,6 +51,7 @@ namespace CleanStateMachine
         private Vector2 _lastMouseGraphPos;
 
         private GridBackground _gridBackground;
+        private ConnectionArrowsLayer _connectionArrowsLayer;
         private IMGUIContainer _graphCanvas;
         private UndoRedoSystem _undoRedoSystem;
         private GraphPanController _panController;
@@ -134,6 +135,9 @@ namespace CleanStateMachine
             _gridBackground.style.overflow = Overflow.Hidden;
             _gridBackground.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
             rootVisualElement.Add(_gridBackground);
+
+            _connectionArrowsLayer = new ConnectionArrowsLayer(_connections, _connectionController);
+            rootVisualElement.Add(_connectionArrowsLayer);
 
             _graphCanvas = new IMGUIContainer(OnGraphCanvasGUI);
             _graphCanvas.style.position = Position.Absolute;
@@ -239,6 +243,7 @@ namespace CleanStateMachine
             }
 
             _gridBackground.UpdateView(_panOffset, _zoom);
+            _connectionArrowsLayer.UpdateView(_zoom, _panOffset);
             _graphCanvas.MarkDirtyRepaint();
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
@@ -248,8 +253,6 @@ namespace CleanStateMachine
         private void OnGraphCanvasGUI()
         {
             DrawGroups();
-            DrawConnections();
-            _connectionController.DrawPending(_zoom, _panOffset);
             DrawStates();
 
             if (_focusRequested)
@@ -762,14 +765,6 @@ namespace CleanStateMachine
                 {
                     list[i].PerpendicularOffset = count == 1 ? 0f : (i - (count - 1) * 0.5f) * 15f;
                 }
-            }
-        }
-
-        private void DrawConnections()
-        {
-            for (int i = 0; i < _connections.Count; i++)
-            {
-                _connections[i].Draw(_zoom, _panOffset);
             }
         }
 
