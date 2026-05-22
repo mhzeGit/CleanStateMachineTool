@@ -14,6 +14,9 @@ namespace CleanStateMachine
         private readonly List<VisualElement> _rows = new();
         private int _editingIndex = -1;
         private int _selectedIndex = -1;
+        private int _lastClickIndex = -1;
+        private float _lastClickTime;
+        private const float DoubleClickTime = 0.35f;
         private bool _isMouseOver;
         private int _dragStartIndex = -1;
         private int _dragIndex = -1;
@@ -86,45 +89,41 @@ namespace CleanStateMachine
             handle.RegisterCallback<MouseDownEvent>(OnHandleDown);
             row.Add(handle);
 
-            // Name label (or input when editing)
+            // Name — Label for display, TextField for editing (swapped on double-click)
             var nameContainer = new VisualElement();
             nameContainer.AddToClassList("variable-name");
 
             var nameLabel = new Label(variable.Name);
-            nameLabel.AddToClassList("variable-name");
+            nameLabel.AddToClassList("variable-name-label");
 
             var nameInput = new TextField();
             nameInput.AddToClassList("variable-name-input");
             nameInput.value = variable.Name;
             nameInput.style.display = DisplayStyle.None;
-            nameInput.RegisterCallback<FocusOutEvent>(e => OnNameEditEnd(_editingIndex, nameInput));
+
             nameInput.RegisterCallback<KeyDownEvent>(e =>
             {
-                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.keyCode == KeyCode.Escape)
+                if (_editingIndex != index) return;
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
                 {
-                    OnNameEditEnd(_editingIndex, nameInput);
+                    CommitNameEdit(index);
                     e.StopPropagation();
                 }
+                else if (e.keyCode == KeyCode.Escape)
+                {
+                    CancelNameEdit(index);
+                    e.StopPropagation();
+                }
+            });
+
+            nameInput.RegisterCallback<FocusOutEvent>(e =>
+            {
+                if (_editingIndex == index)
+                    CommitNameEdit(index);
             });
 
             nameContainer.Add(nameLabel);
             nameContainer.Add(nameInput);
-
-            nameLabel.RegisterCallback<MouseDownEvent>(e =>
-            {
-                if (e.clickCount == 2 && _editingIndex < 0 && e.button == 0)
-                {
-                    var rowElement = (e.currentTarget as VisualElement).parent.parent;
-                    int idx = (int)rowElement.userData;
-                    _editingIndex = idx;
-                    nameLabel.style.display = DisplayStyle.None;
-                    nameInput.style.display = DisplayStyle.Flex;
-                    nameInput.Focus();
-                    nameInput.SelectAll();
-                    e.StopPropagation();
-                }
-            });
-
             row.Add(nameContainer);
 
             // Right-aligned group: value
@@ -259,11 +258,25 @@ namespace CleanStateMachine
                 e.StopPropagation();
             });
 
-            // Click to select
+            // Click to select (or double-click to rename, matching StateView pattern)
             row.RegisterCallback<MouseDownEvent>(e =>
             {
                 if (e.button == 0)
                 {
+                    if (_editingIndex < 0)
+                    {
+                        float now = (float)EditorApplication.timeSinceStartup;
+                        if (_lastClickIndex == index && (now - _lastClickTime) < DoubleClickTime)
+                        {
+                            _lastClickIndex = -1;
+                            StartNameEdit(index);
+                            e.StopPropagation();
+                            return;
+                        }
+                        _lastClickIndex = index;
+                        _lastClickTime = now;
+                    }
+
                     ClearRowSelection();
                     row.AddToClassList("variable-row-selected");
                     _selectedIndex = index;
@@ -280,12 +293,39 @@ namespace CleanStateMachine
                 r.RemoveFromClassList("variable-row-selected");
         }
 
-        private void OnNameEditEnd(int index, TextField input)
+        private void StartNameEdit(int index)
         {
             if (index < 0 || _variables == null || index >= _variables.Count)
                 return;
 
-            string newName = input.value;
+            var row = _rows[index];
+            var nameLabel = row.Q<Label>(className: "variable-name-label");
+            var nameInput = row.Q<TextField>(className: "variable-name-input");
+            if (nameLabel == null || nameInput == null) return;
+
+            _editingIndex = index;
+            nameInput.value = _variables[index].Name;
+            nameLabel.style.display = DisplayStyle.None;
+            nameInput.style.display = DisplayStyle.Flex;
+            nameInput.schedule.Execute(() =>
+            {
+                nameInput.Focus();
+                nameInput.SelectAll();
+            }).StartingIn(0);
+        }
+
+        private void CommitNameEdit(int index)
+        {
+            if (_editingIndex != index) return;
+            if (index < 0 || _variables == null || index >= _variables.Count)
+                return;
+
+            var row = _rows[index];
+            var nameLabel = row.Q<Label>(className: "variable-name-label");
+            var nameInput = row.Q<TextField>(className: "variable-name-input");
+            if (nameLabel == null || nameInput == null) return;
+
+            string newName = nameInput.value;
             if (!string.IsNullOrEmpty(newName) && newName != _variables[index].Name)
             {
                 _variables[index].Name = newName;
@@ -293,23 +333,25 @@ namespace CleanStateMachine
             }
 
             _editingIndex = -1;
+            nameLabel.text = _variables[index].Name;
+            nameLabel.style.display = DisplayStyle.Flex;
+            nameInput.style.display = DisplayStyle.None;
+        }
 
-            if (index < _rows.Count)
-            {
-                var row = _rows[index];
-                var nameContainer = row.Q<VisualElement>(className: "variable-name");
-                if (nameContainer != null && nameContainer.childCount >= 2)
-                {
-                    var label = nameContainer[0];
-                    var textField = nameContainer[1];
-                    if (label is Label nameLbl)
-                    {
-                        nameLbl.text = newName;
-                        label.style.display = DisplayStyle.Flex;
-                    }
-                    textField.style.display = DisplayStyle.None;
-                }
-            }
+        private void CancelNameEdit(int index)
+        {
+            if (_editingIndex != index) return;
+            if (index < 0 || _variables == null || index >= _variables.Count)
+                return;
+
+            var row = _rows[index];
+            var nameLabel = row.Q<Label>(className: "variable-name-label");
+            var nameInput = row.Q<TextField>(className: "variable-name-input");
+            if (nameLabel == null || nameInput == null) return;
+
+            _editingIndex = -1;
+            nameLabel.style.display = DisplayStyle.Flex;
+            nameInput.style.display = DisplayStyle.None;
         }
 
         private void OnHandleDown(MouseDownEvent evt)

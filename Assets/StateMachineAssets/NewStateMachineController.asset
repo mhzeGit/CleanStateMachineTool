@@ -111,7 +111,7 @@ MonoBehaviour:
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: 6409677120155523139}
     - Name: WrongState
-      Position: {x: 463.8763, y: -33.50933}
+      Position: {x: 463.0156, y: -13.713123}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
@@ -135,24 +135,15 @@ MonoBehaviour:
       Condition: {fileID: -7696514207278436980}
     Groups: []
     BlackboardVariables:
-    - Name: New Variable 4
+    - Name: State 01
+      Type: 0
+      StringValue: False
+    - Name: State 02
       Type: 0
       StringValue: False
     - Name: WrongState
       Type: 3
       StringValue: ITS ON A WROvNG STATE!!!
-    - Name: New Variable
-      Type: 1
-      StringValue: 0
-    - Name: New Variable 1
-      Type: 2
-      StringValue: 0
-    - Name: New Variable 2
-      Type: 4
-      StringValue: 0,0
-    - Name: New Variable 3
-      Type: 5
-      StringValue: 0,0,0
     PanOffset: {x: -193.22522, y: 497.8269}
     Zoom: 1.1618388
     ShowSidePanel: 1
