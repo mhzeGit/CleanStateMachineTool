@@ -81,6 +81,11 @@ namespace CleanStateMachine
         private static Texture2D _cachedGlowTexture;
         private static int _cachedGlowInnerRadius;
 
+        private static Texture2D _cachedShadowTexture;
+        private static int _cachedShadowInnerRadius;
+        private static int _cachedShadowExpand;
+        private static GUIStyle _shadowStyle;
+
         // Grayscale node fill; color reserved for functional indicators (entry, selection)
         private static readonly Color FillColor = new Color(0.26f, 0.26f, 0.26f);
         private static readonly Color PermanentBorderColor = new Color(0.34f, 0.34f, 0.34f);
@@ -97,6 +102,9 @@ namespace CleanStateMachine
         private const float GlowExpandPx = 12f;
         private const float GlowPulseSpeed = 2.5f;
         private const int GlowBlurKernel = 4;
+
+        private const float ShadowExpandPx = 10f;
+        private static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.45f);
 
         public StateView(Vector2 position, string name = "State", bool isEntry = false)
         {
@@ -207,6 +215,8 @@ namespace CleanStateMachine
             Vector2 scaledSize = Size * zoom;
             var rect = new Rect(screenPos.x, screenPos.y, scaledSize.x, scaledSize.y);
 
+            DrawShadow(zoom, panOffset, rect, scaledRadius);
+
             if (IsActive)
                 DrawActiveGlow(zoom, panOffset, rect, scaledRadius);
 
@@ -310,6 +320,105 @@ namespace CleanStateMachine
             GUI.color = glowColor;
             GUI.Box(glowRect, "", _glowStyle);
             GUI.color = Color.white;
+        }
+
+        // ─── Shadow ────────────────────────────────────────────────────────────
+
+        private void DrawShadow(float zoom, Vector2 panOffset, Rect nodeRect, int scaledRadius)
+        {
+            if (_shadowStyle == null)
+                _shadowStyle = new GUIStyle { padding = new RectOffset(0, 0, 0, 0) };
+
+            float expand = ShadowExpandPx * zoom;
+            int expandInt = Mathf.Max(1, Mathf.RoundToInt(expand));
+            EnsureShadowTexture(scaledRadius, expandInt);
+
+            int shadowRadius = scaledRadius + expandInt;
+            var shadowBorder = new RectOffset(shadowRadius, shadowRadius, shadowRadius, shadowRadius);
+
+            var shadowRect = new Rect(
+                nodeRect.x - expand,
+                nodeRect.y - expand,
+                nodeRect.width + expand * 2f,
+                nodeRect.height + expand * 2f
+            );
+
+            _shadowStyle.normal.background = _cachedShadowTexture;
+            _shadowStyle.border = shadowBorder;
+            GUI.color = ShadowColor;
+            GUI.Box(shadowRect, "", _shadowStyle);
+            GUI.color = Color.white;
+        }
+
+        private static void EnsureShadowTexture(int innerRadius, int expand)
+        {
+            if (_cachedShadowTexture != null && _cachedShadowInnerRadius == innerRadius && _cachedShadowExpand == expand)
+                return;
+
+            if (_cachedShadowTexture != null)
+            {
+                Object.DestroyImmediate(_cachedShadowTexture);
+                _cachedShadowTexture = null;
+            }
+
+            int totalRadius = innerRadius + expand;
+            int texSize = totalRadius * 2 + 8;
+            _cachedShadowTexture = GenerateShadowTexture(texSize, texSize, innerRadius, expand);
+            _cachedShadowTexture.hideFlags = HideFlags.HideAndDontSave;
+            _cachedShadowInnerRadius = innerRadius;
+            _cachedShadowExpand = expand;
+        }
+
+        private static Texture2D GenerateShadowTexture(int width, int height, int innerRadius, int expand)
+        {
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+
+            float hw = width * 0.5f;
+            float hh = height * 0.5f;
+            float nhw = hw - expand;
+            float nhh = hh - expand;
+            float innerR = innerRadius;
+            float expandF = expand;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float alphaSum = 0f;
+
+                    for (int sy = 0; sy < 3; sy++)
+                    {
+                        for (int sx = 0; sx < 3; sx++)
+                        {
+                            float fx = x + (sx + 0.5f) / 3f;
+                            float fy = y + (sy + 0.5f) / 3f;
+
+                            float px = Mathf.Abs(fx - hw) - (nhw - innerR);
+                            float py = Mathf.Abs(fy - hh) - (nhh - innerR);
+
+                            float cornerDist = Mathf.Sqrt(
+                                Mathf.Max(px, 0f) * Mathf.Max(px, 0f) +
+                                Mathf.Max(py, 0f) * Mathf.Max(py, 0f)
+                            );
+                            float edgeComp = Mathf.Min(Mathf.Max(px, py), 0f);
+                            float dist = cornerDist + edgeComp - innerR;
+
+                            if (dist > 0f && dist < expandF)
+                            {
+                                float t = dist / expandF;
+                                alphaSum += (1f - t) * (1f - t);
+                            }
+                        }
+                    }
+
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, alphaSum / 9f));
+                }
+            }
+
+            tex.Apply();
+            return tex;
         }
 
         // ─── Texture generation (original IMGUI implementation) ─────────────────
