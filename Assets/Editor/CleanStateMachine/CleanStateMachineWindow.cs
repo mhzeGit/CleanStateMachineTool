@@ -595,7 +595,7 @@ namespace CleanStateMachine
 
             var boxConnections = new List<ConnectionView>();
             for (int i = 0; i < _connections.Count; i++)
-                if (graphRect.Overlaps(_connections[i].GetGraphBounds()))
+                if (_connections[i].BoxOverlaps(graphRect))
                     boxConnections.Add(_connections[i]);
             _selectionController.SelectRange(boxConnections);
 

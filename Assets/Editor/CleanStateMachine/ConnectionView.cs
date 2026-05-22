@@ -68,6 +68,60 @@ namespace CleanStateMachine
             right = basePt - perp * ArrowGraphWidth;
         }
 
+        public bool BoxOverlaps(Rect selectionRect)
+        {
+            GetLineEndpoints(out Vector2 from, out Vector2 to);
+
+            if (LineIntersectsRect(from, to, selectionRect))
+                return true;
+
+            GetArrowheadVertices(from, to, out Vector2 tip, out Vector2 left, out Vector2 right);
+
+            if (LineIntersectsRect(tip, left, selectionRect))
+                return true;
+            if (LineIntersectsRect(left, right, selectionRect))
+                return true;
+            if (LineIntersectsRect(right, tip, selectionRect))
+                return true;
+
+            return false;
+        }
+
+        private static bool LineIntersectsRect(Vector2 a, Vector2 b, Rect r)
+        {
+            if (r.Contains(a) || r.Contains(b))
+                return true;
+
+            float xMin = r.xMin, xMax = r.xMax, yMin = r.yMin, yMax = r.yMax;
+
+            if (SegmentsIntersect(a, b, new Vector2(xMin, yMin), new Vector2(xMax, yMin)))
+                return true;
+            if (SegmentsIntersect(a, b, new Vector2(xMin, yMax), new Vector2(xMax, yMax)))
+                return true;
+            if (SegmentsIntersect(a, b, new Vector2(xMin, yMin), new Vector2(xMin, yMax)))
+                return true;
+            if (SegmentsIntersect(a, b, new Vector2(xMax, yMin), new Vector2(xMax, yMax)))
+                return true;
+
+            return false;
+        }
+
+        private static bool SegmentsIntersect(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
+        {
+            Vector2 d1 = p2 - p1;
+            Vector2 d2 = p4 - p3;
+
+            float cross = d1.x * d2.y - d1.y * d2.x;
+            if (Mathf.Approximately(cross, 0f))
+                return false;
+
+            Vector2 d3 = p3 - p1;
+            float t = (d3.x * d2.y - d3.y * d2.x) / cross;
+            float u = (d3.x * d1.y - d3.y * d1.x) / cross;
+
+            return t >= 0f && t <= 1f && u >= 0f && u <= 1f;
+        }
+
         private static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
         {
             Vector2 ab = b - a;
@@ -94,10 +148,10 @@ namespace CleanStateMachine
             GetLineEndpoints(out Vector2 from, out Vector2 to);
             GetArrowheadVertices(from, to, out Vector2 tip, out Vector2 left, out Vector2 right);
 
-            float minX = Mathf.Min(from.x, to.x, tip.x, left.x, right.x) - HitTestThreshold;
-            float maxX = Mathf.Max(from.x, to.x, tip.x, left.x, right.x) + HitTestThreshold;
-            float minY = Mathf.Min(from.y, to.y, tip.y, left.y, right.y) - HitTestThreshold;
-            float maxY = Mathf.Max(from.y, to.y, tip.y, left.y, right.y) + HitTestThreshold;
+            float minX = Mathf.Min(from.x, to.x, tip.x, left.x, right.x);
+            float maxX = Mathf.Max(from.x, to.x, tip.x, left.x, right.x);
+            float minY = Mathf.Min(from.y, to.y, tip.y, left.y, right.y);
+            float maxY = Mathf.Max(from.y, to.y, tip.y, left.y, right.y);
 
             return new Rect(minX, minY, maxX - minX, maxY - minY);
         }
