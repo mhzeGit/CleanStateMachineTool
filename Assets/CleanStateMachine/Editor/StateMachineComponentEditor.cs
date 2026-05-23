@@ -28,8 +28,7 @@ namespace CleanStateMachine
             _root = new VisualElement();
             _root.AddToClassList("component-inspector");
 
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/Editor/CleanStateMachine/Styles/ComponentInspector.uss");
+            var styleSheet = ScriptReferenceUtility.LoadStyleSheet("ComponentInspector");
             if (styleSheet != null)
                 _root.styleSheets.Add(styleSheet);
 

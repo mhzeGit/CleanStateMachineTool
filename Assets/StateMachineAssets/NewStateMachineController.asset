@@ -148,36 +148,36 @@ MonoBehaviour:
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -7818873207643368340}
-    - Name: Correct State 1
-      Position: {x: 359.3783, y: 180.04689}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: 6409677120155523139}
     - Name: Correct State 2
       Position: {x: 566.827, y: 333.6349}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -9205999975491014197}
+    - Name: Correct State 1
+      Position: {x: 328.00644, y: 180.94322}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 6409677120155523139}
     Connections:
-    - FromIndex: 2
-      ToIndex: 3
+    - FromIndex: 3
+      ToIndex: 2
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -482169798527592677}
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: 2574408194812309802}
     - FromIndex: 0
-      ToIndex: 2
+      ToIndex: 3
       Conditions: []
-    - FromIndex: 3
+    - FromIndex: 2
       ToIndex: 1
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -74142085561586492}
     - FromIndex: 1
-      ToIndex: 2
+      ToIndex: 3
       Conditions: []
     Groups: []
     BlackboardVariables:
@@ -190,8 +190,8 @@ MonoBehaviour:
     - Name: CanEnterAnyState
       Type: 0
       StringValue: False
-    PanOffset: {x: 148.13672, y: 304.87637}
-    Zoom: 0.61228234
+    PanOffset: {x: -157.198, y: 241.99928}
+    Zoom: 0.96024984
     ShowSidePanel: 1
     SidePanelWidth: 258
     DetailsHeightRatio: 0.6218656

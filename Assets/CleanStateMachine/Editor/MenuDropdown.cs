@@ -12,8 +12,7 @@ namespace CleanStateMachine
         private static StyleSheet GetStyleSheet()
         {
             if (_styleSheet == null)
-                _styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                    "Assets/Editor/CleanStateMachine/Styles/MenuDropdown.uss");
+                _styleSheet = ScriptReferenceUtility.LoadStyleSheet("MenuDropdown");
             return _styleSheet;
         }
 

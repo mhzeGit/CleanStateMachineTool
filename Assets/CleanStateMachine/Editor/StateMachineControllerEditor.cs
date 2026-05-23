@@ -11,8 +11,7 @@ namespace CleanStateMachine
             var root = new VisualElement();
             root.AddToClassList("controller-inspector");
 
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/Editor/CleanStateMachine/Styles/ControllerInspector.uss");
+            var styleSheet = ScriptReferenceUtility.LoadStyleSheet("ControllerInspector");
             if (styleSheet != null)
                 root.styleSheets.Add(styleSheet);
 

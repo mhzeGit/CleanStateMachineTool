@@ -31,8 +31,7 @@ namespace CleanStateMachine
         {
             _window = window;
 
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/Editor/CleanStateMachine/Styles/SidePanel.uss");
+            var styleSheet = ScriptReferenceUtility.LoadStyleSheet("SidePanel");
             if (styleSheet != null)
                 styleSheets.Add(styleSheet);
 

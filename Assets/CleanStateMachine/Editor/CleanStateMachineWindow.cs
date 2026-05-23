@@ -165,8 +165,7 @@ namespace CleanStateMachine
             _groupContainer.style.overflow = Overflow.Hidden;
             rootVisualElement.Add(_groupContainer);
 
-            var groupStyleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/Editor/CleanStateMachine/Styles/CommentGroupView.uss");
+            var groupStyleSheet = ScriptReferenceUtility.LoadStyleSheet("CommentGroupView");
             if (groupStyleSheet != null)
                 _groupContainer.styleSheets.Add(groupStyleSheet);
 
@@ -182,8 +181,7 @@ namespace CleanStateMachine
             _stateLayer.pickingMode = PickingMode.Ignore;
             rootVisualElement.Add(_stateLayer);
 
-            var stateStyleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                "Assets/Editor/CleanStateMachine/Styles/StateView.uss");
+            var stateStyleSheet = ScriptReferenceUtility.LoadStyleSheet("StateView");
             if (stateStyleSheet != null)
                 rootVisualElement.styleSheets.Add(stateStyleSheet);
 
