@@ -190,7 +190,7 @@ MonoBehaviour:
     - Name: CanEnterAnyState
       Type: 0
       StringValue: False
-    PanOffset: {x: -306.39886, y: 262.0056}
+    PanOffset: {x: -290.39886, y: 288.0056}
     Zoom: 1.2962017
     ShowSidePanel: 1
     SidePanelWidth: 258
