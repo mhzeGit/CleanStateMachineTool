@@ -196,6 +196,29 @@ namespace CleanStateMachine
             AddInfoRow("Members", group.Members.Count.ToString());
 
             AddDivider();
+            AddSectionTitle("Color");
+
+            var colorRow = new VisualElement();
+            colorRow.AddToClassList("info-row");
+
+            var colorLabel = new Label("Color");
+            colorLabel.AddToClassList("info-row-label");
+            colorRow.Add(colorLabel);
+
+            var colorField = new ColorField();
+            colorField.value = group.GroupColor;
+            colorField.showAlpha = true;
+            colorField.AddToClassList("info-row-value");
+            colorField.RegisterValueChangedCallback(evt =>
+            {
+                var cmd = new ModifyGroupColorCommand(group, evt.newValue);
+                _window.UndoRedoSystem.Execute(cmd);
+                _window.NotifySidePanelChanged();
+            });
+            colorRow.Add(colorField);
+            _scrollView.Add(colorRow);
+
+            AddDivider();
             AddSectionTitle("Members");
 
             for (int i = 0; i < group.Members.Count; i++)

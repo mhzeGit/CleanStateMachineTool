@@ -133,6 +133,7 @@ namespace CleanStateMachine
             _gridBackground.style.bottom = 0f;
             _gridBackground.style.overflow = Overflow.Hidden;
             _gridBackground.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
+            _gridBackground.pickingMode = PickingMode.Ignore;
             rootVisualElement.Add(_gridBackground);
 
             _connectionArrowsLayer = new ConnectionArrowsLayer(_connections, _connectionController);
@@ -281,6 +282,7 @@ namespace CleanStateMachine
                     MarkChanged();
                     SyncGroupElements();
                     _sidePanelElement?.UpdateBlackboard();
+                    _sidePanelElement?.UpdateSelection();
                     Repaint();
                 }
                 e.Use();
@@ -294,6 +296,7 @@ namespace CleanStateMachine
                     MarkChanged();
                     SyncGroupElements();
                     _sidePanelElement?.UpdateBlackboard();
+                    _sidePanelElement?.UpdateSelection();
                     Repaint();
                 }
                 e.Use();
@@ -1209,7 +1212,9 @@ namespace CleanStateMachine
                         if (mi >= 0 && mi < stateLookup.Count)
                             members.Add(stateLookup[mi]);
                     }
-                    _groups.Add(new CommentGroupView(members, gd.Label));
+                    var group = new CommentGroupView(members, gd.Label);
+                    group.GroupColor = gd.Color;
+                    _groups.Add(group);
                 }
 
                 for (int i = 0; i < data.BlackboardVariables.Count; i++)
@@ -1285,7 +1290,7 @@ namespace CleanStateMachine
 
             foreach (var group in _groups)
             {
-                var gd = new GroupData { Label = group.Label };
+                var gd = new GroupData { Label = group.Label, Color = group.GroupColor };
                 foreach (var member in group.Members)
                     gd.MemberIndices.Add(stateToIndex[member]);
                 data.Groups.Add(gd);

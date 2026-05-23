@@ -29,9 +29,21 @@ namespace CleanStateMachine
         private const float PadBot = 15f;
         private const float CRadius = 12f;
 
-        private static readonly Color BgCol = new Color(0.18f, 0.18f, 0.18f, 0.25f);
+        private static readonly Color DefaultGroupColor = new Color(0.18f, 0.18f, 0.18f, 0.35f);
         private static readonly Color BorderCol = new Color(0.40f, 0.40f, 0.40f, 0.35f);
         private static readonly Color SelBorderCol = new Color(0.70f, 0.70f, 0.70f, 0.80f);
+
+        private Color _groupColor;
+        public Color GroupColor
+        {
+            get => _groupColor;
+            set
+            {
+                if (_groupColor == value) return;
+                _groupColor = value;
+                UpdateGroupColors();
+            }
+        }
 
         private readonly VisualElement _header;
         private readonly Label _label;
@@ -41,12 +53,12 @@ namespace CleanStateMachine
         public CommentGroupView(IEnumerable<StateView> members, string label = "Comment Group")
         {
             Label = label;
+            _groupColor = DefaultGroupColor;
             _members.AddRange(members);
 
             pickingMode = PickingMode.Ignore;
             style.position = UnityEngine.UIElements.Position.Absolute;
             style.overflow = Overflow.Hidden;
-            style.backgroundColor = BgCol;
 
             _header = new VisualElement();
             _header.AddToClassList("comment-group__header");
@@ -56,7 +68,15 @@ namespace CleanStateMachine
             _label.AddToClassList("comment-group__label");
             _header.Add(_label);
 
+            UpdateGroupColors();
             UpdateBorderStyle();
+        }
+
+        private void UpdateGroupColors()
+        {
+            style.backgroundColor = _groupColor;
+            Color headerColor = new Color(_groupColor.r, _groupColor.g, _groupColor.b, Mathf.Min(1f, _groupColor.a + 0.20f));
+            _header.style.backgroundColor = headerColor;
         }
 
         private Rect GetMembersBounds()

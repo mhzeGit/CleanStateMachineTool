@@ -29,6 +29,7 @@ namespace CleanStateMachine
     {
         public string Label = "Group";
         public List<int> MemberIndices = new List<int>();
+        public Color Color = new Color(0.18f, 0.18f, 0.18f, 0.35f);
     }
 
     [Serializable]
