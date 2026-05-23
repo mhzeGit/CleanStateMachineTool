@@ -635,7 +635,9 @@ namespace CleanStateMachine
                             for (int i = 0; i < _blackboardVariables.Count; i++)
                             {
                                 var bv = _blackboardVariables[i];
-                                if (bv.Type == bbType)
+                                if (bv.Type == bbType ||
+                                    (bbType == BlackboardVariableType.Int && bv.Type == BlackboardVariableType.Float) ||
+                                    (bbType == BlackboardVariableType.Float && bv.Type == BlackboardVariableType.Int))
                                 {
                                     hasMatch = true;
                                     string varName = bv.Name;

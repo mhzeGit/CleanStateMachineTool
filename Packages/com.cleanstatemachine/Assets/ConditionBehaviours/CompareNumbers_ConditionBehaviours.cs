@@ -29,6 +29,18 @@ public class CompareNumbers_ConditionBehaviours : ConditionScript
 
     private static float GetValue(CleanStateMachine.BlackboardVariableReference variable, StateMachineComponent stateMachine)
     {
+        if (variable.UseBlackboard && !string.IsNullOrEmpty(variable.BlackboardVariableName))
+        {
+            var vars = stateMachine.RuntimeVariables;
+            for (int i = 0; i < vars.Count; i++)
+            {
+                var v = vars[i];
+                if (v.Name == variable.BlackboardVariableName)
+                {
+                    return v.Type == CleanStateMachine.BlackboardVariableType.Int ? v.IntValue : v.FloatValue;
+                }
+            }
+        }
         return variable.ValueType == CleanStateMachine.BlackboardVariableType.Int
             ? variable.GetIntValue(stateMachine)
             : variable.GetFloatValue(stateMachine);
