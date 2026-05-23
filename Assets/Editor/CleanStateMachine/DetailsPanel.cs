@@ -242,9 +242,10 @@ namespace CleanStateMachine
 
                 if (entry.Instance != null)
                 {
+                    _currentSO = entry.Instance;
                     var propsContainer = new VisualElement();
                     propsContainer.AddToClassList("condition-properties");
-                    var so = new SerializedObject(entry.Instance);
+                    var so = new SerializedObject(_currentSO);
                     var prop = so.GetIterator();
                     bool enterChildren = true;
                     while (prop.NextVisible(enterChildren))
@@ -279,6 +280,7 @@ namespace CleanStateMachine
                         propsContainer.Bind(so);
                         container.Add(propsContainer);
                     }
+                    _currentSO = null;
                 }
             }
             else
@@ -623,7 +625,7 @@ namespace CleanStateMachine
                                 varNameProp.stringValue = "";
                                 useBbProp.boolValue = false;
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                                 rebuild();
                             });
                             menu.AddSeparator();
@@ -640,7 +642,7 @@ namespace CleanStateMachine
                                     {
                                         varNameProp.stringValue = captured;
                                         so.ApplyModifiedProperties();
-                                        EditorUtility.SetDirty(_currentSO);
+                                        EditorUtility.SetDirty(so.targetObject);
                                         rebuild();
                                     });
                                 }
@@ -664,7 +666,7 @@ namespace CleanStateMachine
                             {
                                 defaultValueProp.stringValue = e.newValue.ToString();
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                             });
                             valueArea.Add(toggle);
                             break;
@@ -677,7 +679,7 @@ namespace CleanStateMachine
                             {
                                 defaultValueProp.stringValue = e.newValue.ToString();
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                             });
                             valueArea.Add(field);
                             break;
@@ -690,7 +692,7 @@ namespace CleanStateMachine
                             {
                                 defaultValueProp.stringValue = e.newValue.ToString("G");
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                             });
                             valueArea.Add(field);
                             break;
@@ -703,7 +705,7 @@ namespace CleanStateMachine
                             {
                                 defaultValueProp.stringValue = e.newValue;
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                             });
                             valueArea.Add(field);
                             break;
@@ -717,7 +719,7 @@ namespace CleanStateMachine
                             {
                                 defaultValueProp.stringValue = e.newValue;
                                 so.ApplyModifiedProperties();
-                                EditorUtility.SetDirty(_currentSO);
+                                EditorUtility.SetDirty(so.targetObject);
                             });
                             valueArea.Add(field);
                             break;
@@ -736,14 +738,14 @@ namespace CleanStateMachine
                     {
                         useBbProp.boolValue = false;
                         so.ApplyModifiedProperties();
-                        EditorUtility.SetDirty(_currentSO);
+                        EditorUtility.SetDirty(so.targetObject);
                         rebuild();
                     });
                     menu.AddItem("Blackboard", () =>
                     {
                         useBbProp.boolValue = true;
                         so.ApplyModifiedProperties();
-                        EditorUtility.SetDirty(_currentSO);
+                        EditorUtility.SetDirty(so.targetObject);
                         rebuild();
                     });
                 });

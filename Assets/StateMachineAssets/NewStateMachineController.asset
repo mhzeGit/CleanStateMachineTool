@@ -78,6 +78,50 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &-482169798527592677
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
+  m_Name: Correct State 1->Correct State 2_Condition_0
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+--- !u!114 &-74142085561586492
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
+  m_Name: Correct State 2->WrongState_Condition_0
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99,56 +143,92 @@ MonoBehaviour:
       BehaviourType: 
       Behaviour: {fileID: 0}
     - Name: Correct State 2
-      Position: {x: 392.61832, y: 179.28993}
+      Position: {x: 436.79172, y: 468.05847}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -9205999975491014197}
-    - Name: Correct State 1
-      Position: {x: 209.56708, y: 9.275673}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: 6409677120155523139}
     - Name: WrongState
-      Position: {x: 463.0156, y: -13.713123}
+      Position: {x: 650.99744, y: 258.38403}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -7818873207643368340}
+    - Name: Correct State 1
+      Position: {x: 334.63846, y: 207.28468}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 6409677120155523139}
+    - Name: State
+      Position: {x: 581.5619, y: 106.61545}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: 
+      Behaviour: {fileID: 0}
     Connections:
-    - FromIndex: 0
-      ToIndex: 2
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: -6324071765435123549}
-    - FromIndex: 3
-      ToIndex: 2
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: 6912135157052429415}
     - FromIndex: 2
-      ToIndex: 1
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: 8216924739884770493}
-    - FromIndex: 1
       ToIndex: 3
-      ConditionType: SimpleBool_ConditionBehaviours
-      Condition: {fileID: -7696514207278436980}
-    Groups: []
+      Conditions: []
+    - FromIndex: 0
+      ToIndex: 3
+      Conditions: []
+    - FromIndex: 3
+      ToIndex: 4
+      Conditions: []
+    - FromIndex: 3
+      ToIndex: 1
+      Conditions:
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: -482169798527592677}
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: 2574408194812309802}
+    - FromIndex: 1
+      ToIndex: 2
+      Conditions:
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: -74142085561586492}
+    Groups:
+    - Label: Group 1
+      MemberIndices: 0200000004000000
+      Color: {r: 0.21698111, g: 0.06243324, b: 0.06243324, a: 0.48235294}
     BlackboardVariables:
     - Name: WrongState
       Type: 3
       StringValue: ITS ON A WROvNG STATE!!!
-    - Name: State 01
-      Type: 0
-      StringValue: False
     - Name: State 02
       Type: 0
       StringValue: False
-    PanOffset: {x: -193.22522, y: 497.8269}
-    Zoom: 1.1618388
+    - Name: CanEnterAnyState
+      Type: 0
+      StringValue: False
+    PanOffset: {x: -207.92438, y: 196.37381}
+    Zoom: 0.9134181
     ShowSidePanel: 1
-    SidePanelWidth: 365
+    SidePanelWidth: 308
     DetailsHeightRatio: 0.6218656
+--- !u!114 &2574408194812309802
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 653525ea9a60cc648bb9b7a9fefeee73, type: 3}
+  m_Name: Correct State 1->Correct State 2_Condition_1
+  m_EditorClassIdentifier: Assembly-CSharp::SimpleBool_ConditionBehaviours
+  conditionBool:
+    UseBlackboard: 1
+    BlackboardVariableName: CanEnterAnyState
+    ValueType: 0
+    DefaultValue: True
+  isInverse:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
 --- !u!114 &6409677120155523139
 MonoBehaviour:
   m_ObjectHideFlags: 1
