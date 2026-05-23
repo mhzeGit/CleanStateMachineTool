@@ -48,6 +48,8 @@ namespace CleanStateMachine
             set
             {
                 _isActive = value;
+                if (_fill != null)
+                    _fill.EnableInClassList("state-view__fill--active", value);
             }
         }
 
@@ -65,9 +67,10 @@ namespace CleanStateMachine
         private const float DefaultHeight = 40f;
         private const int BaseCornerRadius = 8;
         private const float PermanentBorderWidth = 1.5f;
-        private const float GlowExpandPx = 12f;
+        private const float GlowExpandPx = 6f;
         private const float GlowPulseSpeed = 2.5f;
         private const int GlowBlurKernel = 4;
+        private const float GlowBlurRadius = 4f;
         private const float ShadowBlurRadius = 10f;
 
         public StateView(Vector2 position, string name = "State", bool isEntry = false)
@@ -238,6 +241,15 @@ namespace CleanStateMachine
                 _glow.style.borderTopRightRadius = glowRadius;
                 _glow.style.borderBottomLeftRadius = glowRadius;
                 _glow.style.borderBottomRightRadius = glowRadius;
+
+                float glowBlur = Mathf.Max(0.5f, GlowBlurRadius * zoom);
+                var glowFilter = new FilterFunction(FilterFunctionType.Blur);
+                glowFilter.AddParameter(new FilterParameter
+                {
+                    type = FilterParameterType.Float,
+                    floatValue = glowBlur
+                });
+                _glow.style.filter = new StyleList<FilterFunction>(new List<FilterFunction> { glowFilter });
             }
 
             _nameLabel.style.fontSize = Mathf.RoundToInt(12 * zoom);

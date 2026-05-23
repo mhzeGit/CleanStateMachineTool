@@ -142,55 +142,43 @@ MonoBehaviour:
       IsEntry: 1
       BehaviourType: 
       Behaviour: {fileID: 0}
-    - Name: State
-      Position: {x: 780.1607, y: 97.78069}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: 
-      Behaviour: {fileID: 0}
-    - Name: State
-      Position: {x: 598.26996, y: -96.82967}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: 
-      Behaviour: {fileID: 0}
-    - Name: Correct State 2
-      Position: {x: 513.1095, y: 419.72388}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: -9205999975491014197}
     - Name: WrongState
-      Position: {x: 673.8926, y: 249.48026}
+      Position: {x: 596.78235, y: 35.952946}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -7818873207643368340}
     - Name: Correct State 1
-      Position: {x: 362.71198, y: 212.21808}
+      Position: {x: 359.3783, y: 180.04689}
       Size: {x: 160, y: 40}
       IsEntry: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: 6409677120155523139}
+    - Name: Correct State 2
+      Position: {x: 566.827, y: 333.6349}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -9205999975491014197}
     Connections:
-    - FromIndex: 4
-      ToIndex: 5
-      Conditions: []
-    - FromIndex: 0
-      ToIndex: 5
-      Conditions: []
-    - FromIndex: 3
-      ToIndex: 4
-      Conditions:
-      - TypeName: SimpleBool_ConditionBehaviours
-        Instance: {fileID: -74142085561586492}
-    - FromIndex: 5
+    - FromIndex: 2
       ToIndex: 3
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -482169798527592677}
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: 2574408194812309802}
+    - FromIndex: 0
+      ToIndex: 2
+      Conditions: []
+    - FromIndex: 3
+      ToIndex: 1
+      Conditions:
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: -74142085561586492}
+    - FromIndex: 1
+      ToIndex: 2
+      Conditions: []
     Groups: []
     BlackboardVariables:
     - Name: WrongState
@@ -202,10 +190,10 @@ MonoBehaviour:
     - Name: CanEnterAnyState
       Type: 0
       StringValue: False
-    PanOffset: {x: -200.7735, y: 223.3887}
-    Zoom: 1.0612404
+    PanOffset: {x: 148.13672, y: 304.87637}
+    Zoom: 0.61228234
     ShowSidePanel: 1
-    SidePanelWidth: 308
+    SidePanelWidth: 258
     DetailsHeightRatio: 0.6218656
 --- !u!114 &2574408194812309802
 MonoBehaviour:

@@ -277,7 +277,6 @@ namespace CleanStateMachine
             SyncStateHierarchy();
             UpdateStateTransforms();
             UpdateGroupPositions();
-            UpdateResizeCursor();
             _graphCanvas.MarkDirtyRepaint();
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
@@ -288,6 +287,11 @@ namespace CleanStateMachine
         {
             DrawSelectionOverlays();
             _selectionBox.DrawScreen(_zoom, _panOffset);
+
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            UpdateResizeCursor();
         }
 
 

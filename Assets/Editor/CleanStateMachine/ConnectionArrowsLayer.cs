@@ -11,11 +11,11 @@ namespace CleanStateMachine
         private float _zoom = 1f;
         private Vector2 _panOffset;
 
-        private static readonly Color ConnectionColor = new Color(0.537f, 0.706f, 0.980f, 0.85f);
+        private static readonly Color ConnectionColor = new Color(0.40f, 0.4f, 0.40f, 1f);
         private static readonly Color SelectedColor = new Color(0.537f, 0.706f, 0.980f, 1f);
         private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
-        private static readonly Color ActiveConnectionColor = new Color(0.4f, 0.9f, 0.4f, 0.8f);
-        private static readonly Color ActiveConnectionWaveColor = new Color(0.4f, 0.9f, 0.4f, 0.6f);
+        private static readonly Color ActiveConnectionColor = new Color(0.4f, 0.9f, 0.4f, 1f);
+        private static readonly Color ActiveConnectionWaveColor = new Color(0.4f, 0.9f, 0.4f, 1f);
 
         private const float ArrowGraphSize = 10f;
         private const float ArrowGraphWidth = 5f;
@@ -57,15 +57,30 @@ namespace CleanStateMachine
                 var conn = _connections[i];
                 GetScreenEndpoints(conn, out Vector3 startPos, out Vector3 endPos);
 
-                bool isActive = conn.IsActive;
-                Color color = conn.IsSelected ? SelectedColor : (isActive ? ActiveConnectionColor : ConnectionColor);
+                float fade = 0f;
+                if (conn.IsActive)
+                {
+                    double elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
+                    fade = Mathf.Clamp01(1f - (float)(elapsed / 1.8));
+                    if (fade <= 0.01f)
+                    {
+                        conn.IsActive = false;
+                        fade = 0f;
+                    }
+                    else
+                    {
+                        fade *= fade;
+                    }
+                }
+
+                Color color = conn.IsSelected ? SelectedColor : Color.Lerp(ConnectionColor, ActiveConnectionColor, fade);
                 float width = Mathf.Max(1f, (conn.IsSelected ? SelectedBaseWidth : BaseWidth) * _zoom);
 
                 DrawLine(mgc, startPos, endPos, color, width);
                 DrawMidArrowhead(mgc, startPos, endPos, color, _zoom);
 
-                if (isActive)
-                    DrawActiveWave(mgc, conn, startPos, endPos, _zoom);
+                if (fade > 0.01f)
+                    DrawActiveWave(mgc, startPos, endPos, _zoom, fade);
             }
         }
 
@@ -190,17 +205,8 @@ namespace CleanStateMachine
             mesh.SetNextIndex(2); mesh.SetNextIndex(3); mesh.SetNextIndex(5);
         }
 
-        private static void DrawActiveWave(MeshGenerationContext mgc, ConnectionView conn, Vector3 start, Vector3 end, float zoom)
+        private static void DrawActiveWave(MeshGenerationContext mgc, Vector3 start, Vector3 end, float zoom, float fade)
         {
-            double elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
-            float fade = Mathf.Clamp01(1f - (float)(elapsed / 1.8));
-            if (fade <= 0.01f)
-            {
-                conn.IsActive = false;
-                return;
-            }
-            fade *= fade;
-
             Vector3 dir = (end - start).normalized;
             float totalLen = Vector3.Distance(start, end);
             if (totalLen < 0.01f) return;
@@ -209,6 +215,8 @@ namespace CleanStateMachine
             int circleCount = 5;
             float circleRadius = Mathf.Max(1.5f, 3f * zoom);
 
+            Color waveColor = new Color(ActiveConnectionWaveColor.r, ActiveConnectionWaveColor.g, ActiveConnectionWaveColor.b, ActiveConnectionWaveColor.a * fade);
+
             for (int i = 0; i < circleCount; i++)
             {
                 float phase = (float)i / circleCount;
@@ -216,19 +224,7 @@ namespace CleanStateMachine
 
                 Vector3 pos = start + dir * (t * totalLen);
 
-                Color circleColor = ActiveConnectionWaveColor;
-                circleColor.a *= fade * (0.5f + 0.3f * Mathf.Sin(i * 2.5f + 1f));
-
-                DrawCircle(mgc, pos, circleRadius, circleColor);
-            }
-
-            if (fade < 0.5f)
-            {
-                Color color = ActiveConnectionColor;
-                color.a *= fade * 2f;
-                float width = Mathf.Max(1f, 2f * zoom);
-                DrawLine(mgc, start, end, color, width);
-                DrawMidArrowhead(mgc, start, end, color, zoom);
+                DrawCircle(mgc, pos, circleRadius, waveColor);
             }
         }
 
