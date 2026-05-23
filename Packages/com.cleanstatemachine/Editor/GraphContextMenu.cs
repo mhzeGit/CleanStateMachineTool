@@ -48,6 +48,13 @@ namespace CleanStateMachine
         private void AddDefaultItems(MenuDropdown.IBuilder menu, Vector2 graphMousePosition, bool hasSelection, bool hasClipboard)
         {
             menu.AddItem("Create State", () => CreateStateRequested?.Invoke(graphMousePosition));
+
+            if (_contextNode != null)
+            {
+                StateView captured = _contextNode;
+                menu.AddItem("Connect", () => ConnectRequested?.Invoke(captured));
+            }
+
             menu.AddSeparator();
 
             if (hasSelection)
@@ -70,13 +77,6 @@ namespace CleanStateMachine
                 menu.AddSeparator();
                 CommentGroupView captured = _contextGroup;
                 menu.AddItem("Ungroup", () => UngroupRequested?.Invoke(captured));
-            }
-
-            if (_contextNode != null)
-            {
-                menu.AddSeparator();
-                StateView captured = _contextNode;
-                menu.AddItem("Connect", () => ConnectRequested?.Invoke(captured));
             }
         }
 
