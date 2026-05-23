@@ -1,0 +1,22 @@
+.comment-group__header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(64, 64, 64, 0.50);
+}
+
+.comment-group__label {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 4px;
+    bottom: 0;
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(204, 204, 204);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
