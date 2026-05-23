@@ -237,6 +237,7 @@ namespace CleanStateMachine
             _shadow.style.borderTopRightRadius = scaledRadius;
             _shadow.style.borderBottomLeftRadius = scaledRadius;
             _shadow.style.borderBottomRightRadius = scaledRadius;
+#if UNITY_6000_0_OR_NEWER
             var blurFilter = new FilterFunction(FilterFunctionType.Blur);
             blurFilter.AddParameter(new FilterParameter
             {
@@ -244,6 +245,7 @@ namespace CleanStateMachine
                 floatValue = blurRadius
             });
             _shadow.style.filter = new StyleList<FilterFunction>(new List<FilterFunction> { blurFilter });
+#endif
 
             if (_isActive)
             {
@@ -259,6 +261,7 @@ namespace CleanStateMachine
                 _glow.style.borderBottomLeftRadius = glowRadius;
                 _glow.style.borderBottomRightRadius = glowRadius;
 
+#if UNITY_6000_0_OR_NEWER
                 float glowBlur = Mathf.Max(0.5f, GlowBlurRadius * zoom);
                 var glowFilter = new FilterFunction(FilterFunctionType.Blur);
                 glowFilter.AddParameter(new FilterParameter
@@ -267,6 +270,7 @@ namespace CleanStateMachine
                     floatValue = glowBlur
                 });
                 _glow.style.filter = new StyleList<FilterFunction>(new List<FilterFunction> { glowFilter });
+#endif
             }
 
             _nameLabel.style.fontSize = Mathf.RoundToInt(12 * zoom);
