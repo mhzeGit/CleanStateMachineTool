@@ -172,7 +172,7 @@ namespace CleanStateMachine
             return new Rect(Position.x, Position.y, Size.x, Size.y);
         }
 
-        public bool ContainsPoint(Vector2 p)
+        public new bool ContainsPoint(Vector2 p)
         {
             Rect b = GetGraphBounds();
             if (!b.Contains(p)) return false;

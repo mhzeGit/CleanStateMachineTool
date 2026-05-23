@@ -146,7 +146,7 @@ namespace CleanStateMachine
             return new Rect(Position.x, Position.y, Size.x, Size.y);
         }
 
-        public bool ContainsPoint(Vector2 graphPoint)
+        public new bool ContainsPoint(Vector2 graphPoint)
         {
             if (graphPoint.x < Position.x || graphPoint.x > Position.x + Size.x ||
                 graphPoint.y < Position.y || graphPoint.y > Position.y + Size.y)
