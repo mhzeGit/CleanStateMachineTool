@@ -20,3 +20,35 @@
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+
+.comment-group__edit-field {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 4px;
+    bottom: 0;
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(204, 204, 204);
+    -unity-text-align: middle-left;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+    border-width: 1px;
+    border-radius: 3px;
+    padding-left: 4px;
+    padding-right: 4px;
+    margin: 0;
+}
+
+.comment-group__edit-field > .unity-base-text-field__input,
+.comment-group__edit-field > .unity-text-field__input {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(204, 204, 204);
+    -unity-text-align: middle-left;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    height: auto;
+}

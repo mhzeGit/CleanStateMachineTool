@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -21,8 +22,20 @@ namespace CleanStateMachine
         private Vector2 _fallbackPosition;
         private readonly List<StateView> _members = new();
 
-        public string Label { get; set; }
+        private string _labelText;
+        public string Label
+        {
+            get => _labelText;
+            set
+            {
+                _labelText = value;
+                if (_label != null)
+                    _label.text = value;
+            }
+        }
         public IReadOnlyList<StateView> Members => _members;
+
+        public event Action<CommentGroupView, string, string> EditingCommitted;
 
         private const float PadH = 20f;
         private const float PadTop = 30f;
@@ -47,6 +60,10 @@ namespace CleanStateMachine
 
         private readonly VisualElement _header;
         private readonly Label _label;
+        private readonly TextField _editField;
+
+        public bool IsEditing { get; private set; }
+        public string EditingBuffer { get; private set; }
 
         private float _lastZoom = 1f;
 
@@ -61,12 +78,21 @@ namespace CleanStateMachine
             style.overflow = Overflow.Hidden;
 
             _header = new VisualElement();
+            _header.pickingMode = PickingMode.Ignore;
             _header.AddToClassList("comment-group__header");
             Add(_header);
 
             _label = new Label(Label);
+            _label.pickingMode = PickingMode.Ignore;
             _label.AddToClassList("comment-group__label");
             _header.Add(_label);
+
+            _editField = new TextField();
+            _editField.AddToClassList("comment-group__edit-field");
+            _editField.style.display = DisplayStyle.None;
+            _editField.RegisterCallback<KeyDownEvent>(OnEditFieldKeyDown);
+            _editField.RegisterCallback<FocusOutEvent>(OnEditFieldFocusOut);
+            _header.Add(_editField);
 
             UpdateGroupColors();
             UpdateBorderStyle();
@@ -172,6 +198,9 @@ namespace CleanStateMachine
             float headerH = Mathf.Max(1f, 24f * zoom);
             _header.style.height = headerH;
             _label.style.fontSize = Mathf.RoundToInt(11f * zoom);
+
+            if (IsEditing)
+                _editField.style.fontSize = Mathf.RoundToInt(11f * zoom);
         }
 
         private void UpdateBorderStyle()
@@ -191,6 +220,86 @@ namespace CleanStateMachine
 
         public void DrawSelectionOverlay(float zoom, Vector2 panOffset)
         {
+        }
+
+        // ─── Inline Rename (matching BlackboardPanel pattern) ──────────
+
+        public void StartEditing()
+        {
+            if (IsEditing) return;
+
+            IsEditing = true;
+            EditingBuffer = Label;
+
+            _label.style.display = DisplayStyle.None;
+            _editField.value = Label;
+            _editField.style.display = DisplayStyle.Flex;
+
+            schedule.Execute(() =>
+            {
+                _editField.Focus();
+                _editField.SelectAll();
+            }).StartingIn(0);
+        }
+
+        public void CommitEditing()
+        {
+            if (!IsEditing) return;
+
+            string newName = _editField.value;
+            string oldName = EditingBuffer;
+
+            IsEditing = false;
+
+            _label.style.display = DisplayStyle.Flex;
+            _editField.style.display = DisplayStyle.None;
+
+            if (newName != oldName && !string.IsNullOrEmpty(newName))
+            {
+                Label = newName;
+                _label.text = newName;
+                EditingCommitted?.Invoke(this, oldName, newName);
+            }
+            else
+            {
+                Label = oldName;
+                _label.text = oldName;
+                EditingCommitted?.Invoke(this, oldName, oldName);
+            }
+        }
+
+        public void CancelEditing()
+        {
+            if (!IsEditing) return;
+
+            IsEditing = false;
+            Label = EditingBuffer;
+            _label.text = EditingBuffer;
+
+            _label.style.display = DisplayStyle.Flex;
+            _editField.style.display = DisplayStyle.None;
+
+            EditingCommitted?.Invoke(this, EditingBuffer, EditingBuffer);
+        }
+
+        private void OnEditFieldKeyDown(KeyDownEvent e)
+        {
+            if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
+            {
+                CommitEditing();
+                e.StopPropagation();
+            }
+            else if (e.keyCode == KeyCode.Escape)
+            {
+                CancelEditing();
+                e.StopPropagation();
+            }
+        }
+
+        private void OnEditFieldFocusOut(FocusOutEvent e)
+        {
+            if (IsEditing)
+                CommitEditing();
         }
     }
 }

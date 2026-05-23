@@ -336,27 +336,23 @@ namespace CleanStateMachine
             pickerBtn.text = currentScript != null ? currentScript.name : "None (Select...)";
             pickerBtn.clicked += () =>
             {
+                var root = panel?.visualTree;
+                if (root == null) return;
+
                 var filtered = FindFilteredScripts(isValid);
-                var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("None"), currentScript == null, () =>
+                var pos = pickerBtn.worldBound.position + new Vector2(0f, pickerBtn.worldBound.height);
+                MenuDropdown.Show(root, pos, menu =>
                 {
-                    onAssign(currentScript, null);
-                });
-                menu.AddSeparator("");
-                foreach (var script in filtered)
-                {
-                    string path = AssetDatabase.GetAssetPath(script);
-                    string displayPath = path.Replace("Assets/", "");
-                    var captured = script;
-                    menu.AddItem(new GUIContent(script.name + "  (" + displayPath + ")"),
-                        script == currentScript, () =>
+                    menu.AddItem("None", () => onAssign(currentScript, null));
+                    menu.AddSeparator();
+                    foreach (var script in filtered)
                     {
-                        onAssign(currentScript, captured);
-                    });
-                }
-                if (filtered.Count == 0)
-                    menu.AddDisabledItem(new GUIContent("No matching scripts found"));
-                menu.DropDown(pickerBtn.worldBound);
+                        var captured = script;
+                        menu.AddItem(script.name, () => onAssign(currentScript, captured));
+                    }
+                    if (filtered.Count == 0)
+                        menu.AddDisabledItem("No matching scripts found");
+                });
             };
             contentRow.Add(pickerBtn);
 
@@ -490,39 +486,42 @@ namespace CleanStateMachine
 
                     dropdownBtn.clicked += () =>
                     {
-                        var menu = new GenericMenu();
-                        menu.AddItem(new GUIContent("None (direct)"),
-                            string.IsNullOrEmpty(currentVarName), () =>
+                        var root = panel?.visualTree;
+                        if (root == null) return;
+
+                        var pos = dropdownBtn.worldBound.position + new Vector2(0f, dropdownBtn.worldBound.height);
+                        MenuDropdown.Show(root, pos, menu =>
                         {
-                            varNameProp.stringValue = "";
-                            useBbProp.boolValue = false;
-                            so.ApplyModifiedProperties();
-                            EditorUtility.SetDirty(_currentSO);
-                            rebuild();
-                        });
-                        menu.AddSeparator("");
-                        bool hasMatch = false;
-                        for (int i = 0; i < _blackboardVariables.Count; i++)
-                        {
-                            var bv = _blackboardVariables[i];
-                            if (bv.Type == bbType)
+                            menu.AddItem("None (direct)", () =>
                             {
-                                hasMatch = true;
-                                string varName = bv.Name;
-                                string captured = varName;
-                                menu.AddItem(new GUIContent(varName),
-                                    varName == currentVarName, (object n) =>
+                                varNameProp.stringValue = "";
+                                useBbProp.boolValue = false;
+                                so.ApplyModifiedProperties();
+                                EditorUtility.SetDirty(_currentSO);
+                                rebuild();
+                            });
+                            menu.AddSeparator();
+                            bool hasMatch = false;
+                            for (int i = 0; i < _blackboardVariables.Count; i++)
+                            {
+                                var bv = _blackboardVariables[i];
+                                if (bv.Type == bbType)
                                 {
-                                    varNameProp.stringValue = (string)n;
-                                    so.ApplyModifiedProperties();
-                                    EditorUtility.SetDirty(_currentSO);
-                                    rebuild();
-                                }, captured);
+                                    hasMatch = true;
+                                    string varName = bv.Name;
+                                    string captured = varName;
+                                    menu.AddItem(varName, () =>
+                                    {
+                                        varNameProp.stringValue = captured;
+                                        so.ApplyModifiedProperties();
+                                        EditorUtility.SetDirty(_currentSO);
+                                        rebuild();
+                                    });
+                                }
                             }
-                        }
-                        if (!hasMatch)
-                            menu.AddDisabledItem(new GUIContent("No matching variables"));
-                        menu.DropDown(dropdownBtn.worldBound);
+                            if (!hasMatch)
+                                menu.AddDisabledItem("No matching variables");
+                        });
                     };
 
                     valueArea.Add(dropdownBtn);
@@ -603,23 +602,27 @@ namespace CleanStateMachine
 
             modeBtn.clicked += () =>
             {
-                bool currentUseBb = useBbProp.boolValue;
-                var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Direct"), !currentUseBb, () =>
+                var root = panel?.visualTree;
+                if (root == null) return;
+
+                var pos = modeBtn.worldBound.position + new Vector2(0f, modeBtn.worldBound.height);
+                MenuDropdown.Show(root, pos, menu =>
                 {
-                    useBbProp.boolValue = false;
-                    so.ApplyModifiedProperties();
-                    EditorUtility.SetDirty(_currentSO);
-                    rebuild();
+                    menu.AddItem("Direct", () =>
+                    {
+                        useBbProp.boolValue = false;
+                        so.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(_currentSO);
+                        rebuild();
+                    });
+                    menu.AddItem("Blackboard", () =>
+                    {
+                        useBbProp.boolValue = true;
+                        so.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(_currentSO);
+                        rebuild();
+                    });
                 });
-                menu.AddItem(new GUIContent("Blackboard"), currentUseBb, () =>
-                {
-                    useBbProp.boolValue = true;
-                    so.ApplyModifiedProperties();
-                    EditorUtility.SetDirty(_currentSO);
-                    rebuild();
-                });
-                menu.DropDown(modeBtn.worldBound);
             };
 
             rebuild();

@@ -40,9 +40,25 @@ namespace CleanStateMachine
             title.AddToClassList("panel-title");
             header.Add(title);
 
-            var addBtn = new Button(OnAddVariable);
+            var addBtn = new Button();
             addBtn.text = "+";
             addBtn.AddToClassList("add-button");
+            addBtn.clicked += () =>
+            {
+                var root = panel?.visualTree;
+                if (root == null) return;
+
+                var pos = addBtn.worldBound.position + new Vector2(0f, addBtn.worldBound.height);
+                MenuDropdown.Show(root, pos, menu =>
+                {
+                    foreach (BlackboardVariableType type in System.Enum.GetValues(typeof(BlackboardVariableType)))
+                    {
+                        BlackboardVariableType capturedType = type;
+                        string label = ObjectNames.NicifyVariableName(type.ToString());
+                        menu.AddItem(label, () => AddVariable(capturedType));
+                    }
+                });
+            };
             header.Add(addBtn);
             Add(header);
 
@@ -244,17 +260,20 @@ namespace CleanStateMachine
             // Right-click context menu
             row.RegisterCallback<ContextClickEvent>(e =>
             {
-                var rowElement = e.currentTarget as VisualElement;
-                int idx = (int)rowElement.userData;
-                var menu = new GenericMenu();
-                menu.AddItem(new GUIContent("Delete Variable"), false, () =>
+                var root = panel?.visualTree;
+                if (root == null) return;
+
+                int idx = (int)row.userData;
+                MenuDropdown.Show(root, e.mousePosition, menu =>
                 {
-                    if (_variables == null || idx < 0 || idx >= _variables.Count) return;
-                    var cmd = new DeleteBlackboardVariableCommand(_variables, idx);
-                    _window.UndoRedoSystem.Execute(cmd);
-                    Rebuild();
+                    menu.AddItem("Delete Variable", () =>
+                    {
+                        if (_variables == null || idx < 0 || idx >= _variables.Count) return;
+                        var cmd = new DeleteBlackboardVariableCommand(_variables, idx);
+                        _window.UndoRedoSystem.Execute(cmd);
+                        Rebuild();
+                    });
                 });
-                menu.ShowAsContext();
                 e.StopPropagation();
             });
 
@@ -499,20 +518,6 @@ namespace CleanStateMachine
             var cmd = new ModifyBlackboardVariableCommand(variable, oldStr, variable.StringValue);
             _window.UndoRedoSystem.Execute(cmd);
             _window.NotifySidePanelChanged();
-        }
-
-        private void OnAddVariable()
-        {
-            if (_variables == null) return;
-
-            var menu = new GenericMenu();
-            foreach (BlackboardVariableType type in System.Enum.GetValues(typeof(BlackboardVariableType)))
-            {
-                BlackboardVariableType capturedType = type;
-                string label = ObjectNames.NicifyVariableName(type.ToString());
-                menu.AddItem(new GUIContent(label), false, () => AddVariable(capturedType));
-            }
-            menu.ShowAsContext();
         }
 
         private void AddVariable(BlackboardVariableType type)

@@ -69,9 +69,11 @@ namespace CleanStateMachine
         private Dictionary<ISelectable, Vector2> _preDragPositions;
         private StateView _entryState;
         private StateView _editingState;
+        private CommentGroupView _editingGroup;
         private static readonly Stopwatch _clickStopwatch = Stopwatch.StartNew();
         private long _lastClickTimestamp;
         private StateView _lastDoubleClickCandidate;
+        private CommentGroupView _lastDoubleClickCandidateGroup;
 
         private StateMachineComponent _trackedComponent;
         private int _activeStateDataIndex = -1;
@@ -231,7 +233,7 @@ namespace CleanStateMachine
                 ISelectable hit = HitTest(graphMousePosition);
                 StateView hitState = hit as StateView;
                 CommentGroupView hitGroup = hit as CommentGroupView;
-                _contextMenu.Show(graphMousePosition, hitState, hitGroup,
+                _contextMenu.Show(rootVisualElement, e.mousePosition, graphMousePosition, hitState, hitGroup,
                     _selectionController.Count > 0,
                     _clipboard is { Count: > 0 });
                 e.Use();
@@ -494,9 +496,34 @@ namespace CleanStateMachine
                     _lastDoubleClickCandidate = null;
                 }
             }
+            else if (hit is CommentGroupView gv)
+            {
+                long now = _clickStopwatch.ElapsedMilliseconds;
+                long elapsed = now - _lastClickTimestamp;
+                bool sameGroup = gv == _lastDoubleClickCandidateGroup;
+
+                if (sameGroup && elapsed < 500)
+                {
+                    _lastDoubleClickCandidateGroup = null;
+                    if (!_selectionController.IsSelected(gv))
+                        _selectionController.SelectOnly(gv);
+                    StartEditingGroup(gv);
+                }
+
+                if (!sameGroup)
+                {
+                    _lastClickTimestamp = now;
+                    _lastDoubleClickCandidateGroup = gv;
+                }
+                else
+                {
+                    _lastDoubleClickCandidateGroup = null;
+                }
+            }
             else
             {
                 _lastDoubleClickCandidate = null;
+                _lastDoubleClickCandidateGroup = null;
             }
 
             if (_editingState != null && hit != _editingState)
@@ -515,7 +542,7 @@ namespace CleanStateMachine
                     _selectionController.SelectOnly(hit);
                 }
 
-                if (!(hit is StateView s && s.IsEntry) && _editingState == null)
+                    if (!(hit is StateView s && s.IsEntry) && _editingState == null && _editingGroup == null)
                 {
                     var dragItems = GetDragItems();
                     CapturePreDragPositions(dragItems);
@@ -527,7 +554,7 @@ namespace CleanStateMachine
                 if (!e.shift)
                     _selectionController.Clear();
 
-                if (_editingState == null)
+                if (_editingState == null && _editingGroup == null)
                     _selectionBox.Start(graphPos);
             }
 
@@ -955,6 +982,26 @@ namespace CleanStateMachine
             if (oldName != newName && !string.IsNullOrEmpty(newName))
             {
                 var cmd = new RenameStateCommand(state, oldName, newName);
+                _undoRedoSystem.Execute(cmd);
+                MarkChanged();
+            }
+        }
+
+        private void StartEditingGroup(CommentGroupView group)
+        {
+            _editingGroup = group;
+            group.EditingCommitted += OnGroupEditingCommitted;
+            group.StartEditing();
+        }
+
+        private void OnGroupEditingCommitted(CommentGroupView group, string oldName, string newName)
+        {
+            group.EditingCommitted -= OnGroupEditingCommitted;
+            _editingGroup = null;
+
+            if (oldName != newName && !string.IsNullOrEmpty(newName))
+            {
+                var cmd = new RenameGroupCommand(group, oldName, newName);
                 _undoRedoSystem.Execute(cmd);
                 MarkChanged();
             }

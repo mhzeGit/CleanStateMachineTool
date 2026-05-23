@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace CleanStateMachine
 {
@@ -33,55 +33,54 @@ namespace CleanStateMachine
             _providers.Remove(provider);
         }
 
-        public void Show(Vector2 graphMousePosition, StateView contextNode = null, CommentGroupView contextGroup = null, bool hasSelection = false, bool hasClipboard = false)
+        public void Show(VisualElement root, Vector2 screenPosition, Vector2 graphMousePosition, StateView contextNode = null, CommentGroupView contextGroup = null, bool hasSelection = false, bool hasClipboard = false)
         {
             _contextNode = contextNode;
             _contextGroup = contextGroup;
 
-            var menu = new GenericMenu();
-
-            AddDefaultItems(menu, graphMousePosition, hasSelection, hasClipboard);
-            AddProviderItems(menu, graphMousePosition);
-
-            menu.ShowAsContext();
+            MenuDropdown.Show(root, screenPosition, menu =>
+            {
+                AddDefaultItems(menu, graphMousePosition, hasSelection, hasClipboard);
+                AddProviderItems(menu, graphMousePosition);
+            });
         }
 
-        private void AddDefaultItems(GenericMenu menu, Vector2 graphMousePosition, bool hasSelection, bool hasClipboard)
+        private void AddDefaultItems(MenuDropdown.IBuilder menu, Vector2 graphMousePosition, bool hasSelection, bool hasClipboard)
         {
-            menu.AddItem(new GUIContent("Create State"), false, () => CreateStateRequested?.Invoke(graphMousePosition));
-            menu.AddSeparator(string.Empty);
+            menu.AddItem("Create State", () => CreateStateRequested?.Invoke(graphMousePosition));
+            menu.AddSeparator();
 
             if (hasSelection)
-                menu.AddItem(new GUIContent("Copy"), false, () => CopyRequested?.Invoke());
+                menu.AddItem("Copy", () => CopyRequested?.Invoke());
             else
-                menu.AddDisabledItem(new GUIContent("Copy"));
+                menu.AddDisabledItem("Copy");
 
             if (hasClipboard)
-                menu.AddItem(new GUIContent("Paste"), false, () => PasteRequested?.Invoke());
+                menu.AddItem("Paste", () => PasteRequested?.Invoke());
             else
-                menu.AddDisabledItem(new GUIContent("Paste"));
+                menu.AddDisabledItem("Paste");
 
             if (hasSelection)
-                menu.AddItem(new GUIContent("Delete"), false, () => DeleteRequested?.Invoke());
+                menu.AddItem("Delete", () => DeleteRequested?.Invoke());
             else
-                menu.AddDisabledItem(new GUIContent("Delete"));
+                menu.AddDisabledItem("Delete");
 
             if (_contextGroup != null)
             {
-                menu.AddSeparator(string.Empty);
+                menu.AddSeparator();
                 CommentGroupView captured = _contextGroup;
-                menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupRequested?.Invoke(captured));
+                menu.AddItem("Ungroup", () => UngroupRequested?.Invoke(captured));
             }
 
             if (_contextNode != null)
             {
-                menu.AddSeparator(string.Empty);
+                menu.AddSeparator();
                 StateView captured = _contextNode;
-                menu.AddItem(new GUIContent("Connect"), false, () => ConnectRequested?.Invoke(captured));
+                menu.AddItem("Connect", () => ConnectRequested?.Invoke(captured));
             }
         }
 
-        private void AddProviderItems(GenericMenu menu, Vector2 graphMousePosition)
+        private void AddProviderItems(MenuDropdown.IBuilder menu, Vector2 graphMousePosition)
         {
             for (int i = 0; i < _providers.Count; i++)
             {
