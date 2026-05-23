@@ -146,41 +146,171 @@ namespace CleanStateMachine
             AddInfoRow("To", conn.To?.Name ?? "\u2014");
 
             AddDivider();
-            AddSectionTitle("Transition Condition");
+            AddSectionTitle("Transition Conditions");
 
-            AddScriptRow(
-                conn.ConditionScript,
-                IsValidConditionScript,
-                (prev, next) => OnConditionScriptChanged(conn, prev, next));
-
-            if (conn.ConditionInstance != null)
+            for (int i = 0; i < conn.ConditionEntries.Count; i++)
             {
-                _currentSO = conn.ConditionInstance;
-                AddDivider();
-                AddSectionTitle("Properties");
-                AddSOProperties();
+                BuildConditionEntry(conn, i);
             }
+
+            var addBtn = new Button(() =>
+            {
+                conn.ConditionEntries.Add(new ConditionEntryView());
+                _window.NotifySidePanelChanged();
+                UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+            });
+            addBtn.text = "+ Add Condition";
+            addBtn.AddToClassList("add-condition-button");
+            _scrollView.Add(addBtn);
         }
 
-        private void OnConditionScriptChanged(ConnectionView conn, MonoScript prev, MonoScript next)
+        private void BuildConditionEntry(ConnectionView conn, int index)
         {
-            if (next == prev) return;
-            if (conn.ConditionInstance != null)
+            var entry = conn.ConditionEntries[index];
+
+            var container = new VisualElement();
+            container.AddToClassList("condition-entry");
+
+            var header = new VisualElement();
+            header.AddToClassList("condition-entry-header");
+
+            var headerLabel = new Label($"Condition {index + 1}");
+            headerLabel.AddToClassList("condition-entry-label");
+            header.Add(headerLabel);
+
+            var removeBtn = new Button(() =>
             {
-                Object.DestroyImmediate(conn.ConditionInstance, true);
-                conn.ConditionInstance = null;
+                if (entry.Instance != null)
+                {
+                    Object.DestroyImmediate(entry.Instance, true);
+                    entry.Instance = null;
+                }
+                conn.ConditionEntries.RemoveAt(index);
+                _window.NotifySidePanelChanged();
+                UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+            });
+            removeBtn.text = "X";
+            removeBtn.AddToClassList("condition-remove-button");
+            header.Add(removeBtn);
+
+            container.Add(header);
+
+            var scriptRow = new VisualElement();
+            scriptRow.AddToClassList("condition-script-row");
+
+            var pickerBtn = new Button();
+            pickerBtn.AddToClassList("script-picker-button");
+            pickerBtn.text = entry.Script != null ? entry.Script.name : "None (Select...)";
+            var capturedIndex = index;
+            pickerBtn.clicked += () =>
+            {
+                var filtered = FindFilteredScripts(IsValidConditionScript);
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(pickerBtn.worldBound.x, pickerBtn.worldBound.y + pickerBtn.worldBound.height));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    menu.AddItem("None", () => OnConditionEntryScriptChanged(conn, capturedIndex, null));
+                    menu.AddSeparator();
+                    foreach (var script in filtered)
+                    {
+                        var captured = script;
+                        menu.AddItem(script.name, () => OnConditionEntryScriptChanged(conn, capturedIndex, captured));
+                    }
+                    if (filtered.Count == 0)
+                        menu.AddDisabledItem("No matching scripts found");
+                });
+            };
+            scriptRow.Add(pickerBtn);
+
+            if (entry.Script != null)
+            {
+                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.Script));
+                openBtn.text = "Open";
+                openBtn.AddToClassList("script-field-open-button");
+                scriptRow.Add(openBtn);
             }
-            conn.ConditionScript = next;
+
+            container.Add(scriptRow);
+
+            if (entry.Script != null)
+            {
+                var scriptType = entry.Script.GetClass();
+                string typeName = scriptType != null ? scriptType.Name : entry.Script.name;
+                var typeLabel = new Label(typeName);
+                typeLabel.AddToClassList("script-type-name");
+                container.Add(typeLabel);
+
+                if (entry.Instance != null)
+                {
+                    var propsContainer = new VisualElement();
+                    propsContainer.AddToClassList("condition-properties");
+                    var so = new SerializedObject(entry.Instance);
+                    var prop = so.GetIterator();
+                    bool enterChildren = true;
+                    while (prop.NextVisible(enterChildren))
+                    {
+                        enterChildren = false;
+                        if (prop.name == "m_Script") continue;
+
+                        var card = new VisualElement();
+                        card.AddToClassList("property-card");
+
+                        var label = new Label(prop.displayName);
+                        label.AddToClassList("property-card-label");
+                        card.Add(label);
+
+                        VisualElement content;
+                        if (prop.type == "BlackboardVariableReference")
+                        {
+                            content = BuildBbVarRefField(so, prop.Copy());
+                        }
+                        else
+                        {
+                            var pf = new PropertyField(prop.Copy(), "");
+                            content = pf;
+                        }
+                        content.AddToClassList("property-card-content");
+                        card.Add(content);
+
+                        propsContainer.Add(card);
+                    }
+                    if (propsContainer.childCount > 0)
+                    {
+                        propsContainer.Bind(so);
+                        container.Add(propsContainer);
+                    }
+                }
+            }
+            else
+            {
+                var hint = new Label("Assign a script to define behaviour");
+                hint.AddToClassList("script-type-name");
+                container.Add(hint);
+            }
+
+            _scrollView.Add(container);
+        }
+
+        private void OnConditionEntryScriptChanged(ConnectionView conn, int index, MonoScript next)
+        {
+            var entry = conn.ConditionEntries[index];
+            if (next == entry.Script) return;
+            if (entry.Instance != null)
+            {
+                Object.DestroyImmediate(entry.Instance, true);
+                entry.Instance = null;
+            }
+            entry.Script = next;
             if (next != null)
             {
                 var type = next.GetClass();
                 if (type != null)
                 {
-                    conn.ConditionInstance = (ConditionScript)ScriptableObject.CreateInstance(type);
+                    entry.Instance = (ConditionScript)ScriptableObject.CreateInstance(type);
                     string fromName = conn.From?.Name ?? "?";
                     string toName = conn.To?.Name ?? "?";
-                    conn.ConditionInstance.name = $"{fromName}->{toName}_Condition";
-                    conn.ConditionInstance.hideFlags = HideFlags.HideInHierarchy;
+                    entry.Instance.name = $"{fromName}->{toName}_Condition_{index}";
+                    entry.Instance.hideFlags = HideFlags.HideInHierarchy;
                 }
             }
             _window.NotifySidePanelChanged();
@@ -337,7 +467,8 @@ namespace CleanStateMachine
             pickerBtn.clicked += () =>
             {
                 var filtered = FindFilteredScripts(isValid);
-                var pos = pickerBtn.LocalToWorld(new Vector2(0f, pickerBtn.resolvedStyle.height));
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(pickerBtn.worldBound.x, pickerBtn.worldBound.y + pickerBtn.worldBound.height));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
                 {
                     menu.AddItem("None", () => onAssign(currentScript, null));
@@ -483,7 +614,8 @@ namespace CleanStateMachine
 
                     dropdownBtn.clicked += () =>
                     {
-                        var pos = dropdownBtn.LocalToWorld(new Vector2(0f, dropdownBtn.resolvedStyle.height));
+                        var pos = _window.rootVisualElement.WorldToLocal(
+                            new Vector2(dropdownBtn.worldBound.x, dropdownBtn.worldBound.y + dropdownBtn.worldBound.height));
                         MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
                         {
                             menu.AddItem("None (direct)", () =>
@@ -596,7 +728,8 @@ namespace CleanStateMachine
 
             modeBtn.clicked += () =>
             {
-                var pos = modeBtn.LocalToWorld(new Vector2(0f, modeBtn.resolvedStyle.height));
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(modeBtn.worldBound.x, modeBtn.worldBound.y + modeBtn.worldBound.height));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
                 {
                     menu.AddItem("Direct", () =>

@@ -1244,11 +1244,19 @@ namespace CleanStateMachine
                         cd.ToIndex >= 0 && cd.ToIndex < stateLookup.Count)
                     {
                         var conn = new ConnectionView(
-                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex])
+                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex]);
+                        if (cd.Conditions != null)
                         {
-                            ConditionScript = ScriptReferenceUtility.FindScriptByTypeName(cd.ConditionType),
-                            ConditionInstance = cd.Condition
-                        };
+                            for (int j = 0; j < cd.Conditions.Count; j++)
+                            {
+                                var ce = cd.Conditions[j];
+                                conn.ConditionEntries.Add(new ConditionEntryView
+                                {
+                                    Script = ScriptReferenceUtility.FindScriptByTypeName(ce.TypeName),
+                                    Instance = ce.Instance
+                                });
+                            }
+                        }
                         _connections.Add(conn);
                     }
                 }
@@ -1322,20 +1330,32 @@ namespace CleanStateMachine
 
             foreach (var conn in _connections)
             {
-                if (conn.ConditionInstance != null)
+                for (int j = 0; j < conn.ConditionEntries.Count; j++)
                 {
-                    string fromName = conn.From?.Name ?? "?";
-                    string toName = conn.To?.Name ?? "?";
-                    conn.ConditionInstance.name = $"{fromName}->{toName}_Condition";
+                    var entry = conn.ConditionEntries[j];
+                    if (entry.Instance != null)
+                    {
+                        string fromName = conn.From?.Name ?? "?";
+                        string toName = conn.To?.Name ?? "?";
+                        entry.Instance.name = $"{fromName}->{toName}_Condition_{j}";
+                    }
                 }
 
-                data.Connections.Add(new ConnectionData
+                var cd = new ConnectionData
                 {
                     FromIndex = stateToIndex[conn.From],
-                    ToIndex = stateToIndex[conn.To],
-                    ConditionType = ScriptReferenceUtility.GetTypeName(conn.ConditionScript),
-                    Condition = conn.ConditionInstance
-                });
+                    ToIndex = stateToIndex[conn.To]
+                };
+                for (int j = 0; j < conn.ConditionEntries.Count; j++)
+                {
+                    var entry = conn.ConditionEntries[j];
+                    cd.Conditions.Add(new ConditionEntry
+                    {
+                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
+                        Instance = entry.Instance
+                    });
+                }
+                data.Connections.Add(cd);
             }
 
             foreach (var group in _groups)

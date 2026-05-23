@@ -16,12 +16,18 @@ namespace CleanStateMachine
     }
 
     [Serializable]
+    public class ConditionEntry
+    {
+        public string TypeName;
+        public ConditionScript Instance;
+    }
+
+    [Serializable]
     public class ConnectionData
     {
         public int FromIndex;
         public int ToIndex;
-        public string ConditionType;
-        public ConditionScript Condition;
+        public List<ConditionEntry> Conditions = new List<ConditionEntry>();
     }
 
     [Serializable]

@@ -33,13 +33,19 @@ namespace CleanStateMachine
                     for (int i = 0; i < _data.Connections.Count; i++)
                     {
                         var cd = _data.Connections[i];
-                        if (cd.Condition != null && cd.Condition is ConditionScript)
-                            continue;
-                        if (!string.IsNullOrEmpty(cd.ConditionType))
+                        if (cd.Conditions == null) continue;
+                        for (int j = 0; j < cd.Conditions.Count; j++)
                         {
-                            needsRebuild = true;
-                            break;
+                            var ce = cd.Conditions[j];
+                            if (ce.Instance != null && ce.Instance is ConditionScript)
+                                continue;
+                            if (!string.IsNullOrEmpty(ce.TypeName))
+                            {
+                                needsRebuild = true;
+                                break;
+                            }
                         }
+                        if (needsRebuild) break;
                     }
                 }
                 if (needsRebuild)
@@ -102,22 +108,27 @@ namespace CleanStateMachine
             for (int i = 0; i < _data.Connections.Count; i++)
             {
                 var cd = _data.Connections[i];
-                if (!string.IsNullOrEmpty(cd.ConditionType) && cd.Condition == null)
+                if (cd.Conditions == null) continue;
+                for (int j = 0; j < cd.Conditions.Count; j++)
                 {
-                    var type = System.Type.GetType(cd.ConditionType);
-                    if (type == null)
+                    var ce = cd.Conditions[j];
+                    if (!string.IsNullOrEmpty(ce.TypeName) && ce.Instance == null)
                     {
-                        foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                        var type = System.Type.GetType(ce.TypeName);
+                        if (type == null)
                         {
-                            type = asm.GetType(cd.ConditionType);
-                            if (type != null) break;
+                            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(ce.TypeName);
+                                if (type != null) break;
+                            }
                         }
-                    }
-                    if (type != null && type.IsSubclassOf(typeof(ConditionScript)))
-                    {
-                        cd.Condition = (ConditionScript)ScriptableObject.CreateInstance(type);
-                        cd.Condition.name = $"Condition_{cd.FromIndex}_{cd.ToIndex}";
-                        cd.Condition.hideFlags = HideFlags.HideInHierarchy;
+                        if (type != null && type.IsSubclassOf(typeof(ConditionScript)))
+                        {
+                            ce.Instance = (ConditionScript)ScriptableObject.CreateInstance(type);
+                            ce.Instance.name = $"Condition_{cd.FromIndex}_{cd.ToIndex}_{j}";
+                            ce.Instance.hideFlags = HideFlags.HideInHierarchy;
+                        }
                     }
                 }
             }
@@ -155,14 +166,19 @@ namespace CleanStateMachine
 
                 for (int i = 0; i < _data.Connections.Count; i++)
                 {
-                    var inst = _data.Connections[i].Condition;
-                    if (inst != null)
+                    var cd = _data.Connections[i];
+                    if (cd.Conditions == null) continue;
+                    for (int j = 0; j < cd.Conditions.Count; j++)
                     {
-                        referenced.Add(inst);
-                        if (!AssetDatabase.Contains(inst))
+                        var inst = cd.Conditions[j].Instance;
+                        if (inst != null)
                         {
-                            inst.hideFlags = HideFlags.HideInHierarchy;
-                            AssetDatabase.AddObjectToAsset(inst, this);
+                            referenced.Add(inst);
+                            if (!AssetDatabase.Contains(inst))
+                            {
+                                inst.hideFlags = HideFlags.HideInHierarchy;
+                                AssetDatabase.AddObjectToAsset(inst, this);
+                            }
                         }
                     }
                 }

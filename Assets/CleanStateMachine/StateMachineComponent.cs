@@ -16,7 +16,7 @@ namespace CleanStateMachine
         private List<TransitionRecord> _recentTransitions = new List<TransitionRecord>();
 
         private readonly Dictionary<int, StateBehaviour> _behaviourInstances = new Dictionary<int, StateBehaviour>();
-        private readonly Dictionary<string, ConditionScript> _conditionInstances = new Dictionary<string, ConditionScript>();
+        private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
 
         public StateMachineController Controller
         {
@@ -134,25 +134,38 @@ namespace CleanStateMachine
             {
                 var connection = Data.Connections[c];
                 if (connection.FromIndex != _currentStateIndex) continue;
-                if (connection.Condition == null && string.IsNullOrEmpty(connection.ConditionType)) continue;
 
-                ConditionScript condition = connection.Condition;
-                if (condition == null)
+                bool allMet = true;
+                if (connection.Conditions != null && connection.Conditions.Count > 0)
                 {
-                    if (!_conditionInstances.TryGetValue(connection.ConditionType, out condition))
+                    for (int i = 0; i < connection.Conditions.Count; i++)
                     {
-                        var type = ResolveType(connection.ConditionType);
-                        if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
+                        var entry = connection.Conditions[i];
+                        if (entry.Instance == null && string.IsNullOrEmpty(entry.TypeName))
                             continue;
 
-                        condition = (ConditionScript)ScriptableObject.CreateInstance(type);
-                        condition.name = $"{connection.ConditionType}_Condition";
-                        condition.hideFlags = HideFlags.HideAndDontSave;
-                        _conditionInstances[connection.ConditionType] = condition;
+                        ConditionScript condition = entry.Instance;
+                        if (condition == null)
+                        {
+                            var type = ResolveType(entry.TypeName);
+                            if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
+                                continue;
+
+                            condition = (ConditionScript)ScriptableObject.CreateInstance(type);
+                            condition.name = $"{entry.TypeName}_Condition";
+                            condition.hideFlags = HideFlags.HideAndDontSave;
+                            _runtimeConditionInstances.Add(condition);
+                        }
+
+                        if (!condition.Evaluate(this))
+                        {
+                            allMet = false;
+                            break;
+                        }
                     }
                 }
 
-                if (condition.Evaluate(this))
+                if (allMet)
                 {
                     TransitionToState(connection.ToIndex);
                     break;
@@ -214,12 +227,12 @@ namespace CleanStateMachine
             }
             _behaviourInstances.Clear();
 
-            foreach (var instance in _conditionInstances.Values)
+            foreach (var instance in _runtimeConditionInstances)
             {
-                if (instance != null && instance.hideFlags == HideFlags.HideAndDontSave)
+                if (instance != null)
                     Destroy(instance);
             }
-            _conditionInstances.Clear();
+            _runtimeConditionInstances.Clear();
         }
 
         public void SetBoolParameter(string name, bool value)
