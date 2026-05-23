@@ -3,6 +3,17 @@
     overflow: visible;
 }
 
+.state-view__shadow {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.20);
+}
+
+.state-view__glow {
+    position: absolute;
+    background-color: rgba(120, 170, 230, 0.40);
+    opacity: 0;
+}
+
 .state-view__fill {
     position: absolute;
     left: 0;
@@ -45,13 +56,6 @@
     border-bottom-width: 2px;
 }
 
-.state-view__glow {
-    position: absolute;
-    background-color: rgba(120, 170, 230, 0.4);
-    border-radius: 12px;
-    opacity: 0;
-}
-
 .state-view__label {
     position: absolute;
     left: 0;
@@ -63,4 +67,29 @@
     -unity-text-align: middle-center;
     padding: 4px;
     overflow: hidden;
+}
+
+.state-view__edit-field {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    font-size: 12px;
+    color: white;
+    -unity-text-align: middle-center;
+    padding: 4px;
+    margin: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.state-view__edit-field:focus {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
 }

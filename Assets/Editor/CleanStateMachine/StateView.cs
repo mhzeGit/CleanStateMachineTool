@@ -1,3 +1,4 @@
+using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -34,8 +35,8 @@ namespace CleanStateMachine
         }
 
         public bool IsEntry { get; }
-        public bool IsEditing { get; set; }
-        public string EditingBuffer { get; set; }
+        public bool IsEditing { get; private set; }
+        public string EditingBuffer { get; private set; }
         public MonoScript BehaviourScript { get; set; }
         public StateBehaviour BehaviourInstance { get; set; }
 
@@ -51,60 +52,22 @@ namespace CleanStateMachine
 
         public int DataIndex { get; set; } = -1;
 
-        // Visual children (prepared for future UITK panel integration)
-        private VisualElement _fill;
+        public event Action<StateView, string, string> EditingCommitted; // state, oldName, newName
+
+        private VisualElement _shadow;
         private VisualElement _glow;
+        private VisualElement _fill;
         private Label _nameLabel;
-
-        // IMGUI rendering (used while element is not in UITK panel)
-        private static GUIStyle _fillStyle;
-        private static GUIStyle _borderStyle;
-        private static GUIStyle _selectionStyle;
-        private static GUIStyle _editStyle;
-        private static GUIStyle _glowStyle;
-
-        private static Texture2D _cachedFillTexture;
-        private static int _cachedFillRadius;
-        private static Texture2D _cachedBorderTexture;
-        private static int _cachedBorderRadius;
-        private static int _cachedBorderWidth;
-        private static Texture2D _cachedSelectionTexture;
-        private static int _cachedSelectionRadius;
-        private static int _cachedSelectionBorderWidth;
-
-        private static Texture2D _cachedEntryFillTexture;
-        private static int _cachedEntryFillRadius;
-        private static Texture2D _cachedEntryBorderTexture;
-        private static int _cachedEntryBorderRadius;
-        private static int _cachedEntryBorderWidth;
-
-        private static Texture2D _cachedGlowTexture;
-        private static int _cachedGlowInnerRadius;
-
-        private static Texture2D _cachedShadowTexture;
-        private static int _cachedShadowInnerRadius;
-        private static int _cachedShadowExpand;
-        private static GUIStyle _shadowStyle;
-
-        // Grayscale node fill; color reserved for functional indicators (entry, selection)
-        private static readonly Color FillColor = new Color(0.26f, 0.26f, 0.26f);
-        private static readonly Color PermanentBorderColor = new Color(0.34f, 0.34f, 0.34f);
-        private static readonly Color SelectionColor = new Color(0.537f, 0.706f, 0.980f);
-
-        private static readonly Color EntryFillColor = new Color(0.302f, 0.502f, 0.302f);
-        private static readonly Color EntryBorderColor = new Color(0.651f, 0.890f, 0.631f);
+        private TextField _editField;
 
         private const float DefaultWidth = 160f;
         private const float DefaultHeight = 40f;
         private const int BaseCornerRadius = 8;
         private const float PermanentBorderWidth = 1.5f;
-        private const float SelectionBorderWidth = 2f;
         private const float GlowExpandPx = 12f;
         private const float GlowPulseSpeed = 2.5f;
         private const int GlowBlurKernel = 4;
-
-        private const float ShadowExpandPx = 30f;
-        private static readonly Color ShadowColor = new Color(0f, 0f, 0f, 0.20f);
+        private const float ShadowOffsetPx = 4f;
 
         public StateView(Vector2 position, string name = "State", bool isEntry = false)
         {
@@ -113,25 +76,63 @@ namespace CleanStateMachine
             _name = name;
             IsEntry = isEntry;
 
-            // Prepare VisualElement children for future UITK panel integration
             pickingMode = PickingMode.Ignore;
             style.position = UnityEngine.UIElements.Position.Absolute;
             style.overflow = Overflow.Visible;
 
+            style.left = position.x;
+            style.top = position.y;
+            style.width = DefaultWidth;
+            style.height = DefaultHeight;
+
+            _shadow = new VisualElement();
+            _shadow.AddToClassList("state-view__shadow");
+            _shadow.pickingMode = PickingMode.Ignore;
+            _shadow.style.position = UnityEngine.UIElements.Position.Absolute;
+            Add(_shadow);
+
             _glow = new VisualElement();
             _glow.AddToClassList("state-view__glow");
-            _glow.style.display = DisplayStyle.None;
+            _glow.pickingMode = PickingMode.Ignore;
+            _glow.style.position = UnityEngine.UIElements.Position.Absolute;
             Add(_glow);
 
             _fill = new VisualElement();
             _fill.AddToClassList("state-view__fill");
+            _fill.pickingMode = PickingMode.Ignore;
+            _fill.style.position = UnityEngine.UIElements.Position.Absolute;
+            _fill.style.left = 0f;
+            _fill.style.top = 0f;
+            _fill.style.right = 0f;
+            _fill.style.bottom = 0f;
             if (IsEntry)
                 _fill.AddToClassList("state-view__fill--entry");
             Add(_fill);
 
             _nameLabel = new Label(_name);
             _nameLabel.AddToClassList("state-view__label");
+            _nameLabel.pickingMode = PickingMode.Ignore;
+            _nameLabel.style.position = UnityEngine.UIElements.Position.Absolute;
+            _nameLabel.style.left = 0f;
+            _nameLabel.style.top = 0f;
+            _nameLabel.style.right = 0f;
+            _nameLabel.style.bottom = 0f;
             Add(_nameLabel);
+
+            _editField = new TextField();
+            _editField.AddToClassList("state-view__edit-field");
+            _editField.pickingMode = PickingMode.Ignore;
+            _editField.style.position = UnityEngine.UIElements.Position.Absolute;
+            _editField.style.left = 0f;
+            _editField.style.top = 0f;
+            _editField.style.right = 0f;
+            _editField.style.bottom = 0f;
+            _editField.style.display = DisplayStyle.None;
+            _editField.RegisterCallback<KeyDownEvent>(OnEditFieldKeyDown);
+            _editField.RegisterCallback<FocusOutEvent>(OnEditFieldFocusOut);
+            Add(_editField);
+
+            InitializeGlowAnimation();
         }
 
         public Vector2 GetCenter()
@@ -183,560 +184,157 @@ namespace CleanStateMachine
             return true;
         }
 
-        public void Draw(float zoom, Vector2 panOffset)
+        public void UpdateTransform(float zoom, Vector2 panOffset)
         {
-            if (_fillStyle == null)
-            {
-                _fillStyle = new GUIStyle
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    normal = { textColor = Color.white },
-                    padding = new RectOffset(4, 4, 4, 4)
-                };
-                _borderStyle = new GUIStyle { padding = new RectOffset(0, 0, 0, 0) };
-            }
-
-            int scaledRadius = Mathf.Max(1, Mathf.RoundToInt(BaseCornerRadius * zoom));
-            int borderWidth = Mathf.Max(1, Mathf.RoundToInt(PermanentBorderWidth * zoom));
-            if (IsEntry)
-            {
-                EnsureEntryFillTexture(scaledRadius);
-                EnsureEntryBorderTexture(scaledRadius, borderWidth);
-            }
-            else
-            {
-                EnsureFillTexture(scaledRadius);
-                EnsureBorderTexture(scaledRadius, borderWidth, PermanentBorderColor);
-            }
-
-            var fillBorder = new RectOffset(scaledRadius, scaledRadius, scaledRadius, scaledRadius);
-
             Vector2 screenPos = Position * zoom + panOffset;
             Vector2 scaledSize = Size * zoom;
-            var rect = new Rect(screenPos.x, screenPos.y, scaledSize.x, scaledSize.y);
 
-            DrawShadow(zoom, panOffset, rect, scaledRadius);
+            style.left = screenPos.x;
+            style.top = screenPos.y;
+            style.width = scaledSize.x;
+            style.height = scaledSize.y;
 
-            if (IsActive)
-                DrawActiveGlow(zoom, panOffset, rect, scaledRadius);
+            int scaledRadius = Mathf.Max(1, Mathf.RoundToInt(BaseCornerRadius * zoom));
+            float borderWidth = Mathf.Max(1f, PermanentBorderWidth * zoom);
 
-            _fillStyle.normal.background = IsEntry ? _cachedEntryFillTexture : _cachedFillTexture;
-            _fillStyle.border = fillBorder;
-            _fillStyle.fontSize = Mathf.RoundToInt(12 * zoom);
+            _fill.style.borderTopLeftRadius = scaledRadius;
+            _fill.style.borderTopRightRadius = scaledRadius;
+            _fill.style.borderBottomLeftRadius = scaledRadius;
+            _fill.style.borderBottomRightRadius = scaledRadius;
+
+            _fill.style.borderLeftWidth = borderWidth;
+            _fill.style.borderRightWidth = borderWidth;
+            _fill.style.borderTopWidth = borderWidth;
+            _fill.style.borderBottomWidth = borderWidth;
+
+            float shadowOffset = ShadowOffsetPx * zoom;
+            _shadow.style.left = shadowOffset;
+            _shadow.style.top = shadowOffset;
+            _shadow.style.width = scaledSize.x;
+            _shadow.style.height = scaledSize.y;
+            _shadow.style.borderTopLeftRadius = scaledRadius;
+            _shadow.style.borderTopRightRadius = scaledRadius;
+            _shadow.style.borderBottomLeftRadius = scaledRadius;
+            _shadow.style.borderBottomRightRadius = scaledRadius;
+
+            if (_isActive)
+            {
+                float glowExpand = GlowExpandPx * zoom;
+                _glow.style.left = -glowExpand;
+                _glow.style.top = -glowExpand;
+                _glow.style.width = scaledSize.x + glowExpand * 2f;
+                _glow.style.height = scaledSize.y + glowExpand * 2f;
+
+                int glowRadius = Mathf.RoundToInt((BaseCornerRadius + GlowBlurKernel) * zoom);
+                _glow.style.borderTopLeftRadius = glowRadius;
+                _glow.style.borderTopRightRadius = glowRadius;
+                _glow.style.borderBottomLeftRadius = glowRadius;
+                _glow.style.borderBottomRightRadius = glowRadius;
+            }
+
+            _nameLabel.style.fontSize = Mathf.RoundToInt(12 * zoom);
+            _nameLabel.style.unityFontStyleAndWeight = FontStyle.Normal;
 
             if (IsEditing)
             {
-                GUI.Box(rect, "", _fillStyle);
+                _editField.style.fontSize = Mathf.RoundToInt(12 * zoom);
+            }
+        }
 
-                if (_editStyle == null)
-                {
-                    _editStyle = new GUIStyle
-                    {
-                        alignment = TextAnchor.MiddleCenter,
-                        normal = { textColor = Color.white },
-                        focused = { textColor = Color.white },
-                        padding = new RectOffset(4, 4, 4, 4),
-                        border = new RectOffset(0, 0, 0, 0),
-                        margin = new RectOffset(0, 0, 0, 0),
-                        overflow = new RectOffset(0, 0, 0, 0),
-                        wordWrap = false,
-                        clipping = TextClipping.Clip
-                    };
-                }
+        public void StartEditing()
+        {
+            if (IsEditing) return;
 
-                _editStyle.normal.background = _fillStyle.normal.background;
-                _editStyle.focused.background = _fillStyle.normal.background;
-                _editStyle.fontSize = _fillStyle.fontSize;
-                _editStyle.border = fillBorder;
+            IsEditing = true;
+            EditingBuffer = Name;
 
-                GUI.SetNextControlName("StateRenameField");
-                string newName = GUI.TextField(rect, EditingBuffer, _editStyle);
-                if (newName != EditingBuffer)
-                {
-                    EditingBuffer = newName;
-                }
+            _nameLabel.style.display = DisplayStyle.None;
+            _editField.value = Name;
+            _editField.style.display = DisplayStyle.Flex;
+
+            schedule.Execute(() =>
+            {
+                _editField.Focus();
+                _editField.SelectAll();
+            }).StartingIn(0);
+        }
+
+        public void CommitEditing()
+        {
+            if (!IsEditing) return;
+
+            string newName = _editField.value;
+            string oldName = EditingBuffer;
+
+            IsEditing = false;
+
+            _nameLabel.style.display = DisplayStyle.Flex;
+            _editField.style.display = DisplayStyle.None;
+
+            if (newName != oldName && !string.IsNullOrEmpty(newName))
+            {
+                Name = newName;
+                EditingCommitted?.Invoke(this, oldName, newName);
             }
             else
             {
-                GUI.Box(rect, Name, _fillStyle);
+                Name = oldName;
+                EditingCommitted?.Invoke(this, oldName, oldName);
             }
-
-            _borderStyle.normal.background = IsEntry ? _cachedEntryBorderTexture : _cachedBorderTexture;
-            _borderStyle.border = fillBorder;
-            GUI.Box(rect, "", _borderStyle);
         }
 
-        public void DrawSelectionOverlay(float zoom, Vector2 panOffset)
+        public void CancelEditing()
         {
-            int scaledRadius = Mathf.Max(1, Mathf.RoundToInt(BaseCornerRadius * zoom));
-            int borderWidth = Mathf.Max(1, Mathf.RoundToInt(SelectionBorderWidth * zoom));
-            EnsureSelectionTexture(scaledRadius, borderWidth);
+            if (!IsEditing) return;
 
-            if (_selectionStyle == null)
-                _selectionStyle = new GUIStyle { padding = new RectOffset(0, 0, 0, 0) };
+            IsEditing = false;
+            Name = EditingBuffer;
 
-            Vector2 screenPos = Position * zoom + panOffset;
-            Vector2 scaledSize = Size * zoom;
-            var rect = new Rect(screenPos.x, screenPos.y, scaledSize.x, scaledSize.y);
+            _nameLabel.style.display = DisplayStyle.Flex;
+            _editField.style.display = DisplayStyle.None;
 
-            _selectionStyle.normal.background = _cachedSelectionTexture;
-            _selectionStyle.border = new RectOffset(scaledRadius, scaledRadius, scaledRadius, scaledRadius);
-            GUI.Box(rect, "", _selectionStyle);
+            EditingCommitted?.Invoke(this, EditingBuffer, EditingBuffer);
         }
 
-        private void DrawActiveGlow(float zoom, Vector2 panOffset, Rect nodeRect, int scaledRadius)
+        private void OnEditFieldKeyDown(KeyDownEvent e)
         {
-            if (_glowStyle == null)
-                _glowStyle = new GUIStyle { padding = new RectOffset(0, 0, 0, 0) };
-
-            float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
-
-            float minExpand = 8f;
-            float maxExpand = 16f;
-            float expand = (minExpand + pulse * (maxExpand - minExpand)) * zoom;
-
-            int expandInt = Mathf.Max(1, Mathf.RoundToInt(expand));
-            EnsureGlowTexture(scaledRadius, expandInt);
-
-            int glowRadius = scaledRadius + expandInt;
-            var glowBorder = new RectOffset(glowRadius, glowRadius, glowRadius, glowRadius);
-
-            var glowRect = new Rect(
-                nodeRect.x - expand,
-                nodeRect.y - expand,
-                nodeRect.width + expand * 2f,
-                nodeRect.height + expand * 2f
-            );
-
-            float minAlpha = 0.35f;
-            float maxAlpha = 0.85f;
-            float alpha = minAlpha + pulse * (maxAlpha - minAlpha);
-
-            Color glowColor = UITheme.ActiveStateGlow;
-            glowColor.a *= alpha;
-
-            _glowStyle.normal.background = _cachedGlowTexture;
-            _glowStyle.border = glowBorder;
-            GUI.color = glowColor;
-            GUI.Box(glowRect, "", _glowStyle);
-            GUI.color = Color.white;
-        }
-
-        // ─── Shadow ────────────────────────────────────────────────────────────
-
-        private void DrawShadow(float zoom, Vector2 panOffset, Rect nodeRect, int scaledRadius)
-        {
-            if (_shadowStyle == null)
-                _shadowStyle = new GUIStyle { padding = new RectOffset(0, 0, 0, 0) };
-
-            float expand = ShadowExpandPx * zoom;
-            int expandInt = Mathf.Max(1, Mathf.RoundToInt(expand));
-            EnsureShadowTexture(scaledRadius, expandInt);
-
-            int shadowRadius = scaledRadius + expandInt;
-            var shadowBorder = new RectOffset(shadowRadius, shadowRadius, shadowRadius, shadowRadius);
-
-            var shadowRect = new Rect(
-                nodeRect.x - expand,
-                nodeRect.y - expand,
-                nodeRect.width + expand * 2f,
-                nodeRect.height + expand * 2f
-            );
-
-            _shadowStyle.normal.background = _cachedShadowTexture;
-            _shadowStyle.border = shadowBorder;
-            GUI.color = ShadowColor;
-            GUI.Box(shadowRect, "", _shadowStyle);
-            GUI.color = Color.white;
-        }
-
-        private static void EnsureShadowTexture(int innerRadius, int expand)
-        {
-            if (_cachedShadowTexture != null && _cachedShadowInnerRadius == innerRadius && _cachedShadowExpand == expand)
-                return;
-
-            if (_cachedShadowTexture != null)
+            if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
             {
-                Object.DestroyImmediate(_cachedShadowTexture);
-                _cachedShadowTexture = null;
+                CommitEditing();
+                e.StopPropagation();
             }
-
-            int totalRadius = innerRadius + expand;
-            int texSize = totalRadius * 2 + 8;
-            _cachedShadowTexture = GenerateShadowTexture(texSize, texSize, innerRadius, expand);
-            _cachedShadowTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedShadowInnerRadius = innerRadius;
-            _cachedShadowExpand = expand;
+            else if (e.keyCode == KeyCode.Escape)
+            {
+                CancelEditing();
+                e.StopPropagation();
+            }
         }
 
-        private static Texture2D GenerateShadowTexture(int width, int height, int innerRadius, int expand)
+        private void OnEditFieldFocusOut(FocusOutEvent e)
         {
-            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
+            if (IsEditing)
+                CommitEditing();
+        }
 
-            float hw = width * 0.5f;
-            float hh = height * 0.5f;
-            float nhw = hw - expand;
-            float nhh = hh - expand;
-            float innerR = innerRadius;
-            float expandF = expand;
-
-            for (int y = 0; y < height; y++)
+        private void InitializeGlowAnimation()
+        {
+            schedule.Execute(() =>
             {
-                for (int x = 0; x < width; x++)
+                if (!_isActive)
                 {
-                    float alphaSum = 0f;
-
-                    for (int sy = 0; sy < 3; sy++)
-                    {
-                        for (int sx = 0; sx < 3; sx++)
-                        {
-                            float fx = x + (sx + 0.5f) / 3f;
-                            float fy = y + (sy + 0.5f) / 3f;
-
-                            float px = Mathf.Abs(fx - hw) - (nhw - innerR);
-                            float py = Mathf.Abs(fy - hh) - (nhh - innerR);
-
-                            float cornerDist = Mathf.Sqrt(
-                                Mathf.Max(px, 0f) * Mathf.Max(px, 0f) +
-                                Mathf.Max(py, 0f) * Mathf.Max(py, 0f)
-                            );
-                            float edgeComp = Mathf.Min(Mathf.Max(px, py), 0f);
-                            float dist = cornerDist + edgeComp - innerR;
-
-                            if (dist > 0f && dist < expandF)
-                            {
-                                float t = dist / expandF;
-                                alphaSum += (1f - t) * (1f - t);
-                            }
-                        }
-                    }
-
-                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, alphaSum / 9f));
-                }
-            }
-
-            tex.Apply();
-            return tex;
-        }
-
-        // ─── Texture generation (original IMGUI implementation) ─────────────────
-
-        private static void EnsureGlowTexture(int innerRadius, int expand)
-        {
-            if (_cachedGlowTexture != null && _cachedGlowInnerRadius == innerRadius)
-                return;
-
-            if (_cachedGlowTexture != null)
-            {
-                Object.DestroyImmediate(_cachedGlowTexture);
-                _cachedGlowTexture = null;
-            }
-
-            int radius = innerRadius + expand;
-            int texSize = radius * 2 + 8;
-            _cachedGlowTexture = GenerateGlowTexture(texSize, texSize, radius, Color.white, GlowBlurKernel);
-            _cachedGlowTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedGlowInnerRadius = innerRadius;
-        }
-
-        private static void EnsureFillTexture(int cornerRadius)
-        {
-            if (_cachedFillTexture != null && _cachedFillRadius == cornerRadius)
-                return;
-
-            if (_cachedFillTexture != null)
-            {
-                Object.DestroyImmediate(_cachedFillTexture);
-                _cachedFillTexture = null;
-            }
-
-            int texSize = cornerRadius * 2 + 8;
-            _cachedFillTexture = GenerateFilledTexture(texSize, texSize, cornerRadius, FillColor);
-            _cachedFillTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedFillRadius = cornerRadius;
-        }
-
-        private static void EnsureBorderTexture(int cornerRadius, int borderWidth, Color borderColor)
-        {
-            if (_cachedBorderTexture != null && _cachedBorderRadius == cornerRadius && _cachedBorderWidth == borderWidth)
-                return;
-
-            if (_cachedBorderTexture != null)
-            {
-                Object.DestroyImmediate(_cachedBorderTexture);
-                _cachedBorderTexture = null;
-            }
-
-            int texSize = cornerRadius * 2 + 8;
-            _cachedBorderTexture = GenerateBorderTexture(texSize, texSize, cornerRadius, borderWidth, borderColor);
-            _cachedBorderTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedBorderRadius = cornerRadius;
-            _cachedBorderWidth = borderWidth;
-        }
-
-        private static void EnsureSelectionTexture(int cornerRadius, int borderWidth)
-        {
-            if (_cachedSelectionTexture != null && _cachedSelectionRadius == cornerRadius && _cachedSelectionBorderWidth == borderWidth)
-                return;
-
-            if (_cachedSelectionTexture != null)
-            {
-                Object.DestroyImmediate(_cachedSelectionTexture);
-                _cachedSelectionTexture = null;
-            }
-
-            int texSize = cornerRadius * 2 + 8;
-            _cachedSelectionTexture = GenerateBorderTexture(texSize, texSize, cornerRadius, borderWidth, SelectionColor);
-            _cachedSelectionTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedSelectionRadius = cornerRadius;
-            _cachedSelectionBorderWidth = borderWidth;
-        }
-
-        private static void EnsureEntryFillTexture(int cornerRadius)
-        {
-            if (_cachedEntryFillTexture != null && _cachedEntryFillRadius == cornerRadius)
-                return;
-
-            if (_cachedEntryFillTexture != null)
-            {
-                Object.DestroyImmediate(_cachedEntryFillTexture);
-                _cachedEntryFillTexture = null;
-            }
-
-            int texSize = cornerRadius * 2 + 8;
-            _cachedEntryFillTexture = GenerateFilledTexture(texSize, texSize, cornerRadius, EntryFillColor);
-            _cachedEntryFillTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedEntryFillRadius = cornerRadius;
-        }
-
-        private static void EnsureEntryBorderTexture(int cornerRadius, int borderWidth)
-        {
-            if (_cachedEntryBorderTexture != null && _cachedEntryBorderRadius == cornerRadius && _cachedEntryBorderWidth == borderWidth)
-                return;
-
-            if (_cachedEntryBorderTexture != null)
-            {
-                Object.DestroyImmediate(_cachedEntryBorderTexture);
-                _cachedEntryBorderTexture = null;
-            }
-
-            int texSize = cornerRadius * 2 + 8;
-            _cachedEntryBorderTexture = GenerateBorderTexture(texSize, texSize, cornerRadius, borderWidth, EntryBorderColor);
-            _cachedEntryBorderTexture.hideFlags = HideFlags.HideAndDontSave;
-            _cachedEntryBorderRadius = cornerRadius;
-            _cachedEntryBorderWidth = borderWidth;
-        }
-
-        private static Texture2D GenerateFilledTexture(int width, int height, int radius, Color fillColor)
-        {
-            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
-
-            Color transparent = Color.clear;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    float alpha = GetRoundedRectCoverage(x, y, width, height, radius);
-                    Color color = fillColor;
-                    color.a *= alpha;
-                    tex.SetPixel(x, y, color);
-                }
-            }
-
-            tex.Apply();
-            return tex;
-        }
-
-        private static Texture2D GenerateGlowTexture(int width, int height, int radius, Color glowColor, int blurKernel)
-        {
-            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
-
-            Color[] src = new Color[width * height];
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    float alpha = GetRoundedRectCoverage(x, y, width, height, radius);
-                    src[y * width + x] = new Color(glowColor.r, glowColor.g, glowColor.b, glowColor.a * alpha);
-                }
-            }
-
-            if (blurKernel >= 3)
-            {
-                Color[] blurred = new Color[src.Length];
-                int half = blurKernel / 2;
-                float inv = 1f / (blurKernel * blurKernel);
-
-                for (int y = 0; y < height; y++)
-                {
-                    for (int x = 0; x < width; x++)
-                    {
-                        float r = 0f, g = 0f, b = 0f, a = 0f;
-                        for (int ky = 0; ky < blurKernel; ky++)
-                        {
-                            for (int kx = 0; kx < blurKernel; kx++)
-                            {
-                                int sx = Mathf.Clamp(x + kx - half, 0, width - 1);
-                                int sy = Mathf.Clamp(y + ky - half, 0, height - 1);
-                                Color c = src[sy * width + sx];
-                                r += c.r;
-                                g += c.g;
-                                b += c.b;
-                                a += c.a;
-                            }
-                        }
-                        blurred[y * width + x] = new Color(r * inv, g * inv, b * inv, a * inv);
-                    }
+                    _glow.style.opacity = 0f;
+                    return;
                 }
 
-                tex.SetPixels(blurred);
-            }
-            else
-            {
-                tex.SetPixels(src);
-            }
-
-            tex.Apply();
-            return tex;
+                float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
+                float minAlpha = 0.35f;
+                float maxAlpha = 0.85f;
+                _glow.style.opacity = minAlpha + pulse * (maxAlpha - minAlpha);
+            }).Every(30);
         }
 
-        private static Texture2D GenerateBorderTexture(int width, int height, int radius, int borderWidth, Color borderColor)
+        void ISelectable.DrawSelectionOverlay(float zoom, Vector2 panOffset)
         {
-            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
-
-            Color transparent = Color.clear;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    float coverage = GetBorderCoverage(x, y, width, height, radius, borderWidth);
-                    if (coverage <= 0f)
-                    {
-                        tex.SetPixel(x, y, transparent);
-                    }
-                    else
-                    {
-                        Color color = borderColor;
-                        color.a *= coverage;
-                        tex.SetPixel(x, y, color);
-                    }
-                }
-            }
-
-            tex.Apply();
-            return tex;
-        }
-
-        private static bool IsInsideFilledRoundedRect(float fx, float fy, int w, int h, int r)
-        {
-            if (r <= 0) return true;
-            if (fx < r && fy < r)
-            {
-                float dx = r - fx;
-                float dy = r - fy;
-                return dx * dx + dy * dy <= r * r;
-            }
-            if (fx >= w - r && fy < r)
-            {
-                float dx = fx - (w - r);
-                float dy = r - fy;
-                return dx * dx + dy * dy <= r * r;
-            }
-            if (fx < r && fy >= h - r)
-            {
-                float dx = r - fx;
-                float dy = fy - (h - r);
-                return dx * dx + dy * dy <= r * r;
-            }
-            if (fx >= w - r && fy >= h - r)
-            {
-                float dx = fx - (w - r);
-                float dy = fy - (h - r);
-                return dx * dx + dy * dy <= r * r;
-            }
-            return true;
-        }
-
-        private static float GetRoundedRectCoverage(int x, int y, int w, int h, int r)
-        {
-            int count = 0;
-            for (int sy = 0; sy < 3; sy++)
-            {
-                for (int sx = 0; sx < 3; sx++)
-                {
-                    float fx = x + (sx + 0.5f) / 3f;
-                    float fy = y + (sy + 0.5f) / 3f;
-                    if (IsInsideFilledRoundedRect(fx, fy, w, h, r))
-                        count++;
-                }
-            }
-            return count / 9f;
-        }
-
-        private static float GetBorderCoverage(int x, int y, int w, int h, int r, int inset)
-        {
-            int count = 0;
-            for (int sy = 0; sy < 3; sy++)
-            {
-                for (int sx = 0; sx < 3; sx++)
-                {
-                    float fx = x + (sx + 0.5f) / 3f;
-                    float fy = y + (sy + 0.5f) / 3f;
-                    bool insideOuter = IsInsideFilledRoundedRect(fx, fy, w, h, r);
-                    if (!insideOuter) continue;
-                    bool insideInner = IsInsideFilledRoundedRectInset(fx, fy, w, h, r, inset);
-                    if (!insideInner) count++;
-                }
-            }
-            return count / 9f;
-        }
-
-        private static bool IsInsideFilledRoundedRectInset(float fx, float fy, int w, int h, int r, int inset)
-        {
-            int left = inset;
-            int right = w - inset;
-            int top = inset;
-            int bottom = h - inset;
-            if (fx < left || fx >= right || fy < top || fy >= bottom)
-                return false;
-            int ri = r - inset;
-            if (ri <= 0) return true;
-            if (fx < left + ri && fy < top + ri)
-            {
-                float dx = (left + ri) - fx;
-                float dy = (top + ri) - fy;
-                return dx * dx + dy * dy <= ri * ri;
-            }
-            if (fx >= right - ri && fy < top + ri)
-            {
-                float dx = fx - (right - ri);
-                float dy = (top + ri) - fy;
-                return dx * dx + dy * dy <= ri * ri;
-            }
-            if (fx < left + ri && fy >= bottom - ri)
-            {
-                float dx = (left + ri) - fx;
-                float dy = fy - (bottom - ri);
-                return dx * dx + dy * dy <= ri * ri;
-            }
-            if (fx >= right - ri && fy >= bottom - ri)
-            {
-                float dx = fx - (right - ri);
-                float dy = fy - (bottom - ri);
-                return dx * dx + dy * dy <= ri * ri;
-            }
-            return true;
         }
     }
 }

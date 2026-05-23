@@ -52,6 +52,8 @@ namespace CleanStateMachine
 
         private GridBackground _gridBackground;
         private ConnectionArrowsLayer _connectionArrowsLayer;
+        private VisualElement _stateLayer;
+        private VisualElement _groupContainer;
         private IMGUIContainer _graphCanvas;
         private UndoRedoSystem _undoRedoSystem;
         private GraphPanController _panController;
@@ -67,9 +69,6 @@ namespace CleanStateMachine
         private Dictionary<ISelectable, Vector2> _preDragPositions;
         private StateView _entryState;
         private StateView _editingState;
-        private string _editingOriginalName;
-        private bool _focusRequested;
-        private bool _selectAllDone;
         private static readonly Stopwatch _clickStopwatch = Stopwatch.StartNew();
         private long _lastClickTimestamp;
         private StateView _lastDoubleClickCandidate;
@@ -139,6 +138,35 @@ namespace CleanStateMachine
             _connectionArrowsLayer = new ConnectionArrowsLayer(_connections, _connectionController);
             rootVisualElement.Add(_connectionArrowsLayer);
 
+            _groupContainer = new VisualElement();
+            _groupContainer.style.position = Position.Absolute;
+            _groupContainer.style.left = 0f;
+            _groupContainer.style.top = 0f;
+            _groupContainer.style.right = 0f;
+            _groupContainer.style.bottom = 0f;
+            _groupContainer.pickingMode = PickingMode.Ignore;
+            _groupContainer.style.overflow = Overflow.Hidden;
+            rootVisualElement.Add(_groupContainer);
+
+            var groupStyleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                "Assets/Editor/CleanStateMachine/Styles/CommentGroupView.uss");
+            if (groupStyleSheet != null)
+                _groupContainer.styleSheets.Add(groupStyleSheet);
+
+            _stateLayer = new VisualElement();
+            _stateLayer.style.position = Position.Absolute;
+            _stateLayer.style.left = 0f;
+            _stateLayer.style.top = 0f;
+            _stateLayer.style.right = 0f;
+            _stateLayer.style.bottom = 0f;
+            _stateLayer.pickingMode = PickingMode.Ignore;
+            rootVisualElement.Add(_stateLayer);
+
+            var stateStyleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                "Assets/Editor/CleanStateMachine/Styles/StateView.uss");
+            if (stateStyleSheet != null)
+                rootVisualElement.styleSheets.Add(stateStyleSheet);
+
             _graphCanvas = new IMGUIContainer(OnGraphCanvasGUI);
             _graphCanvas.style.position = Position.Absolute;
             _graphCanvas.style.left = 0f;
@@ -187,25 +215,6 @@ namespace CleanStateMachine
 
             UpdateConnectionOffsets();
 
-            if (_editingState != null)
-            {
-                if (e.type == EventType.KeyDown)
-                {
-                    if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
-                    {
-                        CommitEditing();
-                        e.Use();
-                        Repaint();
-                    }
-                    else if (e.keyCode == KeyCode.Escape)
-                    {
-                        CancelEditing();
-                        e.Use();
-                        Repaint();
-                    }
-                }
-            }
-
             _lastMouseGraphPos = (e.mousePosition - _panOffset) / _zoom;
 
             if (!_connectionController.IsConnecting && _editingState == null)
@@ -214,7 +223,7 @@ namespace CleanStateMachine
             if (e.type == EventType.ContextClick && graphRect.Contains(e.mousePosition))
             {
                 if (_editingState != null)
-                    CommitEditing();
+                    _editingState.CommitEditing();
 
                 _connectionController.Cancel();
                 Vector2 graphMousePosition = (e.mousePosition - _panOffset) / _zoom;
@@ -244,6 +253,9 @@ namespace CleanStateMachine
 
             _gridBackground.UpdateView(_panOffset, _zoom);
             _connectionArrowsLayer.UpdateView(_zoom, _panOffset);
+            SyncStateHierarchy();
+            UpdateStateTransforms();
+            UpdateGroupPositions();
             _graphCanvas.MarkDirtyRepaint();
 
             if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
@@ -252,27 +264,6 @@ namespace CleanStateMachine
 
         private void OnGraphCanvasGUI()
         {
-            DrawGroups();
-            DrawStates();
-
-            if (_focusRequested)
-            {
-                EditorGUI.FocusTextInControl("StateRenameField");
-                _focusRequested = false;
-            }
-
-            if (_editingState != null && !_selectAllDone && Event.current.type == EventType.Repaint
-                && GUI.GetNameOfFocusedControl() == "StateRenameField")
-            {
-                if (_editingState.EditingBuffer == _editingOriginalName)
-                {
-                    var textEditor = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
-                    if (textEditor != null)
-                        textEditor.SelectAll();
-                }
-                _selectAllDone = true;
-            }
-
             DrawSelectionOverlays();
             _selectionBox.DrawScreen(_zoom, _panOffset);
         }
@@ -288,6 +279,7 @@ namespace CleanStateMachine
                 if (_undoRedoSystem.Undo())
                 {
                     MarkChanged();
+                    SyncGroupElements();
                     _sidePanelElement?.UpdateBlackboard();
                     Repaint();
                 }
@@ -300,6 +292,7 @@ namespace CleanStateMachine
                 if (_undoRedoSystem.Redo())
                 {
                     MarkChanged();
+                    SyncGroupElements();
                     _sidePanelElement?.UpdateBlackboard();
                     Repaint();
                 }
@@ -505,7 +498,7 @@ namespace CleanStateMachine
 
             if (_editingState != null && hit != _editingState)
             {
-                CommitEditing();
+                _editingState.CommitEditing();
             }
 
             if (hit != null)
@@ -696,12 +689,6 @@ namespace CleanStateMachine
             return null;
         }
 
-        private void DrawGroups()
-        {
-            for (int i = 0; i < _groups.Count; i++)
-                _groups[i].Draw(_zoom, _panOffset);
-        }
-
         private void CreateGroupFromSelectedStates()
         {
             var selectedStates = new List<StateView>();
@@ -717,6 +704,7 @@ namespace CleanStateMachine
             var cmd = new CreateGroupCommand(_groups, group);
             _undoRedoSystem.Execute(cmd);
             MarkChanged();
+            SyncGroupElements();
 
             _selectionController.Clear();
             _selectionController.Select(group);
@@ -727,15 +715,52 @@ namespace CleanStateMachine
             var selected = _selectionController.Selected;
             for (int i = 0; i < selected.Count; i++)
             {
+                if (selected[i] is StateView) continue;
                 selected[i].DrawSelectionOverlay(_zoom, _panOffset);
             }
         }
 
-        private void DrawStates()
+        private void SyncStateHierarchy()
         {
             for (int i = 0; i < _states.Count; i++)
             {
-                _states[i].Draw(_zoom, _panOffset);
+                var state = _states[i];
+                if (state.parent == null)
+                {
+                    _stateLayer.Add(state);
+                }
+            }
+
+            for (int i = _stateLayer.childCount - 1; i >= 0; i--)
+            {
+                var child = _stateLayer[i];
+                if (child is StateView sv && !_states.Contains(sv))
+                {
+                    sv.RemoveFromHierarchy();
+                }
+            }
+        }
+
+        private void UpdateStateTransforms()
+        {
+            for (int i = 0; i < _states.Count; i++)
+                _states[i].UpdateTransform(_zoom, _panOffset);
+        }
+
+        private void UpdateGroupPositions()
+        {
+            for (int i = 0; i < _groups.Count; i++)
+                _groups[i].UpdateScreenPosition(_zoom, _panOffset);
+        }
+
+        private void SyncGroupElements()
+        {
+            if (_groupContainer == null) return;
+            _groupContainer.Clear();
+            for (int i = 0; i < _groups.Count; i++)
+            {
+                _groupContainer.Add(_groups[i]);
+                _groups[i].UpdateScreenPosition(_zoom, _panOffset);
             }
         }
 
@@ -815,6 +840,7 @@ namespace CleanStateMachine
             var cmd = new UngroupCommand(_groups, group);
             _undoRedoSystem.Execute(cmd);
             MarkChanged();
+            SyncGroupElements();
             Repaint();
         }
 
@@ -896,6 +922,7 @@ namespace CleanStateMachine
             var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
             _undoRedoSystem.Execute(cmd);
             MarkChanged();
+            SyncGroupElements();
 
             _selectionController.Clear();
             Repaint();
@@ -905,52 +932,41 @@ namespace CleanStateMachine
         {
             if (_editingState != null && _editingState != state)
             {
-                _editingState.IsEditing = false;
-                _editingState.Name = _editingOriginalName;
+                _editingState.CommitEditing();
             }
 
-            state.IsEditing = true;
-            state.EditingBuffer = state.Name;
-            _editingOriginalName = state.Name;
             _editingState = state;
-            _focusRequested = true;
-            _selectAllDone = false;
-            Repaint();
+            state.EditingCommitted += OnStateEditingCommitted;
+            state.StartEditing();
+        }
+
+        private void OnStateEditingCommitted(StateView state, string oldName, string newName)
+        {
+            state.EditingCommitted -= OnStateEditingCommitted;
+
+            if (_editingState != state)
+                return;
+
+            _editingState = null;
+
+            if (oldName != newName && !string.IsNullOrEmpty(newName))
+            {
+                var cmd = new RenameStateCommand(state, oldName, newName);
+                _undoRedoSystem.Execute(cmd);
+                MarkChanged();
+            }
         }
 
         private void CommitEditing()
         {
-            if (_editingState == null)
-                return;
-
-            _editingState.IsEditing = false;
-            string newName = _editingState.EditingBuffer;
-
-            if (newName != _editingOriginalName && !string.IsNullOrEmpty(newName))
-            {
-                var cmd = new RenameStateCommand(_editingState, _editingOriginalName, newName);
-                _undoRedoSystem.Execute(cmd);
-                MarkChanged();
-            }
-            else
-            {
-                _editingState.Name = _editingOriginalName;
-            }
-
-            _editingState = null;
-            Repaint();
+            if (_editingState != null)
+                _editingState.CommitEditing();
         }
 
         private void CancelEditing()
         {
-            if (_editingState == null)
-                return;
-
-            _editingState.IsEditing = false;
-            _editingState.Name = _editingOriginalName;
-
-            _editingState = null;
-            Repaint();
+            if (_editingState != null)
+                _editingState.CancelEditing();
         }
 
         private void EnsureEntryStateExists()
@@ -1017,6 +1033,7 @@ namespace CleanStateMachine
                     if (_groups[i].IsSelected)
                         _groups.RemoveAt(i);
                 _groups.AddRange(pickedGroups);
+                SyncGroupElements();
             }
 
             if (_sidePanelElement != null)
@@ -1206,6 +1223,7 @@ namespace CleanStateMachine
             }
 
             EnsureEntryStateExists();
+            SyncGroupElements();
             _isLoading = false;
             MarkSaved();
             UpdateTitle();
@@ -1349,6 +1367,7 @@ namespace CleanStateMachine
             _detailsHeightRatio = 0.5f;
 
             EnsureEntryStateExists();
+            SyncGroupElements();
 
             MarkSaved();
 
