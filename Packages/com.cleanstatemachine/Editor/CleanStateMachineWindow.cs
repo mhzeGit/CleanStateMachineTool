@@ -96,7 +96,7 @@ namespace CleanStateMachine
         private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
         private const float CollapsedPanelWidth = 35f;
         private const float ResizeHandleScreenSize = 8f;
-        private const int DoubleClickTimeMs = 160;
+        private const int DoubleClickTimeMs = 180;
 
         private void OnEnable()
         {

@@ -97,3 +97,14 @@
     border-top-width: 0;
     border-bottom-width: 0;
 }
+
+.state-view__edit-field > .unity-base-text-field__input,
+.state-view__edit-field > .unity-text-field__input {
+    color: white;
+    -unity-text-align: middle-center;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+    height: auto;
+}

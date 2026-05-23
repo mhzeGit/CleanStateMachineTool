@@ -78,6 +78,7 @@ namespace CleanStateMachine
         private VisualElement _fill;
         private Label _nameLabel;
         private TextField _editField;
+        private VisualElement _editFieldInput;
 
         private const float DefaultWidth = 160f;
         private const float DefaultHeight = 40f;
@@ -149,6 +150,8 @@ namespace CleanStateMachine
             _editField.RegisterCallback<KeyDownEvent>(OnEditFieldKeyDown);
             _editField.RegisterCallback<FocusOutEvent>(OnEditFieldFocusOut);
             Add(_editField);
+
+            _editFieldInput = _editField.Q(className: "unity-base-text-field__input");
 
             InitializeGlowAnimation();
         }
@@ -254,7 +257,10 @@ namespace CleanStateMachine
 
             if (IsEditing)
             {
-                _editField.style.fontSize = Mathf.RoundToInt(12 * zoom);
+                int fontSize = Mathf.RoundToInt(12 * zoom);
+                _editField.style.fontSize = fontSize;
+                if (_editFieldInput != null)
+                    _editFieldInput.style.fontSize = fontSize;
             }
         }
 
