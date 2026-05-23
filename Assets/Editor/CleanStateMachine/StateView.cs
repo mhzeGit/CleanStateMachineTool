@@ -42,14 +42,31 @@ namespace CleanStateMachine
         public StateBehaviour BehaviourInstance { get; set; }
 
         private bool _isActive;
+        private double _activatedAtTime;
+        private double _deactivatedAtTime;
+        private bool _wasBriefActive;
         public bool IsActive
         {
             get => _isActive;
             set
             {
+                if (_isActive == value) return;
+                if (value)
+                    _activatedAtTime = Time.realtimeSinceStartup;
+                else
+                {
+                    _wasBriefActive = (Time.realtimeSinceStartup - _activatedAtTime) < 0.2;
+                    if (_wasBriefActive)
+                        _deactivatedAtTime = Time.realtimeSinceStartup;
+                }
                 _isActive = value;
                 if (_fill != null)
-                    _fill.EnableInClassList("state-view__fill--active", value);
+                {
+                    if (value)
+                        _fill.EnableInClassList("state-view__fill--active", true);
+                    else if (!_wasBriefActive)
+                        _fill.EnableInClassList("state-view__fill--active", false);
+                }
             }
         }
 
@@ -340,16 +357,37 @@ namespace CleanStateMachine
         {
             schedule.Execute(() =>
             {
-                if (!_isActive)
+                if (_isActive)
+                {
+                    float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
+                    float minAlpha = 0.35f;
+                    float maxAlpha = 0.85f;
+                    _glow.style.opacity = minAlpha + pulse * (maxAlpha - minAlpha);
+                }
+                else if (_wasBriefActive)
+                {
+                    float elapsed = (float)(Time.realtimeSinceStartup - _deactivatedAtTime);
+                    float blinkDuration = 0.25f;
+                    if (elapsed < blinkDuration)
+                    {
+                        float t = elapsed / blinkDuration;
+                        float blinkOpacity = 1f - t;
+                        _glow.style.opacity = blinkOpacity;
+                        if (_fill != null)
+                            _fill.EnableInClassList("state-view__fill--active", true);
+                    }
+                    else
+                    {
+                        _wasBriefActive = false;
+                        _glow.style.opacity = 0f;
+                        if (_fill != null)
+                            _fill.EnableInClassList("state-view__fill--active", false);
+                    }
+                }
+                else
                 {
                     _glow.style.opacity = 0f;
-                    return;
                 }
-
-                float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
-                float minAlpha = 0.35f;
-                float maxAlpha = 0.85f;
-                _glow.style.opacity = minAlpha + pulse * (maxAlpha - minAlpha);
             }).Every(30);
         }
 

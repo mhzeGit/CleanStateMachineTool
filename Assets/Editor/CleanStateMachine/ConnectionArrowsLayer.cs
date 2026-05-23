@@ -11,10 +11,10 @@ namespace CleanStateMachine
         private float _zoom = 1f;
         private Vector2 _panOffset;
 
-        private static readonly Color ConnectionColor = new Color(0.40f, 0.4f, 0.40f, 1f);
-        private static readonly Color SelectedColor = new Color(0.537f, 0.706f, 0.980f, 1f);
+        private static readonly Color ConnectionColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+        private static readonly Color SelectedColor = new Color(0.7f, 0.7f, 0.7f, 1f);
         private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
-        private static readonly Color ActiveConnectionColor = new Color(0.4f, 0.9f, 0.4f, 1f);
+        private static readonly Color ActiveConnectionColor = new Color(1.0f, 1.0f, 1.0f, 1f);
         private static readonly Color ActiveConnectionWaveColor = new Color(0.4f, 0.9f, 0.4f, 1f);
 
         private const float ArrowGraphSize = 10f;
@@ -61,7 +61,7 @@ namespace CleanStateMachine
                 if (conn.IsActive)
                 {
                     double elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
-                    fade = Mathf.Clamp01(1f - (float)(elapsed / 1.8));
+                    fade = Mathf.Clamp01(1f - (float)(elapsed / 3.0));
                     if (fade <= 0.01f)
                     {
                         conn.IsActive = false;
@@ -80,7 +80,7 @@ namespace CleanStateMachine
                 DrawMidArrowhead(mgc, startPos, endPos, color, _zoom);
 
                 if (fade > 0.01f)
-                    DrawActiveWave(mgc, startPos, endPos, _zoom, fade);
+                    DrawActiveWave(mgc, startPos, endPos, _zoom, fade, color);
             }
         }
 
@@ -205,17 +205,17 @@ namespace CleanStateMachine
             mesh.SetNextIndex(2); mesh.SetNextIndex(3); mesh.SetNextIndex(5);
         }
 
-        private static void DrawActiveWave(MeshGenerationContext mgc, Vector3 start, Vector3 end, float zoom, float fade)
+        private static void DrawActiveWave(MeshGenerationContext mgc, Vector3 start, Vector3 end, float zoom, float fade, Color arrowColor)
         {
             Vector3 dir = (end - start).normalized;
             float totalLen = Vector3.Distance(start, end);
             if (totalLen < 0.01f) return;
 
-            float speed = 1.5f;
+            float speed = 0.8f;
             int circleCount = 5;
-            float circleRadius = Mathf.Max(1.5f, 3f * zoom);
+            float circleRadius = Mathf.Max(2f, 4f * zoom);
 
-            Color waveColor = new Color(ActiveConnectionWaveColor.r, ActiveConnectionWaveColor.g, ActiveConnectionWaveColor.b, ActiveConnectionWaveColor.a * fade);
+            Color waveColor = new Color(arrowColor.r, arrowColor.g, arrowColor.b, arrowColor.a * fade);
 
             for (int i = 0; i < circleCount; i++)
             {
