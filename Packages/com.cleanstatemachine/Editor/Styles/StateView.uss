@@ -100,11 +100,16 @@
 
 .breadcrumb-item--clickable {
     color: rgb(137, 180, 250);
+    cursor: pointer;
 }
 
 .breadcrumb-item--clickable:hover {
     color: rgb(180, 210, 255);
     text-decoration: underline;
+}
+
+.breadcrumb-item {
+    cursor: pointer;
 }
 
 .breadcrumb-separator {

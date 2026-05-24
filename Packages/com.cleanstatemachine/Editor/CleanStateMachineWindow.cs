@@ -22,8 +22,8 @@ namespace CleanStateMachine
         private struct NavigationFrame
         {
             public SerializableData ParentData;
+            public SerializableData EnteredData;
             public string StateName;
-            public int StateIndex;
         }
 
         [MenuItem("Tools/CleanStateMachine")]
@@ -1424,6 +1424,11 @@ namespace CleanStateMachine
 
             var rootLabel = new Label(_controller != null ? _controller.name : "Untitled");
             rootLabel.AddToClassList("breadcrumb-item");
+            if (_navigationPath.Count > 0)
+            {
+                rootLabel.AddToClassList("breadcrumb-item--clickable");
+                rootLabel.RegisterCallback<ClickEvent>(_ => NavigateToRoot());
+            }
             _breadcrumbBar.Add(rootLabel);
 
             for (int i = 0; i < _navigationPath.Count; i++)
@@ -1434,13 +1439,9 @@ namespace CleanStateMachine
 
                 var stateLabel = new Label(_navigationPath[i].StateName);
                 stateLabel.AddToClassList("breadcrumb-item");
-
-                if (i < _navigationPath.Count - 1)
-                {
-                    int capturedIndex = i;
-                    stateLabel.AddToClassList("breadcrumb-item--clickable");
-                    stateLabel.RegisterCallback<ClickEvent>(_ => NavigateToIndex(capturedIndex));
-                }
+                stateLabel.AddToClassList("breadcrumb-item--clickable");
+                int capturedIndex = i;
+                stateLabel.RegisterCallback<ClickEvent>(_ => NavigateToIndex(capturedIndex));
 
                 _breadcrumbBar.Add(stateLabel);
             }
@@ -1533,8 +1534,8 @@ namespace CleanStateMachine
             _navigationPath.Add(new NavigationFrame
             {
                 ParentData = _currentData,
-                StateName = stateView.Name,
-                StateIndex = stateView.DataIndex
+                EnteredData = stateView.SubMachineData,
+                StateName = stateView.Name
             });
 
             _currentData = stateView.SubMachineData;
@@ -1546,7 +1547,23 @@ namespace CleanStateMachine
         {
             if (_navigationPath.Count == 0) return;
 
-            NavigateToIndex(_navigationPath.Count - 1);
+            SaveCurrentData();
+            _currentData = _navigationPath[_navigationPath.Count - 1].ParentData;
+            _navigationPath.RemoveAt(_navigationPath.Count - 1);
+            LoadFromCurrentData();
+            UpdateBreadcrumb();
+        }
+
+        private void NavigateToRoot()
+        {
+            if (_navigationPath.Count == 0) return;
+
+            SaveCurrentData();
+            _currentData = _navigationPath[0].ParentData;
+            _navigationPath.Clear();
+            LoadFromCurrentData();
+            UpdateBreadcrumb();
+            UpdateTitle();
         }
 
         private void NavigateToIndex(int pathIndex)
@@ -1554,11 +1571,8 @@ namespace CleanStateMachine
             if (pathIndex < 0 || pathIndex >= _navigationPath.Count) return;
 
             SaveCurrentData();
-
-            var target = _navigationPath[pathIndex];
-            _currentData = target.ParentData;
-            _navigationPath.RemoveRange(pathIndex, _navigationPath.Count - pathIndex);
-
+            _currentData = _navigationPath[pathIndex].EnteredData;
+            _navigationPath.RemoveRange(pathIndex + 1, _navigationPath.Count - pathIndex - 1);
             LoadFromCurrentData();
             UpdateBreadcrumb();
             UpdateTitle();
