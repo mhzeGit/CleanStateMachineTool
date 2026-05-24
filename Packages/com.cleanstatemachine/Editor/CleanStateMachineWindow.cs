@@ -19,6 +19,13 @@ namespace CleanStateMachine
             Bottom = 8,
         }
 
+        private struct NavigationFrame
+        {
+            public SerializableData ParentData;
+            public string StateName;
+            public int StateIndex;
+        }
+
         [MenuItem("Tools/CleanStateMachine")]
         public static void ShowWindow()
         {
@@ -43,6 +50,8 @@ namespace CleanStateMachine
             public Vector2 size;
             public MonoScript behaviourScript;
             public StateBehaviour behaviourInstance;
+            public SerializableData subMachineData;
+            public bool isSubStateMachine;
         }
 
         private static List<CopiedStateData> _clipboard;
@@ -79,6 +88,10 @@ namespace CleanStateMachine
         private readonly List<StateView> _states = new();
         private readonly List<ConnectionView> _connections = new();
         private readonly List<CommentGroupView> _groups = new();
+
+        private SerializableData _currentData;
+        private readonly List<NavigationFrame> _navigationPath = new();
+        private VisualElement _breadcrumbBar;
         private Dictionary<ISelectable, Vector2> _preDragPositions;
         private StateView _entryState;
         private StateView _editingState;
@@ -114,11 +127,18 @@ namespace CleanStateMachine
             EditorApplication.update += OnEditorUpdate;
 
             if (_controller != null)
+            {
+                _currentData = _controller.Data;
                 LoadFromController();
+            }
             else
+            {
+                _currentData = new SerializableData();
                 EnsureEntryStateExists();
+            }
 
             _contextMenu.CreateStateRequested += OnCreateStateRequested;
+            _contextMenu.CreateSubStateMachineRequested += OnCreateSubStateMachineRequested;
             _contextMenu.ConnectRequested += OnConnectRequested;
             _contextMenu.UngroupRequested += OnUngroupRequested;
             _contextMenu.CopyRequested += CopySelectedStates;
@@ -130,6 +150,7 @@ namespace CleanStateMachine
         private void OnDisable()
         {
             _contextMenu.CreateStateRequested -= OnCreateStateRequested;
+            _contextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
             _contextMenu.ConnectRequested -= OnConnectRequested;
             _contextMenu.UngroupRequested -= OnUngroupRequested;
             _contextMenu.CopyRequested -= CopySelectedStates;
@@ -140,7 +161,10 @@ namespace CleanStateMachine
             EditorApplication.update -= OnEditorUpdate;
 
             if (_controller != null && _hasUnsavedChanges && !_isLoading)
-                SaveToController();
+            {
+                SaveCurrentData();
+                _controller.Data = _controller.Data;
+            }
         }
 
         private void CreateGUI()
@@ -197,6 +221,23 @@ namespace CleanStateMachine
             _graphCanvas.pickingMode = PickingMode.Ignore;
             rootVisualElement.Add(_graphCanvas);
 
+            _breadcrumbBar = new VisualElement();
+            _breadcrumbBar.AddToClassList("breadcrumb-bar");
+            _breadcrumbBar.style.position = Position.Absolute;
+            _breadcrumbBar.style.left = 0f;
+            _breadcrumbBar.style.right = 0f;
+            _breadcrumbBar.style.top = 0f;
+            _breadcrumbBar.style.height = 24f;
+            _breadcrumbBar.style.backgroundColor = new Color(0.08f, 0.08f, 0.08f, 0.85f);
+            _breadcrumbBar.style.flexDirection = FlexDirection.Row;
+            _breadcrumbBar.style.alignItems = Align.Center;
+            _breadcrumbBar.style.paddingLeft = 8f;
+            _breadcrumbBar.style.paddingRight = 8f;
+            _breadcrumbBar.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f);
+            _breadcrumbBar.style.borderBottomWidth = 1f;
+            _breadcrumbBar.pickingMode = PickingMode.Position;
+            rootVisualElement.Add(_breadcrumbBar);
+
             rootVisualElement.Add(_selectionBox.Element);
 
             _sidePanelElement = new SidePanel(this);
@@ -231,7 +272,8 @@ namespace CleanStateMachine
             var e = Event.current;
 
             float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
-            Rect graphRect = new Rect(0f, 0f, position.width - sideW, position.height);
+            const float breadcrumbH = 24f;
+            Rect graphRect = new Rect(0f, breadcrumbH, position.width - sideW, position.height - breadcrumbH);
 
             _panController.HandleInput(graphRect, ref _panOffset, ref _zoom);
 
@@ -268,6 +310,12 @@ namespace CleanStateMachine
                 if (_connectionController.IsConnecting)
                 {
                     _connectionController.Cancel();
+                    e.Use();
+                    Repaint();
+                }
+                else if (_navigationPath.Count > 0 && _editingState == null)
+                {
+                    NavigateBack();
                     e.Use();
                     Repaint();
                 }
@@ -535,6 +583,14 @@ namespace CleanStateMachine
                     _lastDoubleClickCandidate = null;
                     if (!_selectionController.IsSelected(sv))
                         _selectionController.SelectOnly(sv);
+
+                    if (sv.IsSubStateMachine)
+                    {
+                        EnterSubStateMachine(sv);
+                        e.Use();
+                        return;
+                    }
+
                     StartEditing(sv);
                 }
 
@@ -1022,6 +1078,40 @@ namespace CleanStateMachine
             Repaint();
         }
 
+        private void OnCreateSubStateMachineRequested(Vector2 graphMousePosition)
+        {
+            var subData = new SerializableData();
+            subData.States.Add(new StateData
+            {
+                Name = "Entry",
+                Position = new Vector2(50f, 200f),
+                Size = new Vector2(StateView.DefaultWidth, StateView.DefaultHeight),
+                IsEntry = true
+            });
+
+            var state = new StateView(graphMousePosition) { DataIndex = _states.Count };
+            state.SubMachineData = subData;
+            state.IsSubStateMachine = true;
+            state.Name = "Sub State Machine";
+
+            if (_entryState != null && GetEntryOutgoingConnection() == null)
+            {
+                var cmd = new CompositeCommand("Create Sub State Machine");
+                cmd.Add(new CreateStateCommand(_states, state));
+                cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(_entryState, state)));
+                _undoRedoSystem.Execute(cmd);
+            }
+            else
+            {
+                var cmd = new CreateStateCommand(_states, state);
+                _undoRedoSystem.Execute(cmd);
+            }
+
+            MarkChanged();
+            SyncStatesWithGroups();
+            Repaint();
+        }
+
         private void OnConnectRequested(StateView source)
         {
             _connectionController.StartConnection(source);
@@ -1065,7 +1155,9 @@ namespace CleanStateMachine
                         name = s.Name,
                         size = s.Size,
                         behaviourScript = s.BehaviourScript,
-                        behaviourInstance = s.BehaviourInstance
+                        behaviourInstance = s.BehaviourInstance,
+                        subMachineData = s.SubMachineData,
+                        isSubStateMachine = s.IsSubStateMachine
                     });
                 }
             }
@@ -1103,7 +1195,9 @@ namespace CleanStateMachine
                 {
                     Size = data.size,
                     DataIndex = _states.Count,
-                    BehaviourScript = data.behaviourScript
+                    BehaviourScript = data.behaviourScript,
+                    SubMachineData = data.subMachineData,
+                    IsSubStateMachine = data.isSubStateMachine
                 };
 
                 if (data.behaviourScript != null && data.behaviourInstance != null)
@@ -1321,6 +1415,155 @@ namespace CleanStateMachine
             UpdateTitle();
         }
 
+        // ─── Breadcrumb Navigation ──────────────────────────────────────
+
+        private void UpdateBreadcrumb()
+        {
+            if (_breadcrumbBar == null) return;
+            _breadcrumbBar.Clear();
+
+            var rootLabel = new Label(_controller != null ? _controller.name : "Untitled");
+            rootLabel.AddToClassList("breadcrumb-item");
+            _breadcrumbBar.Add(rootLabel);
+
+            for (int i = 0; i < _navigationPath.Count; i++)
+            {
+                var sep = new Label("\u25B8");
+                sep.AddToClassList("breadcrumb-separator");
+                _breadcrumbBar.Add(sep);
+
+                var stateLabel = new Label(_navigationPath[i].StateName);
+                stateLabel.AddToClassList("breadcrumb-item");
+
+                if (i < _navigationPath.Count - 1)
+                {
+                    int capturedIndex = i;
+                    stateLabel.AddToClassList("breadcrumb-item--clickable");
+                    stateLabel.RegisterCallback<ClickEvent>(_ => NavigateToIndex(capturedIndex));
+                }
+
+                _breadcrumbBar.Add(stateLabel);
+            }
+        }
+
+        private void SaveCurrentData()
+        {
+            if (_currentData == null) return;
+            _currentData.States.Clear();
+            _currentData.Connections.Clear();
+            _currentData.Groups.Clear();
+            _currentData.BlackboardVariables.Clear();
+
+            var stateToIndex = new Dictionary<StateView, int>();
+            for (int i = 0; i < _states.Count; i++)
+                stateToIndex[_states[i]] = i;
+
+            foreach (var state in _states)
+            {
+                if (state.BehaviourInstance != null)
+                    state.BehaviourInstance.name = $"{state.Name}_Behaviour";
+
+                _currentData.States.Add(new StateData
+                {
+                    Name = state.Name,
+                    Position = state.Position,
+                    Size = state.Size,
+                    IsEntry = state.IsEntry,
+                    IsSubStateMachine = state.IsSubStateMachine,
+                    BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript),
+                    Behaviour = state.BehaviourInstance,
+                    SubMachineData = state.SubMachineData
+                });
+            }
+
+            foreach (var conn in _connections)
+            {
+                for (int j = 0; j < conn.ConditionEntries.Count; j++)
+                {
+                    var entry = conn.ConditionEntries[j];
+                    if (entry.Instance != null)
+                    {
+                        string fromName = conn.From?.Name ?? "?";
+                        string toName = conn.To?.Name ?? "?";
+                        entry.Instance.name = $"{fromName}->{toName}_Condition_{j}";
+                    }
+                }
+
+                var cd = new ConnectionData
+                {
+                    FromIndex = stateToIndex[conn.From],
+                    ToIndex = stateToIndex[conn.To]
+                };
+                for (int j = 0; j < conn.ConditionEntries.Count; j++)
+                {
+                    var entry = conn.ConditionEntries[j];
+                    cd.Conditions.Add(new ConditionEntry
+                    {
+                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
+                        Instance = entry.Instance
+                    });
+                }
+                _currentData.Connections.Add(cd);
+            }
+
+            foreach (var group in _groups)
+            {
+                var gd = new GroupData { Label = group.Label, Color = group.GroupColor };
+                foreach (var member in group.Members)
+                    gd.MemberIndices.Add(stateToIndex[member]);
+                _currentData.Groups.Add(gd);
+            }
+
+            foreach (var v in _blackboardVariables)
+                _currentData.BlackboardVariables.Add(v.Clone());
+
+            _currentData.PanOffset = _panOffset;
+            _currentData.Zoom = _zoom;
+            _currentData.ShowSidePanel = _showSidePanel;
+            _currentData.SidePanelWidth = _sidePanelWidth;
+            _currentData.DetailsHeightRatio = _detailsHeightRatio;
+        }
+
+        public void EnterSubStateMachine(StateView stateView)
+        {
+            if (stateView?.SubMachineData == null) return;
+
+            SaveCurrentData();
+
+            _navigationPath.Add(new NavigationFrame
+            {
+                ParentData = _currentData,
+                StateName = stateView.Name,
+                StateIndex = stateView.DataIndex
+            });
+
+            _currentData = stateView.SubMachineData;
+            LoadFromCurrentData();
+            UpdateBreadcrumb();
+        }
+
+        public void NavigateBack()
+        {
+            if (_navigationPath.Count == 0) return;
+
+            NavigateToIndex(_navigationPath.Count - 1);
+        }
+
+        private void NavigateToIndex(int pathIndex)
+        {
+            if (pathIndex < 0 || pathIndex >= _navigationPath.Count) return;
+
+            SaveCurrentData();
+
+            var target = _navigationPath[pathIndex];
+            _currentData = target.ParentData;
+            _navigationPath.RemoveRange(pathIndex, _navigationPath.Count - pathIndex);
+
+            LoadFromCurrentData();
+            UpdateBreadcrumb();
+            UpdateTitle();
+        }
+
         // ─── Internal accessors for UITK SidePanel ─────────────────────
 
         internal bool GetShowSidePanel() => _showSidePanel;
@@ -1342,6 +1585,9 @@ namespace CleanStateMachine
         {
             _detailsHeightRatio = value;
         }
+
+        internal bool IsAtRootLevel => _navigationPath.Count == 0;
+        internal SerializableData CurrentData => _currentData;
 
         internal UndoRedoSystem UndoRedoSystem => _undoRedoSystem;
 
@@ -1407,11 +1653,19 @@ namespace CleanStateMachine
                 }
             }
 
+            _navigationPath.Clear();
             _controller = controller;
             LoadFromController();
+            UpdateBreadcrumb();
         }
 
         private void LoadFromController()
+        {
+            _currentData = _controller != null ? _controller.Data : new SerializableData();
+            LoadFromCurrentData();
+        }
+
+        private void LoadFromCurrentData()
         {
             _isLoading = true;
 
@@ -1425,9 +1679,9 @@ namespace CleanStateMachine
             ClearActiveStates();
             _trackedComponent = null;
 
-            if (_controller != null)
+            if (_currentData != null)
             {
-                var data = _controller.Data;
+                var data = _currentData;
 
                 var stateLookup = new List<StateView>();
                 for (int i = 0; i < data.States.Count; i++)
@@ -1438,6 +1692,8 @@ namespace CleanStateMachine
                         Size = sd.Size,
                         BehaviourScript = ScriptReferenceUtility.FindScriptByTypeName(sd.BehaviourType),
                         BehaviourInstance = sd.Behaviour,
+                        SubMachineData = sd.SubMachineData,
+                        IsSubStateMachine = sd.IsSubStateMachine,
                         DataIndex = i
                     };
                     _states.Add(state);
@@ -1500,6 +1756,7 @@ namespace CleanStateMachine
             _isLoading = false;
             MarkSaved();
             UpdateTitle();
+            UpdateBreadcrumb();
 
             if (_sidePanelElement != null)
             {
@@ -1515,77 +1772,8 @@ namespace CleanStateMachine
         private void SaveToController()
         {
             if (_controller == null) return;
-
-            var data = new SerializableData();
-
-            var stateToIndex = new Dictionary<StateView, int>();
-            for (int i = 0; i < _states.Count; i++)
-                stateToIndex[_states[i]] = i;
-
-            foreach (var state in _states)
-            {
-                if (state.BehaviourInstance != null)
-                    state.BehaviourInstance.name = $"{state.Name}_Behaviour";
-
-                data.States.Add(new StateData
-                {
-                    Name = state.Name,
-                    Position = state.Position,
-                    Size = state.Size,
-                    IsEntry = state.IsEntry,
-                    BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript),
-                    Behaviour = state.BehaviourInstance
-                });
-            }
-
-            foreach (var conn in _connections)
-            {
-                for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                {
-                    var entry = conn.ConditionEntries[j];
-                    if (entry.Instance != null)
-                    {
-                        string fromName = conn.From?.Name ?? "?";
-                        string toName = conn.To?.Name ?? "?";
-                        entry.Instance.name = $"{fromName}->{toName}_Condition_{j}";
-                    }
-                }
-
-                var cd = new ConnectionData
-                {
-                    FromIndex = stateToIndex[conn.From],
-                    ToIndex = stateToIndex[conn.To]
-                };
-                for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                {
-                    var entry = conn.ConditionEntries[j];
-                    cd.Conditions.Add(new ConditionEntry
-                    {
-                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
-                        Instance = entry.Instance
-                    });
-                }
-                data.Connections.Add(cd);
-            }
-
-            foreach (var group in _groups)
-            {
-                var gd = new GroupData { Label = group.Label, Color = group.GroupColor };
-                foreach (var member in group.Members)
-                    gd.MemberIndices.Add(stateToIndex[member]);
-                data.Groups.Add(gd);
-            }
-
-            foreach (var v in _blackboardVariables)
-                data.BlackboardVariables.Add(v.Clone());
-
-            data.PanOffset = _panOffset;
-            data.Zoom = _zoom;
-            data.ShowSidePanel = _showSidePanel;
-            data.SidePanelWidth = _sidePanelWidth;
-            data.DetailsHeightRatio = _detailsHeightRatio;
-
-            _controller.Data = data;
+            SaveCurrentData();
+            _controller.Data = _controller.Data;
         }
 
         private void SaveAs()
@@ -1637,6 +1825,8 @@ namespace CleanStateMachine
             }
 
             _controller = null;
+            _currentData = new SerializableData();
+            _navigationPath.Clear();
             _editingState = null;
             _selectionController.Clear();
             _states.Clear();

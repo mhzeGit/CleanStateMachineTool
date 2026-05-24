@@ -56,6 +56,64 @@
     border-bottom-width: 2px;
 }
 
+.state-view__fill--sub {
+    background-color: rgb(160, 100, 50);
+    border-color: rgb(220, 160, 80);
+}
+
+.state-view__fill--sub.state-view__fill--selected {
+    border-color: rgb(137, 180, 250);
+}
+
+.state-view__fill--sub.state-view__fill--active {
+    background-color: rgb(180, 130, 70);
+}
+
+.state-view__sub-icon {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    -unity-text-align: upper-right;
+}
+
+.breadcrumb-bar {
+    flex-direction: row;
+    align-items: center;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-bottom-color: rgb(50, 50, 50);
+    border-bottom-width: 1px;
+    background-color: rgba(20, 20, 20, 0.85);
+}
+
+.breadcrumb-item {
+    font-size: 11px;
+    color: rgb(180, 180, 180);
+    white-space: nowrap;
+    padding-left: 2px;
+    padding-right: 2px;
+    cursor: pointer;
+}
+
+.breadcrumb-item:hover {
+    color: rgb(220, 220, 220);
+}
+
+.breadcrumb-item--clickable {
+    color: rgb(137, 180, 250);
+}
+
+.breadcrumb-item--clickable:hover {
+    color: rgb(180, 210, 255);
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    font-size: 11px;
+    color: rgb(100, 100, 100);
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
 .state-view__fill--active {
     background-color: rgb(110, 110, 100);
 }

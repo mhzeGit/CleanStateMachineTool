@@ -109,7 +109,32 @@ namespace CleanStateMachine
             AddInfoRow("Size", $"({state.Size.x:F0} x {state.Size.y:F0})");
             AddInfoRow("Connections", CountStateConnections(state).ToString());
 
-            if (!state.IsEntry)
+            if (state.IsEntry)
+                return;
+
+            if (state.IsSubStateMachine)
+            {
+                AddDivider();
+                AddSectionTitle("Sub State Machine");
+
+                var enterBtn = new Button(() => _window.EnterSubStateMachine(state));
+                enterBtn.text = "Enter Sub State Machine";
+                enterBtn.AddToClassList("enter-sub-button");
+                _scrollView.Add(enterBtn);
+
+                var clearBtn = new Button(() =>
+                {
+                    state.SubMachineData = null;
+                    state.IsSubStateMachine = false;
+                    _window.NotifySidePanelChanged();
+                    UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                });
+                clearBtn.text = "Remove Sub Machine";
+                clearBtn.AddToClassList("enter-sub-button");
+                clearBtn.style.backgroundColor = new StyleColor(new Color(0.4f, 0.2f, 0.2f));
+                _scrollView.Add(clearBtn);
+            }
+            else
             {
                 AddDivider();
                 AddSectionTitle("State Behaviour");

@@ -11,8 +11,10 @@ namespace CleanStateMachine
         public Vector2 Position;
         public Vector2 Size = new Vector2(160f, 40f);
         public bool IsEntry;
+        public bool IsSubStateMachine;
         public string BehaviourType;
         public StateBehaviour Behaviour;
+        public SerializableData SubMachineData;
     }
 
     [Serializable]

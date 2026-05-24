@@ -12,6 +12,7 @@ namespace CleanStateMachine
         private List<BlackboardVariable> _runtimeVariables = new List<BlackboardVariable>();
         private int _currentStateIndex = -1;
         private string _currentStateName = "None";
+        private float _stateEnterTime;
         private bool _initialized = false;
         private List<TransitionRecord> _recentTransitions = new List<TransitionRecord>();
 
@@ -28,6 +29,7 @@ namespace CleanStateMachine
 
         public string CurrentStateName => _currentStateName;
         public int CurrentStateIndex => _currentStateIndex;
+        public float StateEnterTime => _stateEnterTime;
         public List<BlackboardVariable> RuntimeVariables => _runtimeVariables;
         public List<TransitionRecord> RecentTransitions => _recentTransitions;
 
@@ -46,6 +48,7 @@ namespace CleanStateMachine
 
             if (_currentStateIndex >= 0)
             {
+                _stateEnterTime = Time.time;
                 var behaviour = GetOrCreateBehaviour(_currentStateIndex);
                 if (behaviour != null)
                     behaviour.OnStateEnter(this);
@@ -201,6 +204,7 @@ namespace CleanStateMachine
 
             _currentStateIndex = toIndex;
             _currentStateName = Data.States[toIndex].Name;
+            _stateEnterTime = Time.time;
 
             _recentTransitions.Add(new TransitionRecord
             {

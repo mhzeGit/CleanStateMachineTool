@@ -123,6 +123,46 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: True
+--- !u!114 &-7023159511462996632
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State01_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 01
+--- !u!114 &-6809415440553740267
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87a1ef80491cd7d4082e75153f989555, type: 3}
+  m_Name: Sub State Machine->Correct State 1_Condition_0
+  m_EditorClassIdentifier: 
+  number1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 2
+    DefaultValue: 0
+  number2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 4
+  comparison: 1
 --- !u!114 &-6427225630747355023
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -146,6 +186,29 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 1
   comparison: 0
+--- !u!114 &-6388373870097427965
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87a1ef80491cd7d4082e75153f989555, type: 3}
+  m_Name: Sub State Machine->Correct State 1_Condition_0
+  m_EditorClassIdentifier: 
+  number1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 2
+    DefaultValue: 0
+  number2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 4
+  comparison: 1
 --- !u!114 &-6324071765435123549
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -185,6 +248,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: Hello World
+--- !u!114 &-5505361700147888996
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State01->State02_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.2
 --- !u!114 &-5493788498881703493
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -259,6 +339,29 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 87a1ef80491cd7d4082e75153f989555, type: 3}
   m_Name: Correct State 1->State 3_Condition_0
+  m_EditorClassIdentifier: 
+  number1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 2
+    DefaultValue: 0
+  number2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 3
+  comparison: 0
+--- !u!114 &-3272854633350445534
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87a1ef80491cd7d4082e75153f989555, type: 3}
+  m_Name: Correct State 1->Sub State Machine_Condition_0
   m_EditorClassIdentifier: 
   number1:
     UseBlackboard: 1
@@ -350,98 +453,278 @@ MonoBehaviour:
       Position: {x: 50, y: 200}
       Size: {x: 160, y: 40}
       IsEntry: 1
+      IsSubStateMachine: 0
       BehaviourType: 
       Behaviour: {fileID: 0}
+      SubMachineData:
+        States: []
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
     - Name: WrongState
       Position: {x: 576.82355, y: 57.02684}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      IsSubStateMachine: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -4984312468142295952}
-    - Name: Correct State 1
-      Position: {x: 303.86215, y: 204.71658}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: 6480756955754394530}
-    - Name: State 3
-      Position: {x: 514.0013, y: 520.1705}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: -2004553713341558884}
-    - Name: State 2
-      Position: {x: 356.75058, y: 565.9919}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: 2496552749051755956}
+      SubMachineData:
+        States: []
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
     - Name: State 1
       Position: {x: 165.98784, y: 530.7979}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      IsSubStateMachine: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: 2093244015773400430}
+      SubMachineData:
+        States: []
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
+    - Name: State 2
+      Position: {x: 356.75058, y: 565.9919}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubStateMachine: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 2496552749051755956}
+      SubMachineData:
+        States: []
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
     - Name: Correct State 2
       Position: {x: 628.26935, y: 282.7644}
       Size: {x: 160, y: 40}
       IsEntry: 0
+      IsSubStateMachine: 0
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -5894389830450324287}
+      SubMachineData:
+        States: []
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
+    - Name: Correct State 1
+      Position: {x: 303.86215, y: 204.71658}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubStateMachine: 0
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 6480756955754394530}
+      SubMachineData:
+        States:
+        - Name: Entry
+          Position: {x: 50, y: 200}
+          Size: {x: 160, y: 40}
+          IsEntry: 1
+          IsSubStateMachine: 0
+          BehaviourType: 
+          Behaviour: {fileID: 0}
+          SubMachineData:
+            States: []
+            Connections: []
+            Groups: []
+            BlackboardVariables: []
+            PanOffset: {x: 0, y: 0}
+            Zoom: 1
+            ShowSidePanel: 1
+            SidePanelWidth: 220
+            DetailsHeightRatio: 0.5
+        Connections: []
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.5
+    - Name: Sub State Machine
+      Position: {x: 519.02985, y: 493.21228}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubStateMachine: 1
+      BehaviourType: 
+      Behaviour: {fileID: 0}
+      SubMachineData:
+        States:
+        - Name: Entry
+          Position: {x: 50, y: 200}
+          Size: {x: 160, y: 40}
+          IsEntry: 1
+          IsSubStateMachine: 0
+          BehaviourType: 
+          Behaviour: {fileID: 0}
+          SubMachineData:
+            States: []
+            Connections: []
+            Groups: []
+            BlackboardVariables: []
+            PanOffset: {x: 0, y: 0}
+            Zoom: 1
+            ShowSidePanel: 1
+            SidePanelWidth: 220
+            DetailsHeightRatio: 0.5
+        - Name: State01
+          Position: {x: 340, y: 253}
+          Size: {x: 160, y: 40}
+          IsEntry: 0
+          IsSubStateMachine: 0
+          BehaviourType: DebugLog_StateBehaviour
+          Behaviour: {fileID: -7023159511462996632}
+          SubMachineData:
+            States: []
+            Connections: []
+            Groups: []
+            BlackboardVariables: []
+            PanOffset: {x: 0, y: 0}
+            Zoom: 1
+            ShowSidePanel: 1
+            SidePanelWidth: 220
+            DetailsHeightRatio: 0.5
+        - Name: State02
+          Position: {x: 478, y: 97}
+          Size: {x: 160, y: 40}
+          IsEntry: 0
+          IsSubStateMachine: 0
+          BehaviourType: DebugLog_StateBehaviour
+          Behaviour: {fileID: 2113626050520997963}
+          SubMachineData:
+            States: []
+            Connections: []
+            Groups: []
+            BlackboardVariables: []
+            PanOffset: {x: 0, y: 0}
+            Zoom: 1
+            ShowSidePanel: 1
+            SidePanelWidth: 220
+            DetailsHeightRatio: 0.5
+        - Name: State03
+          Position: {x: 260, y: 89}
+          Size: {x: 160, y: 40}
+          IsEntry: 0
+          IsSubStateMachine: 0
+          BehaviourType: DebugLog_StateBehaviour
+          Behaviour: {fileID: 4992772155863000491}
+          SubMachineData:
+            States: []
+            Connections: []
+            Groups: []
+            BlackboardVariables: []
+            PanOffset: {x: 0, y: 0}
+            Zoom: 1
+            ShowSidePanel: 1
+            SidePanelWidth: 220
+            DetailsHeightRatio: 0.5
+        Connections:
+        - FromIndex: 3
+          ToIndex: 1
+          Conditions:
+          - TypeName: Timer_ConditionBehaviours
+            Instance: {fileID: 7033260763741961052}
+        - FromIndex: 2
+          ToIndex: 3
+          Conditions:
+          - TypeName: Timer_ConditionBehaviours
+            Instance: {fileID: 8488541119239438812}
+        - FromIndex: 0
+          ToIndex: 1
+          Conditions: []
+        - FromIndex: 1
+          ToIndex: 2
+          Conditions:
+          - TypeName: Timer_ConditionBehaviours
+            Instance: {fileID: -5505361700147888996}
+        Groups: []
+        BlackboardVariables: []
+        PanOffset: {x: 0, y: 0}
+        Zoom: 1
+        ShowSidePanel: 1
+        SidePanelWidth: 220
+        DetailsHeightRatio: 0.7192118
     Connections:
     - FromIndex: 0
-      ToIndex: 2
+      ToIndex: 5
       Conditions: []
-    - FromIndex: 6
-      ToIndex: 1
-      Conditions:
-      - TypeName: SimpleBool_ConditionBehaviours
-        Instance: {fileID: -8704035431239596347}
-    - FromIndex: 6
-      ToIndex: 1
-      Conditions:
-      - TypeName: SimpleBool_ConditionBehaviours
-        Instance: {fileID: -8430451136837071798}
     - FromIndex: 1
-      ToIndex: 2
+      ToIndex: 5
       Conditions: []
     - FromIndex: 2
-      ToIndex: 6
+      ToIndex: 5
+      Conditions:
+      - TypeName: CompareNumbers_ConditionBehaviours
+        Instance: {fileID: 216716156813758117}
+    - FromIndex: 5
+      ToIndex: 2
+      Conditions:
+      - TypeName: CompareNumbers_ConditionBehaviours
+        Instance: {fileID: -6427225630747355023}
+    - FromIndex: 5
+      ToIndex: 4
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: 1918339782861410973}
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: 8405162042779406700}
-    - FromIndex: 2
-      ToIndex: 5
+    - FromIndex: 4
+      ToIndex: 1
       Conditions:
-      - TypeName: CompareNumbers_ConditionBehaviours
-        Instance: {fileID: -6427225630747355023}
-    - FromIndex: 2
-      ToIndex: 4
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: -8704035431239596347}
+    - FromIndex: 4
+      ToIndex: 1
       Conditions:
-      - TypeName: CompareNumbers_ConditionBehaviours
-        Instance: {fileID: -7792065904264556728}
-    - FromIndex: 2
+      - TypeName: SimpleBool_ConditionBehaviours
+        Instance: {fileID: -8430451136837071798}
+    - FromIndex: 5
       ToIndex: 3
       Conditions:
       - TypeName: CompareNumbers_ConditionBehaviours
-        Instance: {fileID: -4238784106312989180}
-    - FromIndex: 5
-      ToIndex: 2
-      Conditions:
-      - TypeName: CompareNumbers_ConditionBehaviours
-        Instance: {fileID: 216716156813758117}
-    - FromIndex: 4
-      ToIndex: 2
+        Instance: {fileID: -7792065904264556728}
+    - FromIndex: 3
+      ToIndex: 5
       Conditions:
       - TypeName: CompareNumbers_ConditionBehaviours
         Instance: {fileID: -5493788498881703493}
-    - FromIndex: 3
-      ToIndex: 2
+    - FromIndex: 5
+      ToIndex: 6
       Conditions:
       - TypeName: CompareNumbers_ConditionBehaviours
-        Instance: {fileID: -4743411879791622644}
+        Instance: {fileID: -3272854633350445534}
+    - FromIndex: 6
+      ToIndex: 5
+      Conditions:
+      - TypeName: CompareNumbers_ConditionBehaviours
+        Instance: {fileID: -6388373870097427965}
     Groups: []
     BlackboardVariables:
     - Name: WrongState
@@ -456,11 +739,11 @@ MonoBehaviour:
     - Name: Index
       Type: 1
       StringValue: 0
-    PanOffset: {x: -75.38989, y: 58.301147}
-    Zoom: 0.9602503
+    PanOffset: {x: -23.852753, y: -24.808899}
+    Zoom: 0.7376315
     ShowSidePanel: 1
     SidePanelWidth: 299
-    DetailsHeightRatio: 0.6218656
+    DetailsHeightRatio: 0.7807882
 --- !u!114 &216716156813758117
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -523,6 +806,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: 'STATE: 01'
+--- !u!114 &2113626050520997963
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State02_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 02
 --- !u!114 &2496552749051755956
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -562,6 +862,46 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &4992772155863000491
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State03_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 03
+--- !u!114 &6010543952496397576
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87a1ef80491cd7d4082e75153f989555, type: 3}
+  m_Name: Correct State 1->Sub State Machine_Condition_0
+  m_EditorClassIdentifier: 
+  number1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 2
+    DefaultValue: 0
+  number2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 4
+  comparison: 0
 --- !u!114 &6409677120155523139
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -618,6 +958,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &7033260763741961052
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State03->State01_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.2
 --- !u!114 &8216924739884770493
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -662,3 +1019,20 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &8488541119239438812
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State02->State03_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.2

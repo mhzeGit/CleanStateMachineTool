@@ -17,23 +17,22 @@ namespace CleanStateMachine
             if (_data != null)
             {
                 bool needsRebuild = false;
-                for (int i = 0; i < _data.States.Count; i++)
+                VisitAllStates(_data, sd =>
                 {
-                    var sd = _data.States[i];
+                    if (sd.IsSubStateMachine)
+                        return;
                     if (sd.Behaviour != null && sd.Behaviour is StateBehaviour)
-                        continue;
+                        return;
                     if (!string.IsNullOrEmpty(sd.BehaviourType))
                     {
                         needsRebuild = true;
-                        break;
                     }
-                }
+                });
                 if (!needsRebuild)
                 {
-                    for (int i = 0; i < _data.Connections.Count; i++)
+                    VisitAllConnections(_data, cd =>
                     {
-                        var cd = _data.Connections[i];
-                        if (cd.Conditions == null) continue;
+                        if (cd.Conditions == null) return;
                         for (int j = 0; j < cd.Conditions.Count; j++)
                         {
                             var ce = cd.Conditions[j];
@@ -45,8 +44,7 @@ namespace CleanStateMachine
                                 break;
                             }
                         }
-                        if (needsRebuild) break;
-                    }
+                    });
                 }
                 if (needsRebuild)
                     RebuildBehaviourInstances(addSubAssets: false);
@@ -82,9 +80,10 @@ namespace CleanStateMachine
 #if UNITY_EDITOR
             if (_data == null) return;
 
-            for (int i = 0; i < _data.States.Count; i++)
+            VisitAllStates(_data, sd =>
             {
-                var sd = _data.States[i];
+                if (sd.IsSubStateMachine)
+                    return;
                 if (!string.IsNullOrEmpty(sd.BehaviourType) && sd.Behaviour == null)
                 {
                     var type = System.Type.GetType(sd.BehaviourType);
@@ -103,12 +102,11 @@ namespace CleanStateMachine
                         sd.Behaviour.hideFlags = HideFlags.HideInHierarchy;
                     }
                 }
-            }
+            });
 
-            for (int i = 0; i < _data.Connections.Count; i++)
+            VisitAllConnections(_data, cd =>
             {
-                var cd = _data.Connections[i];
-                if (cd.Conditions == null) continue;
+                if (cd.Conditions == null) return;
                 for (int j = 0; j < cd.Conditions.Count; j++)
                 {
                     var ce = cd.Conditions[j];
@@ -131,7 +129,7 @@ namespace CleanStateMachine
                         }
                     }
                 }
-            }
+            });
 
             if (addSubAssets)
             {
@@ -141,6 +139,29 @@ namespace CleanStateMachine
 #endif
         }
 
+        private static void VisitAllStates(SerializableData data, System.Action<StateData> action)
+        {
+            if (data == null) return;
+            for (int i = 0; i < data.States.Count; i++)
+            {
+                action(data.States[i]);
+                if (data.States[i].IsSubStateMachine && data.States[i].SubMachineData != null)
+                    VisitAllStates(data.States[i].SubMachineData, action);
+            }
+        }
+
+        private static void VisitAllConnections(SerializableData data, System.Action<ConnectionData> action)
+        {
+            if (data == null) return;
+            for (int i = 0; i < data.Connections.Count; i++)
+                action(data.Connections[i]);
+            for (int i = 0; i < data.States.Count; i++)
+            {
+                if (data.States[i].IsSubStateMachine && data.States[i].SubMachineData != null)
+                    VisitAllConnections(data.States[i].SubMachineData, action);
+            }
+        }
+
 #if UNITY_EDITOR
         public void EnsureSubAssets()
         {
@@ -148,41 +169,7 @@ namespace CleanStateMachine
             if (string.IsNullOrEmpty(path)) return;
 
             var referenced = new HashSet<Object>();
-            if (_data != null)
-            {
-                for (int i = 0; i < _data.States.Count; i++)
-                {
-                    var inst = _data.States[i].Behaviour;
-                    if (inst != null)
-                    {
-                        referenced.Add(inst);
-                        if (!AssetDatabase.Contains(inst))
-                        {
-                            inst.hideFlags = HideFlags.HideInHierarchy;
-                            AssetDatabase.AddObjectToAsset(inst, this);
-                        }
-                    }
-                }
-
-                for (int i = 0; i < _data.Connections.Count; i++)
-                {
-                    var cd = _data.Connections[i];
-                    if (cd.Conditions == null) continue;
-                    for (int j = 0; j < cd.Conditions.Count; j++)
-                    {
-                        var inst = cd.Conditions[j].Instance;
-                        if (inst != null)
-                        {
-                            referenced.Add(inst);
-                            if (!AssetDatabase.Contains(inst))
-                            {
-                                inst.hideFlags = HideFlags.HideInHierarchy;
-                                AssetDatabase.AddObjectToAsset(inst, this);
-                            }
-                        }
-                    }
-                }
-            }
+            CollectReferencedSubAssets(_data, referenced);
 
             var subAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(path);
             for (int i = subAssets.Length - 1; i >= 0; i--)
@@ -192,6 +179,45 @@ namespace CleanStateMachine
                     (sub is StateBehaviour || sub is ConditionScript))
                 {
                     Object.DestroyImmediate(sub, true);
+                }
+            }
+        }
+
+        private void CollectReferencedSubAssets(SerializableData data, HashSet<Object> referenced)
+        {
+            if (data == null) return;
+            for (int i = 0; i < data.States.Count; i++)
+            {
+                var inst = data.States[i].Behaviour;
+                if (inst != null)
+                {
+                    referenced.Add(inst);
+                    if (!AssetDatabase.Contains(inst))
+                    {
+                        inst.hideFlags = HideFlags.HideInHierarchy;
+                        AssetDatabase.AddObjectToAsset(inst, this);
+                    }
+                }
+                if (data.States[i].IsSubStateMachine && data.States[i].SubMachineData != null)
+                    CollectReferencedSubAssets(data.States[i].SubMachineData, referenced);
+            }
+
+            for (int i = 0; i < data.Connections.Count; i++)
+            {
+                var cd = data.Connections[i];
+                if (cd.Conditions == null) continue;
+                for (int j = 0; j < cd.Conditions.Count; j++)
+                {
+                    var inst = cd.Conditions[j].Instance;
+                    if (inst != null)
+                    {
+                        referenced.Add(inst);
+                        if (!AssetDatabase.Contains(inst))
+                        {
+                            inst.hideFlags = HideFlags.HideInHierarchy;
+                            AssetDatabase.AddObjectToAsset(inst, this);
+                        }
+                    }
                 }
             }
         }

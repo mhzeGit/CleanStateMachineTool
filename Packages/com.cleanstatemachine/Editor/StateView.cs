@@ -35,10 +35,21 @@ namespace CleanStateMachine
         }
 
         public bool IsEntry { get; }
+        private bool _isSubStateMachine;
+        public bool IsSubStateMachine
+        {
+            get => _isSubStateMachine;
+            set
+            {
+                _isSubStateMachine = value;
+                UpdateSubStateMachineVisual();
+            }
+        }
         public bool IsEditing { get; private set; }
         public string EditingBuffer { get; private set; }
         public MonoScript BehaviourScript { get; set; }
         public StateBehaviour BehaviourInstance { get; set; }
+        public SerializableData SubMachineData { get; set; }
 
         private bool _isActive;
         private double _activatedAtTime;
@@ -79,9 +90,10 @@ namespace CleanStateMachine
         private Label _nameLabel;
         private TextField _editField;
         private VisualElement _editFieldInput;
+        private VisualElement _subIcon;
 
-        private const float DefaultWidth = 160f;
-        private const float DefaultHeight = 40f;
+        public const float DefaultWidth = 160f;
+        public const float DefaultHeight = 40f;
         private const int BaseCornerRadius = 8;
         private const float PermanentBorderWidth = 1.5f;
         private const float GlowExpandPx = 6f;
@@ -126,6 +138,7 @@ namespace CleanStateMachine
             _fill.style.bottom = 0f;
             if (IsEntry)
                 _fill.AddToClassList("state-view__fill--entry");
+            UpdateSubStateMachineVisual();
             Add(_fill);
 
             _nameLabel = new Label(_name);
@@ -152,6 +165,13 @@ namespace CleanStateMachine
             Add(_editField);
 
             _editFieldInput = _editField.Q(className: "unity-base-text-field__input");
+
+            _subIcon = new Label("\u2197");
+            _subIcon.AddToClassList("state-view__sub-icon");
+            _subIcon.pickingMode = PickingMode.Ignore;
+            _subIcon.style.position = UnityEngine.UIElements.Position.Absolute;
+            _subIcon.style.display = DisplayStyle.None;
+            Add(_subIcon);
 
             InitializeGlowAnimation();
         }
@@ -255,6 +275,15 @@ namespace CleanStateMachine
             _nameLabel.style.fontSize = Mathf.RoundToInt(12 * zoom);
             _nameLabel.style.unityFontStyleAndWeight = FontStyle.Normal;
 
+            _subIcon.style.display = IsSubStateMachine ? DisplayStyle.Flex : DisplayStyle.None;
+            if (IsSubStateMachine)
+            {
+                int iconSize = Mathf.RoundToInt(14 * zoom);
+                _subIcon.style.right = Mathf.RoundToInt(4 * zoom);
+                _subIcon.style.top = Mathf.RoundToInt(2 * zoom);
+                _subIcon.style.fontSize = iconSize;
+            }
+
             if (IsEditing)
             {
                 int fontSize = Mathf.RoundToInt(12 * zoom);
@@ -337,6 +366,14 @@ namespace CleanStateMachine
         {
             if (IsEditing)
                 CommitEditing();
+        }
+
+        public void UpdateSubStateMachineVisual()
+        {
+            if (_fill != null)
+                _fill.EnableInClassList("state-view__fill--sub", IsSubStateMachine);
+            if (_subIcon != null)
+                _subIcon.style.display = IsSubStateMachine ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void InitializeGlowAnimation()

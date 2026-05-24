@@ -752,3 +752,25 @@
     background-color: #3a4e3a;
     color: #a0f0a0;
 }
+
+.enter-sub-button {
+    height: 32px;
+    background-color: #2a3a4a;
+    color: #80b0d0;
+    font-size: 12px;
+    justify-content: center;
+    align-items: center;
+    margin-left: 8px;
+    margin-right: 8px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    border-color: #2a4a5a;
+    border-width: 1px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.enter-sub-button:hover {
+    background-color: #3a4e5e;
+    color: #a0e0f0;
+}
