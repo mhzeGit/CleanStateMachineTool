@@ -61,6 +61,7 @@ namespace CleanStateMachine
         private bool _hasUnsavedChanges;
         private bool _isLoading;
         private StateMachineController _pendingController;
+        private bool _pendingFocusOnContent;
         private float _detailsHeightRatio = 0.5f;
         private SidePanel _sidePanelElement;
 
@@ -145,6 +146,7 @@ namespace CleanStateMachine
             {
                 _currentData = _controller.Data;
                 LoadFromController();
+                _pendingFocusOnContent = true;
             }
             else
             {
@@ -309,6 +311,8 @@ namespace CleanStateMachine
                 _sidePanelElement?.UpdateSelection();
                 _gridBackground?.UpdateView(_panOffset, _zoom);
             }).StartingIn(10);
+
+            rootVisualElement.RegisterCallback<KeyDownEvent>(OnRootKeyDown);
         }
 
         private void OnGUI()
@@ -321,6 +325,12 @@ namespace CleanStateMachine
                 var pending = _pendingController;
                 _pendingController = null;
                 LoadController(pending);
+            }
+
+            if (_pendingFocusOnContent)
+            {
+                _pendingFocusOnContent = false;
+                StartSmoothFocusOnContent();
             }
 
             var e = Event.current;
@@ -384,6 +394,50 @@ namespace CleanStateMachine
             else
                 HandleLeftClickInteraction(graphRect);
 
+            if ((e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && e.type == EventType.KeyDown && _editingState == null)
+            {
+                if (_expandedSubStateStack.Count > 0)
+                {
+                    int topExpanded = _expandedSubStateStack[^1];
+                    bool canGoBack = false;
+                    for (int i = 0; i < _selectionController.Count; i++)
+                    {
+                        if (_selectionController.Selected[i] is StateView s)
+                        {
+                            if (s.DataIndex == topExpanded || s.IsSubEntry)
+                            {
+                                canGoBack = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (canGoBack)
+                    {
+                        ExitExpandedSubState();
+                        e.Use();
+                        Repaint();
+                        return;
+                    }
+                }
+
+                StateView subStateNode = null;
+                for (int i = 0; i < _selectionController.Count; i++)
+                {
+                    if (_selectionController.Selected[i] is StateView s && s.IsSubStateMachine)
+                    {
+                        if (subStateNode != null) { subStateNode = null; break; }
+                        subStateNode = s;
+                    }
+                }
+
+                if (subStateNode != null)
+                {
+                    EnterExpandSubState(subStateNode);
+                    e.Use();
+                    Repaint();
+                }
+            }
+
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
             {
                 if (_connectionController.IsConnecting)
@@ -422,7 +476,52 @@ namespace CleanStateMachine
             UpdateResizeCursor();
         }
 
+        private void OnRootKeyDown(KeyDownEvent e)
+        {
+            if (e.keyCode != KeyCode.Return && e.keyCode != KeyCode.KeypadEnter) return;
+            if (_editingState != null || _editingGroup != null) return;
 
+            if (_expandedSubStateStack.Count > 0)
+            {
+                int topExpanded = _expandedSubStateStack[^1];
+                bool canGoBack = false;
+                for (int i = 0; i < _selectionController.Count; i++)
+                {
+                    if (_selectionController.Selected[i] is StateView s)
+                    {
+                        if (s.DataIndex == topExpanded || s.IsSubEntry)
+                        {
+                            canGoBack = true;
+                            break;
+                        }
+                    }
+                }
+                if (canGoBack)
+                {
+                    ExitExpandedSubState();
+                    e.StopPropagation();
+                    Repaint();
+                    return;
+                }
+            }
+
+            StateView subStateNode = null;
+            for (int i = 0; i < _selectionController.Count; i++)
+            {
+                if (_selectionController.Selected[i] is StateView s && s.IsSubStateMachine)
+                {
+                    if (subStateNode != null) { subStateNode = null; break; }
+                    subStateNode = s;
+                }
+            }
+
+            if (subStateNode != null)
+            {
+                EnterExpandSubState(subStateNode);
+                e.StopPropagation();
+                Repaint();
+            }
+        }
 
         private void HandleKeyboardShortcuts(Event e)
         {
@@ -726,16 +825,6 @@ namespace CleanStateMachine
                     _lastDoubleClickCandidate = null;
                     if (!_selectionController.IsSelected(sv))
                         _selectionController.SelectOnly(sv);
-
-                    if (sv.IsSubStateMachine)
-                    {
-                        if (_expandedSubStateStack.Count > 0 && _expandedSubStateStack[^1] == sv.DataIndex)
-                            ExitExpandedSubState();
-                        else
-                            EnterExpandSubState(sv);
-                        e.Use();
-                        return;
-                    }
 
                     StartEditing(sv);
                 }
@@ -2173,6 +2262,7 @@ namespace CleanStateMachine
 
             _controller = controller;
             LoadFromController();
+            StartSmoothFocusOnContent();
         }
 
         private void LoadFromController()
