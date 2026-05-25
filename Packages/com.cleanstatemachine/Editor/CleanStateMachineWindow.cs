@@ -84,9 +84,10 @@ namespace CleanStateMachine
         private readonly List<CommentGroupView> _groups = new();
 
         private SerializableData _currentData;
-        private int _expandedSubStateIndex = -1;
+        private readonly List<int> _expandedSubStateStack = new List<int>();
         private VisualElement _expandedModeBar;
         private Label _expandedModeLabel;
+        private VisualElement _breadcrumbContainer;
         private Dictionary<ISelectable, Vector2> _preDragPositions;
         private StateView _entryState;
         private StateView _editingState;
@@ -245,13 +246,21 @@ namespace CleanStateMachine
             backButton.style.borderTopWidth = 0f;
             backButton.style.borderBottomWidth = 0f;
             backButton.style.unityFontStyleAndWeight = FontStyle.Normal;
+            backButton.style.marginRight = 4f;
             _expandedModeBar.Add(backButton);
+
+            _breadcrumbContainer = new VisualElement();
+            _breadcrumbContainer.style.flexDirection = FlexDirection.Row;
+            _breadcrumbContainer.style.alignItems = Align.Center;
+            _breadcrumbContainer.style.flexGrow = 1f;
+            _breadcrumbContainer.style.overflow = Overflow.Hidden;
+            _expandedModeBar.Add(_breadcrumbContainer);
 
             _expandedModeLabel = new Label();
             _expandedModeLabel.style.fontSize = 11;
             _expandedModeLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
             _expandedModeLabel.style.marginLeft = 8f;
-            _expandedModeBar.Add(_expandedModeLabel);
+            _breadcrumbContainer.Add(_expandedModeLabel);
 
             rootVisualElement.Add(_selectionBox.Element);
 
@@ -328,7 +337,7 @@ namespace CleanStateMachine
                     e.Use();
                     Repaint();
                 }
-                else if (_expandedSubStateIndex >= 0 && _editingState == null)
+                else if (_expandedSubStateStack.Count > 0 && _editingState == null)
                 {
                     ExitExpandedSubState();
                     e.Use();
@@ -664,7 +673,7 @@ namespace CleanStateMachine
 
                     if (sv.IsSubStateMachine)
                     {
-                        if (_expandedSubStateIndex == sv.DataIndex)
+                        if (_expandedSubStateStack.Count > 0 && _expandedSubStateStack[^1] == sv.DataIndex)
                             ExitExpandedSubState();
                         else
                             EnterExpandSubState(sv);
@@ -1443,20 +1452,32 @@ namespace CleanStateMachine
                 }
             }
 
-            // If the expanded sub-state is being deleted, exit expanded mode
-            if (_expandedSubStateIndex >= 0)
+            if (_expandedSubStateStack.Count > 0)
             {
                 bool expandedBeingDeleted = false;
                 for (int i = 0; i < deletedStates.Count; i++)
                 {
-                    if (deletedStates[i].DataIndex == _expandedSubStateIndex)
+                    if (_expandedSubStateStack.Contains(deletedStates[i].DataIndex))
                     {
                         expandedBeingDeleted = true;
                         break;
                     }
                 }
                 if (expandedBeingDeleted)
-                    ExitExpandedSubState();
+                {
+                    for (int i = _expandedSubStateStack.Count - 1; i >= 0; i--)
+                    {
+                        for (int j = 0; j < deletedStates.Count; j++)
+                        {
+                            if (_expandedSubStateStack[i] == deletedStates[j].DataIndex)
+                            {
+                                _expandedSubStateStack.RemoveAt(i);
+                                break;
+                            }
+                        }
+                    }
+                    UpdateExpandedModeBar();
+                }
             }
 
             var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
@@ -1625,10 +1646,11 @@ namespace CleanStateMachine
 
         private bool IsStateVisible(StateView state)
         {
-            if (_expandedSubStateIndex >= 0)
+            if (_expandedSubStateStack.Count > 0)
             {
-                if (state.DataIndex == _expandedSubStateIndex) return true;
-                var expandedState = GetStateByIndex(_expandedSubStateIndex);
+                int topExpanded = _expandedSubStateStack[^1];
+                if (state.DataIndex == topExpanded) return true;
+                var expandedState = GetStateByIndex(topExpanded);
                 if (expandedState != null && expandedState.ChildIndices.Contains(state.DataIndex))
                     return true;
                 return false;
@@ -1664,24 +1686,111 @@ namespace CleanStateMachine
         {
             if (subStateView == null || !subStateView.IsSubStateMachine) return;
 
-            _expandedSubStateIndex = subStateView.DataIndex;
-
-            _expandedModeLabel.text = $"Viewing contents of: {subStateView.Name}";
-            _expandedModeBar.style.display = DisplayStyle.Flex;
+            _expandedSubStateStack.Add(subStateView.DataIndex);
+            UpdateExpandedModeBar();
         }
 
         private void ExitExpandedSubState()
         {
-            _expandedSubStateIndex = -1;
-            _expandedModeBar.style.display = DisplayStyle.None;
+            if (_expandedSubStateStack.Count > 0)
+                _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
+            UpdateExpandedModeBar();
+        }
+
+        private void UpdateExpandedModeBar()
+        {
+            if (_expandedSubStateStack.Count > 0)
+            {
+                _expandedModeBar.style.display = DisplayStyle.Flex;
+                _breadcrumbContainer.Clear();
+
+                for (int i = 0; i < _expandedSubStateStack.Count; i++)
+                {
+                    int idx = _expandedSubStateStack[i];
+                    var state = GetStateByIndex(idx);
+                    string name = state != null ? state.Name : "?";
+
+                    if (i > 0)
+                    {
+                        var sep = new Label(" > ");
+                        sep.style.fontSize = 11;
+                        sep.style.color = new Color(0.4f, 0.4f, 0.4f);
+                        sep.style.marginLeft = 2f;
+                        sep.style.marginRight = 2f;
+                        _breadcrumbContainer.Add(sep);
+                    }
+
+                    int capturedLevel = i;
+                    int capturedIdx = idx;
+                    var crumb = new Button(() =>
+                    {
+                        while (_expandedSubStateStack.Count > capturedLevel + 1)
+                            _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
+                        UpdateExpandedModeBar();
+                        Repaint();
+                    });
+                    crumb.text = name;
+                    crumb.style.fontSize = 11;
+                    crumb.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                    crumb.style.color = new Color(0.8f, 0.8f, 0.8f);
+                    crumb.style.borderLeftWidth = 0f;
+                    crumb.style.borderRightWidth = 0f;
+                    crumb.style.borderTopWidth = 0f;
+                    crumb.style.borderBottomWidth = 0f;
+                    crumb.style.unityFontStyleAndWeight = FontStyle.Normal;
+                    crumb.style.paddingLeft = 4f;
+                    crumb.style.paddingRight = 4f;
+                    _breadcrumbContainer.Add(crumb);
+                }
+            }
+            else
+            {
+                _expandedModeBar.style.display = DisplayStyle.None;
+            }
         }
 
         private void AddToExpandedContainer(StateView state)
         {
-            if (_expandedSubStateIndex < 0) return;
-            var container = GetStateByIndex(_expandedSubStateIndex);
+            if (_expandedSubStateStack.Count == 0) return;
+            int topExpanded = _expandedSubStateStack[^1];
+            var container = GetStateByIndex(topExpanded);
             if (container != null && !container.ChildIndices.Contains(state.DataIndex))
                 container.ChildIndices.Add(state.DataIndex);
+        }
+
+        private void FindActiveStateHierarchy(int leafIndex, List<int> result)
+        {
+            var leafState = GetStateByIndex(leafIndex);
+            if (leafState != null && leafState.IsSubStateMachine)
+            {
+                result.Add(leafIndex);
+                return;
+            }
+            FindParentChain(leafIndex, result);
+            result.Reverse();
+        }
+
+        private bool FindParentChain(int childIndex, List<int> chain)
+        {
+            for (int i = 0; i < _states.Count; i++)
+            {
+                var container = _states[i];
+                if (container.IsSubStateMachine && container.ChildIndices.Contains(childIndex))
+                {
+                    chain.Add(container.DataIndex);
+                    FindParentChain(container.DataIndex, chain);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool AreListsEqual(List<int> a, List<int> b)
+        {
+            if (a.Count != b.Count) return false;
+            for (int i = 0; i < a.Count; i++)
+                if (a[i] != b[i]) return false;
+            return true;
         }
 
         // ─── Sub-State Machine Membership Sync ─────────────────────────
@@ -1719,6 +1828,7 @@ namespace CleanStateMachine
                     }
                 }
             }
+
         }
 
         // ─── Save / Load ─────────────────────────────────────────────
@@ -1929,7 +2039,7 @@ namespace CleanStateMachine
             _undoRedoSystem = new UndoRedoSystem();
             _activeStateIndex = -1;
             _trackedComponent = null;
-            _expandedSubStateIndex = -1;
+            _expandedSubStateStack.Clear();
             if (_expandedModeBar != null)
                 _expandedModeBar.style.display = DisplayStyle.None;
 
@@ -2093,7 +2203,7 @@ namespace CleanStateMachine
             _showSidePanel = true;
             _sidePanelWidth = 220f;
             _detailsHeightRatio = 0.5f;
-            _expandedSubStateIndex = -1;
+            _expandedSubStateStack.Clear();
             if (_expandedModeBar != null)
                 _expandedModeBar.style.display = DisplayStyle.None;
 
@@ -2145,32 +2255,15 @@ namespace CleanStateMachine
                     var activeState = GetStateByIndex(_activeStateIndex);
                     if (activeState != null)
                     {
-                        if (activeState.IsSubStateMachine)
-                        {
-                            EnterExpandSubState(activeState);
-                        }
-                        else
-                        {
-                            // Find which sub-state machine this active state belongs to
-                            StateView parentSubState = null;
-                            for (int i = 0; i < _states.Count; i++)
-                            {
-                                if (_states[i].IsSubStateMachine && _states[i].ChildIndices.Contains(_activeStateIndex))
-                                {
-                                    parentSubState = _states[i];
-                                    break;
-                                }
-                            }
+                        var newStack = new List<int>();
+                        FindActiveStateHierarchy(_activeStateIndex, newStack);
 
-                            if (parentSubState != null)
-                            {
-                                if (_expandedSubStateIndex != parentSubState.DataIndex)
-                                    EnterExpandSubState(parentSubState);
-                            }
-                            else if (_expandedSubStateIndex >= 0)
-                            {
-                                ExitExpandedSubState();
-                            }
+                        if (_expandedSubStateStack.Count != newStack.Count ||
+                            !AreListsEqual(_expandedSubStateStack, newStack))
+                        {
+                            _expandedSubStateStack.Clear();
+                            _expandedSubStateStack.AddRange(newStack);
+                            UpdateExpandedModeBar();
                         }
                     }
                     _isAutoNavigating = false;
