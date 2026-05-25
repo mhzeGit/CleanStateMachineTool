@@ -385,7 +385,13 @@ namespace CleanStateMachine
                             else if (prop.name == "variableType")
                             {
                                 var pf = new PropertyField(prop.Copy(), "");
-                                pf.RegisterValueChangedCallback(_ => rebuildConditionProperties());
+                                var isBound = false;
+                                pf.schedule.Execute(() => isBound = true).StartingIn(0);
+                                pf.RegisterCallback<SerializedPropertyChangeEvent>(_ =>
+                                {
+                                    if (!isBound) return;
+                                    propsContainer.schedule.Execute(() => rebuildConditionProperties()).StartingIn(0);
+                                });
                                 content = pf;
                             }
                             else
@@ -982,6 +988,7 @@ namespace CleanStateMachine
             Action rebuild = null;
             rebuild = () =>
             {
+                so.Update();
                 bool useBb = useBbProp.boolValue;
                 var bbType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
 

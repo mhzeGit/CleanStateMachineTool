@@ -274,13 +274,11 @@ The `Assets/` folder (with its own `CleanStateMachine.Behaviours.asmdef` referen
 
 **`Timer_ConditionBehaviours.cs`** — Inherits from `ConditionScript`. Exposes a float `duration` variable (default 1 second). `Evaluate()` returns `true` when `Time.time - stateMachine.StateEnterTime >= duration`. Used for time-based transitions (e.g., wait 3 seconds before moving to the next state).
 
-**`SimpleBool_ConditionBehaviours.cs`** — Inherits from `ConditionScript`. Reads a boolean blackboard variable `conditionBool` and optionally inverts it based on a second boolean `isInverse`. Display name: "Simple Bool". Allows transitions driven by a single boolean flag with optional negation.
-
-**`CompareNumbers_ConditionBehaviours.cs`** — Inherits from `ConditionScript`. Compares two numeric blackboard variables (`number1`, `number2`) using a `ComparisonType` enum (Equal, NotEqual, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual). Display name: "Compare Numbers". Both operands default to 0. Resolves values via `BlackboardVariableReference` — checks runtime blackboard first, falls back to default.
-
 **`UltimateCompare_ConditionBehaviours.cs`** — Inherits from `ConditionScript`. Unified condition that supports all six variable types (Bool, Int, Float, String, Vector2, Vector3) in a single script. User selects `variableType` to determine the comparison mode, then configures two `BlackboardVariableReference` inputs (each can be a direct value or blackboard variable) and a `CompareType` (Equal, NotEqual, GreaterThan, GreaterThanOrEqual, LessThan, LessThanOrEqual). Bool/String types only use Equal/NotEqual. Float comparisons use `Mathf.Approximately` for equality. Vector ordering comparisons use `sqrMagnitude`. String comparisons support `ignoreCase` toggle. Display name: "Compare Variable".
 
 **`DebugLog_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to log a configurable string `message` (default "Hello World") via `Debug.Log`. `OnStateUpdate` and `OnStateExit` only call base. Simple diagnostic tool for tracing state machine flow.
+
+**`SetVariable_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to write a configurable `value` (via `BlackboardVariableReference`, supporting all six types) into a named blackboard variable on the same state machine. The `variableType` controls which `Set*Parameter` method is called; the source `value` can be a direct value or reference another blackboard variable.
 
 ---
 

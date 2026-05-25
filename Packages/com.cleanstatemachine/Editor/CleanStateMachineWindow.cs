@@ -674,8 +674,10 @@ namespace CleanStateMachine
 
             float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
 
-            float previewW = 200f;
-            float previewH = 150f;
+            float previewW = GraphPreview.PreviewWidth;
+            float previewH = GraphPreview.PreviewHeight;
+            previewW = Mathf.Clamp(previewW, GraphPreview.MinPreviewWidth, position.width);
+            previewH = Mathf.Clamp(previewH, GraphPreview.MinPreviewHeight, position.height);
             float defaultRight = sideW + 8f;
             float defaultBottom = 8f;
 

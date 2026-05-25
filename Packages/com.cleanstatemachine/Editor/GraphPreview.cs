@@ -6,6 +6,19 @@ namespace CleanStateMachine
 {
     public class GraphPreview : VisualElement
     {
+        private enum ResizeEdge
+        {
+            None,
+            Left,
+            Right,
+            Top,
+            Bottom,
+            TopLeft,
+            TopRight,
+            BottomLeft,
+            BottomRight
+        }
+
         private List<StateView> _states;
         private List<ConnectionView> _connections;
         private System.Func<StateView, bool> _isStateVisible;
@@ -19,7 +32,21 @@ namespace CleanStateMachine
         private Vector2 _dragStartMouse;
         private Vector2 _dragOffset;
 
+        private bool _isResizing;
+        private ResizeEdge _resizeEdge;
+        private Vector2 _resizeStartMouse;
+        private float _resizeStartWidth;
+        private float _resizeStartHeight;
+        private Vector2 _resizeStartDragOffset;
+
+        private float _previewWidth = 200f;
+        private float _previewHeight = 150f;
+
         private const float Padding = 8f;
+        private const float ResizeHandleSize = 6f;
+        public const float MinPreviewWidth = 100f;
+        public const float MinPreviewHeight = 75f;
+
         private static readonly Color ViewportBorderColor = new Color(0.9f, 0.9f, 0.9f, 0.7f);
         private static readonly Color ViewportOverlayColor = new Color(0f, 0f, 0f, 0.55f);
 
@@ -31,6 +58,8 @@ namespace CleanStateMachine
         private static readonly Color ConnectionColor = new Color(0.35f, 0.35f, 0.35f, 1f);
 
         public Vector2 DragOffset => _dragOffset;
+        public float PreviewWidth => _previewWidth;
+        public float PreviewHeight => _previewHeight;
 
         public GraphPreview()
         {
@@ -46,32 +75,124 @@ namespace CleanStateMachine
         {
             if (e.button == 0)
             {
-                _isDragging = true;
-                _dragStartMouse = e.mousePosition;
-                this.CaptureMouse();
-                e.StopPropagation();
+                var edge = GetResizeEdge(e.localMousePosition);
+                if (edge != ResizeEdge.None)
+                {
+                    _resizeEdge = edge;
+                    _isResizing = true;
+                    _resizeStartMouse = e.mousePosition;
+                    _resizeStartWidth = _previewWidth;
+                    _resizeStartHeight = _previewHeight;
+                    _resizeStartDragOffset = _dragOffset;
+                    this.CaptureMouse();
+                    e.StopPropagation();
+                }
+                else
+                {
+                    _isDragging = true;
+                    _dragStartMouse = e.mousePosition;
+                    this.CaptureMouse();
+                    e.StopPropagation();
+                }
             }
         }
 
         private void OnMouseMove(MouseMoveEvent e)
         {
-            if (!_isDragging) return;
+            if (_isResizing)
+            {
+                Vector2 delta = e.mousePosition - _resizeStartMouse;
 
-            Vector2 delta = e.mousePosition - _dragStartMouse;
-            _dragOffset += delta;
-            _dragStartMouse = e.mousePosition;
+                float newWidth = _resizeStartWidth;
+                float newHeight = _resizeStartHeight;
+                Vector2 newDragOffset = _resizeStartDragOffset;
 
-            e.StopPropagation();
+                if (IsLeftEdge(_resizeEdge))
+                {
+                    newWidth = Mathf.Max(MinPreviewWidth, _resizeStartWidth - delta.x);
+                }
+                else if (IsRightEdge(_resizeEdge))
+                {
+                    newWidth = Mathf.Max(MinPreviewWidth, _resizeStartWidth + delta.x);
+                    newDragOffset.x += newWidth - _resizeStartWidth;
+                }
+
+                if (IsTopEdge(_resizeEdge))
+                {
+                    newHeight = Mathf.Max(MinPreviewHeight, _resizeStartHeight - delta.y);
+                }
+                else if (IsBottomEdge(_resizeEdge))
+                {
+                    newHeight = Mathf.Max(MinPreviewHeight, _resizeStartHeight + delta.y);
+                    newDragOffset.y += newHeight - _resizeStartHeight;
+                }
+
+                _previewWidth = newWidth;
+                _previewHeight = newHeight;
+                _dragOffset = newDragOffset;
+
+                e.StopPropagation();
+            }
+            else if (_isDragging)
+            {
+                Vector2 delta = e.mousePosition - _dragStartMouse;
+                _dragOffset += delta;
+                _dragStartMouse = e.mousePosition;
+
+                e.StopPropagation();
+            }
         }
 
         private void OnMouseUp(MouseUpEvent e)
         {
-            if (_isDragging && e.button == 0)
+            if (e.button == 0)
             {
                 _isDragging = false;
+                _isResizing = false;
                 this.ReleaseMouse();
                 e.StopPropagation();
             }
+        }
+
+        private ResizeEdge GetResizeEdge(Vector2 localPos)
+        {
+            float s = ResizeHandleSize;
+
+            bool nearLeft = localPos.x <= s;
+            bool nearRight = localPos.x >= _previewWidth - s;
+            bool nearTop = localPos.y <= s;
+            bool nearBottom = localPos.y >= _previewHeight - s;
+
+            if (nearLeft && nearTop) return ResizeEdge.TopLeft;
+            if (nearRight && nearTop) return ResizeEdge.TopRight;
+            if (nearLeft && nearBottom) return ResizeEdge.BottomLeft;
+            if (nearRight && nearBottom) return ResizeEdge.BottomRight;
+            if (nearLeft) return ResizeEdge.Left;
+            if (nearRight) return ResizeEdge.Right;
+            if (nearTop) return ResizeEdge.Top;
+            if (nearBottom) return ResizeEdge.Bottom;
+
+            return ResizeEdge.None;
+        }
+
+        private static bool IsLeftEdge(ResizeEdge edge)
+        {
+            return edge == ResizeEdge.Left || edge == ResizeEdge.TopLeft || edge == ResizeEdge.BottomLeft;
+        }
+
+        private static bool IsRightEdge(ResizeEdge edge)
+        {
+            return edge == ResizeEdge.Right || edge == ResizeEdge.TopRight || edge == ResizeEdge.BottomRight;
+        }
+
+        private static bool IsTopEdge(ResizeEdge edge)
+        {
+            return edge == ResizeEdge.Top || edge == ResizeEdge.TopLeft || edge == ResizeEdge.TopRight;
+        }
+
+        private static bool IsBottomEdge(ResizeEdge edge)
+        {
+            return edge == ResizeEdge.Bottom || edge == ResizeEdge.BottomLeft || edge == ResizeEdge.BottomRight;
         }
 
         public void UpdateView(
