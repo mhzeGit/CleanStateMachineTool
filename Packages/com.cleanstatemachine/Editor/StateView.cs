@@ -359,9 +359,9 @@ namespace CleanStateMachine
 
             if (HasBreakpoint)
             {
-                int dotSize = Mathf.RoundToInt(10 * zoom);
-                _breakpointIcon.style.left = Mathf.RoundToInt(-6 * zoom);
-                _breakpointIcon.style.top = Mathf.RoundToInt(-6 * zoom);
+                int dotSize = Mathf.RoundToInt(16 * zoom);
+                _breakpointIcon.style.right = Mathf.RoundToInt(-4 * zoom);
+                _breakpointIcon.style.top = Mathf.RoundToInt(-4 * zoom);
                 _breakpointIcon.style.width = dotSize;
                 _breakpointIcon.style.height = dotSize;
                 _breakpointIcon.style.borderTopLeftRadius = dotSize / 2;

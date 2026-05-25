@@ -60,9 +60,9 @@ namespace CleanStateMachine
                 menu.AddItem("Connect", () => ConnectRequested?.Invoke(captured));
 
                 if (contextNodeHasBreakpoint)
-                    menu.AddItem("Remove Breakpoint", () => ToggleBreakpointRequested?.Invoke(captured));
+                    menu.AddItem("Remove Breakpoint", new Color(0.85f, 0.35f, 0.15f), () => ToggleBreakpointRequested?.Invoke(captured));
                 else
-                    menu.AddItem("Add Breakpoint", () => ToggleBreakpointRequested?.Invoke(captured));
+                    menu.AddItem("Add Breakpoint", new Color(0.85f, 0.35f, 0.15f), () => ToggleBreakpointRequested?.Invoke(captured));
             }
 
             menu.AddSeparator();
