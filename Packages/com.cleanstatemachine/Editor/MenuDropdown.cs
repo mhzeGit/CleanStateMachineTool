@@ -74,6 +74,7 @@ namespace CleanStateMachine
         public interface IBuilder
         {
             void AddItem(string label, Action action);
+            void AddItem(string label, Color labelColor, Action action);
             void AddSeparator();
             void AddDisabledItem(string label);
         }
@@ -90,6 +91,11 @@ namespace CleanStateMachine
             }
 
             public void AddItem(string label, Action action)
+            {
+                AddItem(label, new Color(0.8f, 0.8f, 0.8f), action);
+            }
+
+            public void AddItem(string label, Color labelColor, Action action)
             {
                 var container = new VisualElement();
                 container.style.height = 24;
@@ -109,7 +115,7 @@ namespace CleanStateMachine
                 container.style.flexShrink = 0;
 
                 var lbl = new Label(label);
-                lbl.style.color = new Color(0.8f, 0.8f, 0.8f);
+                lbl.style.color = labelColor;
                 lbl.style.fontSize = 11;
                 lbl.style.unityTextAlign = TextAnchor.MiddleLeft;
                 lbl.style.whiteSpace = WhiteSpace.NoWrap;

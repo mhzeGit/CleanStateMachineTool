@@ -261,7 +261,7 @@ namespace CleanStateMachine
                 int idx = (int)row.userData;
                 MenuDropdown.Show(_window.rootVisualElement, _window.rootVisualElement.WorldToLocal(e.mousePosition), menu =>
                 {
-                    menu.AddItem("Delete Variable", () =>
+                    menu.AddItem("Delete Variable", new Color(0.85f, 0.2f, 0.2f), () =>
                     {
                         if (_variables == null || idx < 0 || idx >= _variables.Count) return;
                         var cmd = new DeleteBlackboardVariableCommand(_variables, idx);
