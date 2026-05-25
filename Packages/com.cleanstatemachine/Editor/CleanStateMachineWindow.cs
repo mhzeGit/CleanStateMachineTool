@@ -130,6 +130,7 @@ namespace CleanStateMachine
             _connectionController = new ConnectionController();
 
             EditorApplication.update += OnEditorUpdate;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 
             if (_controller != null)
             {
@@ -164,11 +165,38 @@ namespace CleanStateMachine
             _selectionController.SelectionChanged -= OnSelectionChanged;
 
             EditorApplication.update -= OnEditorUpdate;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
 
-            if (_controller != null && _hasUnsavedChanges && !_isLoading)
+            if (_controller != null && !_isLoading)
             {
-                SaveCurrentData();
-                _controller.Data = _controller.Data;
+                if (_hasUnsavedChanges || Application.isPlaying)
+                {
+                    SaveCurrentData();
+                    _controller.Data = _controller.Data;
+                }
+            }
+        }
+
+        private void OnPlayModeStateChanged(PlayModeStateChange change)
+        {
+            if (change == PlayModeStateChange.ExitingPlayMode)
+            {
+                if (_controller != null)
+                {
+                    SaveCurrentData();
+                    _controller.Data = _controller.Data;
+                }
+                _expandedSubStateStack.Clear();
+            }
+            else if (change == PlayModeStateChange.EnteredEditMode)
+            {
+                if (_controller != null)
+                {
+                    _currentData = _controller.Data;
+                    LoadFromCurrentData();
+                    StartSmoothFocusOnContent();
+                }
+                Repaint();
             }
         }
 
@@ -2340,7 +2368,7 @@ namespace CleanStateMachine
         {
             if (!Application.isPlaying)
             {
-                if (_activeStateIndex >= 0)
+                if (_activeStateIndex >= 0 || _expandedSubStateStack.Count > 0)
                 {
                     _activeStateIndex = -1;
                     _expandedSubStateStack.Clear();
