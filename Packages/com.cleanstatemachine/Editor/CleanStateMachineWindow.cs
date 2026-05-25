@@ -116,7 +116,7 @@ namespace CleanStateMachine
         private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
         private const float CollapsedPanelWidth = 35f;
         private const float ResizeHandleScreenSize = 8f;
-        private const int DoubleClickTimeMs = 180;
+        private const int DoubleClickTimeMs = 300;
 
         private void OnEnable()
         {
@@ -244,31 +244,12 @@ namespace CleanStateMachine
             _expandedModeBar.pickingMode = PickingMode.Position;
             rootVisualElement.Add(_expandedModeBar);
 
-            var backButton = new Button(ExitExpandedSubState);
-            backButton.text = "\u25C0 Back";
-            backButton.style.fontSize = 11;
-            backButton.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
-            backButton.style.color = new Color(0.8f, 0.8f, 0.8f);
-            backButton.style.borderLeftWidth = 0f;
-            backButton.style.borderRightWidth = 0f;
-            backButton.style.borderTopWidth = 0f;
-            backButton.style.borderBottomWidth = 0f;
-            backButton.style.unityFontStyleAndWeight = FontStyle.Normal;
-            backButton.style.marginRight = 4f;
-            _expandedModeBar.Add(backButton);
-
             _breadcrumbContainer = new VisualElement();
             _breadcrumbContainer.style.flexDirection = FlexDirection.Row;
             _breadcrumbContainer.style.alignItems = Align.Center;
             _breadcrumbContainer.style.flexGrow = 1f;
             _breadcrumbContainer.style.overflow = Overflow.Hidden;
             _expandedModeBar.Add(_breadcrumbContainer);
-
-            _expandedModeLabel = new Label();
-            _expandedModeLabel.style.fontSize = 11;
-            _expandedModeLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _expandedModeLabel.style.marginLeft = 8f;
-            _breadcrumbContainer.Add(_expandedModeLabel);
 
             rootVisualElement.Add(_selectionBox.Element);
 
@@ -697,8 +678,9 @@ namespace CleanStateMachine
                 long now = _clickStopwatch.ElapsedMilliseconds;
                 long elapsed = now - _lastClickTimestamp;
                 bool sameState = sv == _lastDoubleClickCandidate;
+                bool doubleClick = sameState && elapsed < DoubleClickTimeMs;
 
-                if (sameState && elapsed < DoubleClickTimeMs)
+                if (doubleClick)
                 {
                     _lastDoubleClickCandidate = null;
                     if (!_selectionController.IsSelected(sv))
@@ -717,14 +699,10 @@ namespace CleanStateMachine
                     StartEditing(sv);
                 }
 
-                if (!sameState)
+                if (!doubleClick)
                 {
                     _lastClickTimestamp = now;
                     _lastDoubleClickCandidate = sv;
-                }
-                else
-                {
-                    _lastDoubleClickCandidate = null;
                 }
             }
             else if (hit is CommentGroupView gv)
@@ -732,8 +710,9 @@ namespace CleanStateMachine
                 long now = _clickStopwatch.ElapsedMilliseconds;
                 long elapsed = now - _lastClickTimestamp;
                 bool sameGroup = gv == _lastDoubleClickCandidateGroup;
+                bool doubleClick = sameGroup && elapsed < DoubleClickTimeMs;
 
-                if (sameGroup && elapsed < DoubleClickTimeMs)
+                if (doubleClick)
                 {
                     _lastDoubleClickCandidateGroup = null;
                     if (!_selectionController.IsSelected(gv))
@@ -741,14 +720,10 @@ namespace CleanStateMachine
                     StartEditingGroup(gv);
                 }
 
-                if (!sameGroup)
+                if (!doubleClick)
                 {
                     _lastClickTimestamp = now;
                     _lastDoubleClickCandidateGroup = gv;
-                }
-                else
-                {
-                    _lastDoubleClickCandidateGroup = null;
                 }
             }
             else
@@ -1813,24 +1788,41 @@ namespace CleanStateMachine
                 _expandedModeBar.style.display = DisplayStyle.Flex;
                 _breadcrumbContainer.Clear();
 
+                string baseName = _controller != null ? _controller.name : "StateMachine";
+                var rootBtn = new Button(() =>
+                {
+                    _expandedSubStateStack.Clear();
+                    UpdateExpandedModeBar();
+                    StartSmoothFocusOnContent();
+                    Repaint();
+                });
+                rootBtn.text = baseName;
+                rootBtn.style.fontSize = 11;
+                rootBtn.style.backgroundColor = Color.clear;
+                rootBtn.style.color = new Color(0.6f, 0.6f, 0.6f);
+                rootBtn.style.borderLeftWidth = 0f;
+                rootBtn.style.borderRightWidth = 0f;
+                rootBtn.style.borderTopWidth = 0f;
+                rootBtn.style.borderBottomWidth = 0f;
+                rootBtn.style.unityFontStyleAndWeight = FontStyle.Normal;
+                rootBtn.style.paddingLeft = 2f;
+                rootBtn.style.paddingRight = 2f;
+                rootBtn.style.marginLeft = 0f;
+                rootBtn.style.marginRight = 4f;
+                _breadcrumbContainer.Add(rootBtn);
+
                 for (int i = 0; i < _expandedSubStateStack.Count; i++)
                 {
                     int idx = _expandedSubStateStack[i];
                     var state = GetStateByIndex(idx);
                     string name = state != null ? state.Name : "?";
 
-                    if (i > 0)
-                    {
-                        var sep = new Label(" > ");
-                        sep.style.fontSize = 11;
-                        sep.style.color = new Color(0.4f, 0.4f, 0.4f);
-                        sep.style.marginLeft = 2f;
-                        sep.style.marginRight = 2f;
-                        _breadcrumbContainer.Add(sep);
-                    }
+                    var sep = new Label(" / ");
+                    sep.style.fontSize = 11;
+                    sep.style.color = new Color(0.4f, 0.4f, 0.4f);
+                    _breadcrumbContainer.Add(sep);
 
                     int capturedLevel = i;
-                    int capturedIdx = idx;
                     var crumb = new Button(() =>
                     {
                         while (_expandedSubStateStack.Count > capturedLevel + 1)
@@ -1841,15 +1833,17 @@ namespace CleanStateMachine
                     });
                     crumb.text = name;
                     crumb.style.fontSize = 11;
-                    crumb.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                    crumb.style.backgroundColor = Color.clear;
                     crumb.style.color = new Color(0.8f, 0.8f, 0.8f);
                     crumb.style.borderLeftWidth = 0f;
                     crumb.style.borderRightWidth = 0f;
                     crumb.style.borderTopWidth = 0f;
                     crumb.style.borderBottomWidth = 0f;
                     crumb.style.unityFontStyleAndWeight = FontStyle.Normal;
-                    crumb.style.paddingLeft = 4f;
-                    crumb.style.paddingRight = 4f;
+                    crumb.style.paddingLeft = 2f;
+                    crumb.style.paddingRight = 2f;
+                    crumb.style.marginLeft = 0f;
+                    crumb.style.marginRight = 0f;
                     _breadcrumbContainer.Add(crumb);
                 }
             }

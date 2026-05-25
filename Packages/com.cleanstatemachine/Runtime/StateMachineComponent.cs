@@ -14,6 +14,7 @@ namespace CleanStateMachine
         private bool _initialized = false;
         private readonly List<int> _activeStatePath = new List<int>();
         private List<TransitionRecord> _recentTransitions = new List<TransitionRecord>();
+        private bool _isTransitioning;
 
         private readonly Dictionary<StateData, StateBehaviour> _behaviourInstances = new Dictionary<StateData, StateBehaviour>();
         private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
@@ -221,11 +222,14 @@ namespace CleanStateMachine
 
         private void CheckTransitions()
         {
+            if (_isTransitioning) return;
             if (Data == null || _activeStatePath.Count == 0) return;
 
             for (int depth = _activeStatePath.Count - 1; depth >= 0; depth--)
             {
                 int fromIndex = _activeStatePath[depth];
+                bool isLeaf = depth == _activeStatePath.Count - 1;
+
                 for (int c = 0; c < Data.Connections.Count; c++)
                 {
                     var connection = Data.Connections[c];
@@ -233,11 +237,34 @@ namespace CleanStateMachine
 
                     if (EvaluateConditions(connection))
                     {
-                        TransitionToState(c);
+                        if (!isLeaf && IsDirectChildOf(connection.ToIndex, fromIndex))
+                            continue;
+
+                        _isTransitioning = true;
+                        try
+                        {
+                            TransitionToState(c);
+                        }
+                        finally
+                        {
+                            _isTransitioning = false;
+                        }
                         return;
                     }
                 }
             }
+        }
+
+        private bool IsDirectChildOf(int childIndex, int parentIndex)
+        {
+            if (Data == null) return false;
+            if (parentIndex < 0 || parentIndex >= Data.States.Count) return false;
+
+            var parent = Data.States[parentIndex];
+            if (!parent.IsSubStateMachine || parent.ChildIndices == null)
+                return false;
+
+            return parent.ChildIndices.Contains(childIndex);
         }
 
         private bool EvaluateConditions(ConnectionData connection)
