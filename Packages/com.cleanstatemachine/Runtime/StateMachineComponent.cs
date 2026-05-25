@@ -16,7 +16,7 @@ namespace CleanStateMachine
         private List<TransitionRecord> _recentTransitions = new List<TransitionRecord>();
         private bool _isTransitioning;
 
-        private readonly Dictionary<StateData, StateBehaviour> _behaviourInstances = new Dictionary<StateData, StateBehaviour>();
+        private readonly Dictionary<StateData, List<StateBehaviour>> _behaviourInstances = new Dictionary<StateData, List<StateBehaviour>>();
         private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
 
         public StateMachineController Controller
@@ -182,42 +182,76 @@ namespace CleanStateMachine
             if (!_initialized || _activeStatePath.Count == 0) return;
 
             int leafIndex = CurrentStateIndex;
-            var leafBehaviour = GetBehaviour(leafIndex);
-            if (leafBehaviour != null)
-                leafBehaviour.OnStateUpdate(this);
+            var behaviours = GetBehaviours(leafIndex);
+            if (behaviours != null)
+            {
+                for (int i = 0; i < behaviours.Count; i++)
+                    behaviours[i]?.OnStateUpdate(this);
+            }
 
             CheckTransitions();
         }
 
-        private StateBehaviour GetBehaviour(int stateIndex)
+        private List<StateBehaviour> GetBehaviours(int stateIndex)
         {
             if (Data == null || stateIndex < 0 || stateIndex >= Data.States.Count)
                 return null;
 
             var stateData = Data.States[stateIndex];
-            return GetOrCreateBehaviour(stateData);
+            return GetOrCreateBehaviours(stateData);
         }
 
-        private StateBehaviour GetOrCreateBehaviour(StateData state)
+        private List<StateBehaviour> GetOrCreateBehaviours(StateData state)
         {
-            if (state.Behaviour != null)
-                return state.Behaviour;
+            if (state.Behaviours.Count > 0)
+            {
+                bool hasCached = false;
+                for (int i = 0; i < state.Behaviours.Count; i++)
+                {
+                    if (state.Behaviours[i].Instance != null)
+                    {
+                        hasCached = true;
+                        break;
+                    }
+                }
+                if (hasCached)
+                {
+                    var cached = new List<StateBehaviour>();
+                    for (int i = 0; i < state.Behaviours.Count; i++)
+                    {
+                        if (state.Behaviours[i].Instance != null)
+                            cached.Add(state.Behaviours[i].Instance);
+                    }
+                    if (cached.Count > 0)
+                        return cached;
+                }
+            }
 
             if (_behaviourInstances.TryGetValue(state, out var existing))
                 return existing;
 
-            if (string.IsNullOrEmpty(state.BehaviourType))
+            if (state.Behaviours.Count == 0)
                 return null;
 
-            var type = ResolveType(state.BehaviourType);
-            if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
-                return null;
+            var instances = new List<StateBehaviour>();
+            for (int i = 0; i < state.Behaviours.Count; i++)
+            {
+                var be = state.Behaviours[i];
+                if (string.IsNullOrEmpty(be.TypeName))
+                    continue;
 
-            var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-            instance.name = $"{state.Name}_Behaviour";
-            instance.hideFlags = HideFlags.HideAndDontSave;
-            _behaviourInstances[state] = instance;
-            return instance;
+                var type = ResolveType(be.TypeName);
+                if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
+                    continue;
+
+                var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                instance.name = $"{state.Name}_Behaviour_{i}";
+                instance.hideFlags = HideFlags.HideAndDontSave;
+                instances.Add(instance);
+            }
+
+            _behaviourInstances[state] = instances;
+            return instances;
         }
 
         private void CheckTransitions()
@@ -330,9 +364,12 @@ namespace CleanStateMachine
                 if (idx >= 0 && idx < Data.States.Count)
                 {
                     var stateData = Data.States[idx];
-                    var behaviour = GetOrCreateBehaviour(stateData);
-                    if (behaviour != null)
-                        behaviour.OnStateExit(this);
+                    var behaviours = GetOrCreateBehaviours(stateData);
+                    if (behaviours != null)
+                    {
+                        for (int j = 0; j < behaviours.Count; j++)
+                            behaviours[j]?.OnStateExit(this);
+                    }
                 }
             }
 
@@ -358,9 +395,12 @@ namespace CleanStateMachine
                 if (idx >= 0 && idx < Data.States.Count)
                 {
                     var stateData = Data.States[idx];
-                    var behaviour = GetOrCreateBehaviour(stateData);
-                    if (behaviour != null)
-                        behaviour.OnStateEnter(this);
+                    var behaviours = GetOrCreateBehaviours(stateData);
+                    if (behaviours != null)
+                    {
+                        for (int j = 0; j < behaviours.Count; j++)
+                            behaviours[j]?.OnStateEnter(this);
+                    }
                     ExecuteExternalAction(stateData);
                 }
             }
@@ -374,9 +414,12 @@ namespace CleanStateMachine
                 if (idx >= 0 && idx < Data.States.Count)
                 {
                     var stateData = Data.States[idx];
-                    var behaviour = GetOrCreateBehaviour(stateData);
-                    if (behaviour != null)
-                        behaviour.OnStateEnter(this);
+                    var behaviours = GetOrCreateBehaviours(stateData);
+                    if (behaviours != null)
+                    {
+                        for (int j = 0; j < behaviours.Count; j++)
+                            behaviours[j]?.OnStateEnter(this);
+                    }
                     ExecuteExternalAction(stateData);
                 }
             }
@@ -390,9 +433,12 @@ namespace CleanStateMachine
                 if (idx >= 0 && idx < Data.States.Count)
                 {
                     var stateData = Data.States[idx];
-                    var behaviour = GetOrCreateBehaviour(stateData);
-                    if (behaviour != null)
-                        behaviour.OnStateExit(this);
+                    var behaviours = GetOrCreateBehaviours(stateData);
+                    if (behaviours != null)
+                    {
+                        for (int j = 0; j < behaviours.Count; j++)
+                            behaviours[j]?.OnStateExit(this);
+                    }
                 }
             }
         }
@@ -420,10 +466,15 @@ namespace CleanStateMachine
 
         private void DestroyRuntimeInstances()
         {
-            foreach (var instance in _behaviourInstances.Values)
+            foreach (var list in _behaviourInstances.Values)
             {
-                if (instance != null && instance.hideFlags == HideFlags.HideAndDontSave)
-                    Destroy(instance);
+                if (list == null) continue;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var instance = list[i];
+                    if (instance != null && instance.hideFlags == HideFlags.HideAndDontSave)
+                        Destroy(instance);
+                }
             }
             _behaviourInstances.Clear();
 
@@ -618,9 +669,12 @@ namespace CleanStateMachine
                     if (idx >= 0 && idx < Data.States.Count)
                     {
                         var stateData = Data.States[idx];
-                        var behaviour = GetOrCreateBehaviour(stateData);
-                        if (behaviour != null)
-                            behaviour.OnStateExit(this);
+                        var behaviours = GetOrCreateBehaviours(stateData);
+                        if (behaviours != null)
+                        {
+                            for (int j = 0; j < behaviours.Count; j++)
+                                behaviours[j]?.OnStateExit(this);
+                        }
                     }
                 }
 
@@ -637,9 +691,12 @@ namespace CleanStateMachine
                     if (idx >= 0 && idx < Data.States.Count)
                     {
                         var stateData = Data.States[idx];
-                        var behaviour = GetOrCreateBehaviour(stateData);
-                        if (behaviour != null)
-                            behaviour.OnStateEnter(this);
+                        var behaviours = GetOrCreateBehaviours(stateData);
+                        if (behaviours != null)
+                        {
+                            for (int j = 0; j < behaviours.Count; j++)
+                                behaviours[j]?.OnStateEnter(this);
+                        }
                         ExecuteExternalAction(stateData);
                     }
                 }

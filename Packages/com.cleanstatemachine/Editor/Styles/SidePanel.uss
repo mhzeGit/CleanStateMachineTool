@@ -774,3 +774,86 @@
     background-color: #3a4e5e;
     color: #a0e0f0;
 }
+
+/* --- Multi-Behaviour UI --- */
+.behaviour-entry {
+    flex-direction: column;
+    background-color: #161616;
+    border-color: #141414;
+    border-width: 1px;
+    border-radius: 3px;
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.behaviour-entry-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: 24px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.behaviour-entry-label {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: #f2f2f2;
+    flex: 1;
+}
+
+.behaviour-remove-button {
+    width: 22px;
+    height: 22px;
+    background-color: #3a1a1a;
+    color: #e06060;
+    font-size: 11px;
+    -unity-font-style: bold;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    border-color: #4a2020;
+    border-width: 1px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.behaviour-remove-button:hover {
+    background-color: #4e2222;
+    color: #ff8080;
+}
+
+.behaviour-script-row {
+    flex-direction: row;
+    align-items: center;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.add-behaviour-button {
+    height: 26px;
+    background-color: #2a3a2a;
+    color: #80d080;
+    font-size: 11px;
+    justify-content: center;
+    align-items: center;
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+    border-color: #2a4a2a;
+    border-width: 1px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.add-behaviour-button:hover {
+    background-color: #3a4e3a;
+    color: #a0f0a0;
+}

@@ -24,8 +24,7 @@ namespace CleanStateMachine
         public Vector2 position;
         public string name;
         public Vector2 size;
-        public MonoScript behaviourScript;
-        public StateBehaviour behaviourInstance;
+        public List<BehaviourEntryView> behaviourEntries;
         public List<int> childIndices;
         public bool isSubStateMachine;
         public bool isExternalReference;
@@ -684,8 +683,10 @@ namespace CleanStateMachine
             float leftPos = position.width - defaultRight - previewW + GraphPreview.DragOffset.x;
             float topPos = position.height - defaultBottom - previewH + GraphPreview.DragOffset.y;
 
-            leftPos = Mathf.Clamp(leftPos, 0f, position.width - previewW);
-            topPos = Mathf.Clamp(topPos, 0f, position.height - previewH);
+            const float barH = 24f;
+            float rightBoundary = _showSidePanel ? position.width - sideW : position.width;
+            leftPos = Mathf.Clamp(leftPos, 0f, rightBoundary - previewW);
+            topPos = Mathf.Clamp(topPos, barH, position.height - previewH);
 
             GraphPreview.style.left = leftPos;
             GraphPreview.style.top = topPos;

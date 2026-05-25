@@ -28,8 +28,12 @@ namespace CleanStateMachine
 
             foreach (var state in _window.States)
             {
-                if (state.BehaviourInstance != null)
-                    state.BehaviourInstance.name = $"{state.Name}_Behaviour";
+                for (int j = 0; j < state.BehaviourEntries.Count; j++)
+                {
+                    var entry = state.BehaviourEntries[j];
+                    if (entry.Instance != null)
+                        entry.Instance.name = $"{state.Name}_Behaviour_{j}";
+                }
 
                 var childIndices = new List<int>();
                 if (state.IsSubStateMachine)
@@ -47,7 +51,7 @@ namespace CleanStateMachine
                     }
                 }
 
-                _window.CurrentData.States.Add(new StateData
+                var sd = new StateData
                 {
                     Name = state.Name,
                     Position = state.Position,
@@ -57,15 +61,25 @@ namespace CleanStateMachine
                     IsSubStateMachine = state.IsSubStateMachine,
                     IsExternalReference = state.IsExternalReference,
                     ChildIndices = childIndices,
-                    BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript),
-                    Behaviour = state.BehaviourInstance,
                     ExternalAction = state.ExternalAction,
                     ExternalStateMachine = state.ExternalStateMachine,
                     ExternalTargetStateName = state.ExternalTargetStateName,
                     ExternalBlackboardParmName = state.ExternalBlackboardParmName,
                     ExternalBlackboardParmType = state.ExternalBlackboardParmType,
                     ExternalBlackboardParmValue = state.ExternalBlackboardParmValue
-                });
+                };
+
+                for (int j = 0; j < state.BehaviourEntries.Count; j++)
+                {
+                    var entry = state.BehaviourEntries[j];
+                    sd.Behaviours.Add(new BehaviourEntry
+                    {
+                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
+                        Instance = entry.Instance
+                    });
+                }
+
+                _window.CurrentData.States.Add(sd);
             }
 
             foreach (var conn in _window.Connections)
@@ -154,8 +168,6 @@ namespace CleanStateMachine
                     var state = new StateView(sd.Position, sd.Name, sd.IsEntry, sd.IsSubEntry)
                     {
                         Size = sd.Size,
-                        BehaviourScript = ScriptReferenceUtility.FindScriptByTypeName(sd.BehaviourType),
-                        BehaviourInstance = sd.Behaviour,
                         ChildIndices = new List<int>(sd.ChildIndices),
                         IsSubStateMachine = sd.IsSubStateMachine,
                         IsExternalReference = sd.IsExternalReference,
@@ -167,6 +179,16 @@ namespace CleanStateMachine
                         ExternalBlackboardParmValue = sd.ExternalBlackboardParmValue,
                         DataIndex = i
                     };
+
+                    for (int j = 0; j < sd.Behaviours.Count; j++)
+                    {
+                        var be = sd.Behaviours[j];
+                        state.BehaviourEntries.Add(new BehaviourEntryView
+                        {
+                            Script = ScriptReferenceUtility.FindScriptByTypeName(be.TypeName),
+                            Instance = be.Instance
+                        });
+                    }
                     _window.States.Add(state);
                     stateLookup.Add(state);
                 }

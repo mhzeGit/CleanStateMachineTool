@@ -6,6 +6,12 @@ using UnityEngine.UIElements;
 
 namespace CleanStateMachine
 {
+    public class BehaviourEntryView
+    {
+        public MonoScript Script;
+        public StateBehaviour Instance;
+    }
+
     public class StateView : VisualElement, ISelectable
     {
         public Vector2 Position { get; set; }
@@ -68,8 +74,7 @@ namespace CleanStateMachine
         }
         public bool IsEditing { get; private set; }
         public string EditingBuffer { get; private set; }
-        public MonoScript BehaviourScript { get; set; }
-        public StateBehaviour BehaviourInstance { get; set; }
+        public List<BehaviourEntryView> BehaviourEntries { get; set; } = new List<BehaviourEntryView>();
         public List<int> ChildIndices { get; set; } = new List<int>();
         public GameObject ExternalStateMachine { get; set; }
         public ExternalStateMachineAction ExternalAction { get; set; }

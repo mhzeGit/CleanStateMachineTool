@@ -148,40 +148,171 @@ namespace CleanStateMachine
             else
             {
                 AddDivider();
-                AddSectionTitle("State Behaviour");
+                AddSectionTitle("State Behaviours");
 
-                AddScriptRow(
-                    state.BehaviourScript,
-                    IsValidStateBehaviour,
-                    (prev, next) => OnStateScriptChanged(state, prev, next));
-
-                if (state.BehaviourInstance != null)
+                for (int i = 0; i < state.BehaviourEntries.Count; i++)
                 {
-                    _currentSO = state.BehaviourInstance;
-                    AddDivider();
-                    AddSectionTitle("Properties");
-                    AddSOProperties();
+                    BuildBehaviourEntry(state, i);
                 }
+
+                var addBtn = new Button(() =>
+                {
+                    state.BehaviourEntries.Add(new BehaviourEntryView());
+                    _window.NotifySidePanelChanged();
+                    UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                });
+                addBtn.text = "+ Add Behaviour";
+                addBtn.AddToClassList("add-behaviour-button");
+                _scrollView.Add(addBtn);
             }
         }
 
-        private void OnStateScriptChanged(StateView state, MonoScript prev, MonoScript next)
+        private void BuildBehaviourEntry(StateView state, int index)
         {
-            if (next == prev) return;
-            if (state.BehaviourInstance != null)
+            var entry = state.BehaviourEntries[index];
+
+            var container = new VisualElement();
+            container.AddToClassList("behaviour-entry");
+
+            var header = new VisualElement();
+            header.AddToClassList("behaviour-entry-header");
+
+            var headerLabel = new Label($"Behaviour {index + 1}");
+            headerLabel.AddToClassList("behaviour-entry-label");
+            header.Add(headerLabel);
+
+            var removeBtn = new Button(() =>
             {
-                Object.DestroyImmediate(state.BehaviourInstance, true);
-                state.BehaviourInstance = null;
+                if (entry.Instance != null)
+                {
+                    Object.DestroyImmediate(entry.Instance, true);
+                    entry.Instance = null;
+                }
+                state.BehaviourEntries.RemoveAt(index);
+                _window.NotifySidePanelChanged();
+                UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+            });
+            removeBtn.text = "X";
+            removeBtn.AddToClassList("behaviour-remove-button");
+            header.Add(removeBtn);
+
+            container.Add(header);
+
+            var scriptRow = new VisualElement();
+            scriptRow.AddToClassList("behaviour-script-row");
+
+            var pickerBtn = new Button();
+            pickerBtn.AddToClassList("script-picker-button");
+            pickerBtn.text = entry.Script != null ? entry.Script.name : "None (Select...)";
+            pickerBtn.clicked += () =>
+            {
+                var filtered = FindFilteredScripts(IsValidStateBehaviour);
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(pickerBtn.worldBound.x, pickerBtn.worldBound.y + pickerBtn.worldBound.height));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    menu.AddItem("None", () => OnBehaviourEntryScriptChanged(state, index, null));
+                    menu.AddSeparator();
+                    foreach (var script in filtered)
+                    {
+                        var captured = script;
+                        menu.AddItem(script.name, () => OnBehaviourEntryScriptChanged(state, index, captured));
+                    }
+                    if (filtered.Count == 0)
+                        menu.AddDisabledItem("No matching scripts found");
+                });
+            };
+            scriptRow.Add(pickerBtn);
+
+            if (entry.Script != null)
+            {
+                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.Script));
+                openBtn.text = "Open";
+                openBtn.AddToClassList("script-field-open-button");
+                scriptRow.Add(openBtn);
             }
-            state.BehaviourScript = next;
+
+            container.Add(scriptRow);
+
+            if (entry.Script != null)
+            {
+                var scriptType = entry.Script.GetClass();
+                string typeName = scriptType != null ? scriptType.Name : entry.Script.name;
+                var typeLabel = new Label(typeName);
+                typeLabel.AddToClassList("script-type-name");
+                container.Add(typeLabel);
+
+                if (entry.Instance != null)
+                {
+                    _currentSO = entry.Instance;
+                    var propsContainer = new VisualElement();
+                    propsContainer.AddToClassList("condition-properties");
+                    var so = new SerializedObject(_currentSO);
+                    var prop = so.GetIterator();
+                    bool enterChildren = true;
+                    while (prop.NextVisible(enterChildren))
+                    {
+                        enterChildren = false;
+                        if (prop.name == "m_Script") continue;
+
+                        var card = new VisualElement();
+                        card.AddToClassList("property-card");
+
+                        var label = new Label(prop.displayName);
+                        label.AddToClassList("property-card-label");
+                        card.Add(label);
+
+                        VisualElement content;
+                        if (prop.type == "BlackboardVariableReference")
+                        {
+                            content = BuildBbVarRefField(so, prop.Copy());
+                        }
+                        else
+                        {
+                            var pf = new PropertyField(prop.Copy(), "");
+                            content = pf;
+                        }
+                        content.AddToClassList("property-card-content");
+                        card.Add(content);
+
+                        propsContainer.Add(card);
+                    }
+                    if (propsContainer.childCount > 0)
+                    {
+                        propsContainer.Bind(so);
+                        container.Add(propsContainer);
+                    }
+                    _currentSO = null;
+                }
+            }
+            else
+            {
+                var hint = new Label("Assign a script to define behaviour");
+                hint.AddToClassList("script-type-name");
+                container.Add(hint);
+            }
+
+            _scrollView.Add(container);
+        }
+
+        private void OnBehaviourEntryScriptChanged(StateView state, int index, MonoScript next)
+        {
+            var entry = state.BehaviourEntries[index];
+            if (next == entry.Script) return;
+            if (entry.Instance != null)
+            {
+                Object.DestroyImmediate(entry.Instance, true);
+                entry.Instance = null;
+            }
+            entry.Script = next;
             if (next != null)
             {
                 var type = next.GetClass();
                 if (type != null)
                 {
-                    state.BehaviourInstance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                    state.BehaviourInstance.name = $"{state.Name}_Behaviour";
-                    state.BehaviourInstance.hideFlags = HideFlags.HideInHierarchy;
+                    entry.Instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                    entry.Instance.name = $"{state.Name}_Behaviour_{index}";
+                    entry.Instance.hideFlags = HideFlags.HideInHierarchy;
                 }
             }
             _window.NotifySidePanelChanged();
@@ -368,7 +499,7 @@ namespace CleanStateMachine
                         {
                             enterChildren = false;
                             if (prop.name == "m_Script") continue;
-                            if (_currentSO is ConditionScript condition && !condition.ShouldShowProperty(prop.name)) continue;
+                            if (so.targetObject is ConditionScript condition && !condition.ShouldShowProperty(prop.name)) continue;
 
                             var card = new VisualElement();
                             card.AddToClassList("property-card");

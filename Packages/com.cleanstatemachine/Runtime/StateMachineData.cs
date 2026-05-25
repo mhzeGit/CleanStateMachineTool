@@ -12,7 +12,14 @@ namespace CleanStateMachine
     }
 
     [Serializable]
-    public class StateData
+    public class BehaviourEntry
+    {
+        public string TypeName;
+        public StateBehaviour Instance;
+    }
+
+    [Serializable]
+    public class StateData : ISerializationCallbackReceiver
     {
         public string Name = "New State";
         public Vector2 Position;
@@ -22,14 +29,37 @@ namespace CleanStateMachine
         public bool IsSubStateMachine;
         public bool IsExternalReference;
         public List<int> ChildIndices = new List<int>();
-        public string BehaviourType;
-        public StateBehaviour Behaviour;
+        public List<BehaviourEntry> Behaviours = new List<BehaviourEntry>();
         public ExternalStateMachineAction ExternalAction;
         public GameObject ExternalStateMachine;
         public string ExternalTargetStateName;
         public string ExternalBlackboardParmName;
         public BlackboardVariableType ExternalBlackboardParmType;
         public string ExternalBlackboardParmValue;
+
+        [SerializeField] private string _legacyBehaviourType;
+        [SerializeField] private StateBehaviour _legacyBehaviour;
+
+        public void OnBeforeSerialize()
+        {
+        }
+
+        public void OnAfterDeserialize()
+        {
+            if (!string.IsNullOrEmpty(_legacyBehaviourType) || _legacyBehaviour != null)
+            {
+                if (Behaviours.Count == 0)
+                {
+                    Behaviours.Add(new BehaviourEntry
+                    {
+                        TypeName = _legacyBehaviourType,
+                        Instance = _legacyBehaviour
+                    });
+                }
+                _legacyBehaviourType = null;
+                _legacyBehaviour = null;
+            }
+        }
     }
 
     [Serializable]

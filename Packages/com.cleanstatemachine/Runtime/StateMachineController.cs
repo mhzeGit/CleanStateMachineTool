@@ -20,13 +20,18 @@ namespace CleanStateMachine
                 for (int i = 0; i < _data.States.Count; i++)
                 {
                     var sd = _data.States[i];
-                    if (sd.Behaviour != null && sd.Behaviour is StateBehaviour)
-                        continue;
-                    if (!string.IsNullOrEmpty(sd.BehaviourType))
+                    for (int j = 0; j < sd.Behaviours.Count; j++)
                     {
-                        needsRebuild = true;
-                        break;
+                        var be = sd.Behaviours[j];
+                        if (be.Instance != null && be.Instance is StateBehaviour)
+                            continue;
+                        if (!string.IsNullOrEmpty(be.TypeName))
+                        {
+                            needsRebuild = true;
+                            break;
+                        }
                     }
+                    if (needsRebuild) break;
                 }
                 if (!needsRebuild)
                 {
@@ -85,22 +90,26 @@ namespace CleanStateMachine
             for (int i = 0; i < _data.States.Count; i++)
             {
                 var sd = _data.States[i];
-                if (!string.IsNullOrEmpty(sd.BehaviourType) && sd.Behaviour == null)
+                for (int j = 0; j < sd.Behaviours.Count; j++)
                 {
-                    var type = System.Type.GetType(sd.BehaviourType);
-                    if (type == null)
+                    var be = sd.Behaviours[j];
+                    if (!string.IsNullOrEmpty(be.TypeName) && be.Instance == null)
                     {
-                        foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                        var type = System.Type.GetType(be.TypeName);
+                        if (type == null)
                         {
-                            type = asm.GetType(sd.BehaviourType);
-                            if (type != null) break;
+                            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                            {
+                                type = asm.GetType(be.TypeName);
+                                if (type != null) break;
+                            }
                         }
-                    }
-                    if (type != null && type.IsSubclassOf(typeof(StateBehaviour)))
-                    {
-                        sd.Behaviour = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                        sd.Behaviour.name = $"{sd.Name}_Behaviour";
-                        sd.Behaviour.hideFlags = HideFlags.HideInHierarchy;
+                        if (type != null && type.IsSubclassOf(typeof(StateBehaviour)))
+                        {
+                            be.Instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                            be.Instance.name = $"{sd.Name}_Behaviour_{j}";
+                            be.Instance.hideFlags = HideFlags.HideInHierarchy;
+                        }
                     }
                 }
             }
@@ -167,14 +176,17 @@ namespace CleanStateMachine
             if (data == null) return;
             for (int i = 0; i < data.States.Count; i++)
             {
-                var inst = data.States[i].Behaviour;
-                if (inst != null)
+                for (int j = 0; j < data.States[i].Behaviours.Count; j++)
                 {
-                    referenced.Add(inst);
-                    if (!AssetDatabase.Contains(inst))
+                    var inst = data.States[i].Behaviours[j].Instance;
+                    if (inst != null)
                     {
-                        inst.hideFlags = HideFlags.HideInHierarchy;
-                        AssetDatabase.AddObjectToAsset(inst, this);
+                        referenced.Add(inst);
+                        if (!AssetDatabase.Contains(inst))
+                        {
+                            inst.hideFlags = HideFlags.HideInHierarchy;
+                            AssetDatabase.AddObjectToAsset(inst, this);
+                        }
                     }
                 }
             }

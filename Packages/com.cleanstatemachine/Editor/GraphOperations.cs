@@ -143,14 +143,24 @@ namespace CleanStateMachine
             {
                 if (!indexToState.TryGetValue(dataIdx, out var s)) continue;
 
+                var copiedEntries = new List<BehaviourEntryView>();
+                for (int j = 0; j < s.BehaviourEntries.Count; j++)
+                {
+                    var entry = s.BehaviourEntries[j];
+                    copiedEntries.Add(new BehaviourEntryView
+                    {
+                        Script = entry.Script,
+                        Instance = entry.Instance
+                    });
+                }
+
                 _window.Clipboard.Add(new CopiedStateData
                 {
                     sourceDataIndex = s.DataIndex,
                     position = s.Position,
                     name = s.Name,
                     size = s.Size,
-                    behaviourScript = s.BehaviourScript,
-                    behaviourInstance = s.BehaviourInstance,
+                    behaviourEntries = copiedEntries,
                     childIndices = new List<int>(s.ChildIndices),
                     isSubStateMachine = s.IsSubStateMachine,
                     isExternalReference = s.IsExternalReference,
@@ -216,7 +226,6 @@ namespace CleanStateMachine
                 {
                     Size = data.size,
                     DataIndex = newIndex,
-                    BehaviourScript = data.behaviourScript,
                     IsSubStateMachine = data.isSubStateMachine,
                     IsSubEntry = false,
                     IsExternalReference = data.isExternalReference,
@@ -229,16 +238,26 @@ namespace CleanStateMachine
                 };
                 state.ChildIndices.Clear();
 
-                if (data.behaviourScript != null && data.behaviourInstance != null)
+                if (data.behaviourEntries != null)
                 {
-                    var type = data.behaviourScript.GetClass();
-                    if (type != null && type.IsSubclassOf(typeof(StateBehaviour)))
+                    for (int j = 0; j < data.behaviourEntries.Count; j++)
                     {
-                        var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                        EditorUtility.CopySerialized(data.behaviourInstance, instance);
-                        instance.name = $"{state.Name}_Behaviour";
-                        instance.hideFlags = HideFlags.HideInHierarchy;
-                        state.BehaviourInstance = instance;
+                        var src = data.behaviourEntries[j];
+                        if (src.Script == null) continue;
+                        var type = src.Script.GetClass();
+                        if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
+                            continue;
+
+                        var clone = new BehaviourEntryView { Script = src.Script };
+                        if (src.Instance != null)
+                        {
+                            var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                            EditorUtility.CopySerialized(src.Instance, instance);
+                            instance.name = $"{state.Name}_Behaviour_{j}";
+                            instance.hideFlags = HideFlags.HideInHierarchy;
+                            clone.Instance = instance;
+                        }
+                        state.BehaviourEntries.Add(clone);
                     }
                 }
 

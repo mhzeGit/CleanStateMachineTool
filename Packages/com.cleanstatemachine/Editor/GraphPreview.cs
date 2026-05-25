@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -47,6 +48,11 @@ namespace CleanStateMachine
         public const float MinPreviewWidth = 100f;
         public const float MinPreviewHeight = 75f;
 
+        private const string PrefsKeyDragX = "CleanStateMachine.GraphPreview.DragOffsetX";
+        private const string PrefsKeyDragY = "CleanStateMachine.GraphPreview.DragOffsetY";
+        private const string PrefsKeyWidth = "CleanStateMachine.GraphPreview.Width";
+        private const string PrefsKeyHeight = "CleanStateMachine.GraphPreview.Height";
+
         private static readonly Color ViewportBorderColor = new Color(0.9f, 0.9f, 0.9f, 0.7f);
         private static readonly Color ViewportOverlayColor = new Color(0f, 0f, 0f, 0.55f);
 
@@ -69,6 +75,8 @@ namespace CleanStateMachine
             RegisterCallback<MouseDownEvent>(OnMouseDown);
             RegisterCallback<MouseMoveEvent>(OnMouseMove);
             RegisterCallback<MouseUpEvent>(OnMouseUp);
+
+            LoadPrefs();
         }
 
         private void OnMouseDown(MouseDownEvent e)
@@ -147,9 +155,12 @@ namespace CleanStateMachine
         {
             if (e.button == 0)
             {
+                bool changed = _isDragging || _isResizing;
                 _isDragging = false;
                 _isResizing = false;
                 this.ReleaseMouse();
+                if (changed)
+                    SavePrefs();
                 e.StopPropagation();
             }
         }
@@ -193,6 +204,22 @@ namespace CleanStateMachine
         private static bool IsBottomEdge(ResizeEdge edge)
         {
             return edge == ResizeEdge.Bottom || edge == ResizeEdge.BottomLeft || edge == ResizeEdge.BottomRight;
+        }
+
+        private void LoadPrefs()
+        {
+            _dragOffset.x = EditorPrefs.GetFloat(PrefsKeyDragX, 0f);
+            _dragOffset.y = EditorPrefs.GetFloat(PrefsKeyDragY, 0f);
+            _previewWidth = EditorPrefs.GetFloat(PrefsKeyWidth, 200f);
+            _previewHeight = EditorPrefs.GetFloat(PrefsKeyHeight, 150f);
+        }
+
+        private void SavePrefs()
+        {
+            EditorPrefs.SetFloat(PrefsKeyDragX, _dragOffset.x);
+            EditorPrefs.SetFloat(PrefsKeyDragY, _dragOffset.y);
+            EditorPrefs.SetFloat(PrefsKeyWidth, _previewWidth);
+            EditorPrefs.SetFloat(PrefsKeyHeight, _previewHeight);
         }
 
         public void UpdateView(
