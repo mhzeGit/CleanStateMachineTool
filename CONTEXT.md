@@ -51,8 +51,9 @@ Editor/                        — Editor-only C# code (assembly: CleanStateMach
   SelectionController.cs       — Multi-selection tracking (ISelectable); fires SelectionChanged event
   ConnectionController.cs      — "Press C to connect" flow: source selection, ghost line rendering, target click
   ConnectionView.cs            — Visual representation of a transition edge between two states (offset management for parallel edges)
-  ConnectionArrowsLayer.cs     — Renders all connection arrows via a pooled set of VisualElements
-  CommentGroupView.cs          — Visual group node (colored box + label) that parents multiple StateViews
+   ConnectionArrowsLayer.cs     — Renders all connection arrows via a pooled set of VisualElements
+   GraphPreview.cs              — Minimap overlay anchored to bottom-right corner showing full graph overview with viewport indicator
+   CommentGroupView.cs          — Visual group node (colored box + label) that parents multiple StateViews
   StateView.cs                 — Visual state node (VisualElement) with name label, entry/sub-entry badges, selection highlight
   DetailsPanel.cs              — Right-side inspector for selected state/connection/group (behaviour assignment, condition editing, group color)
   BlackboardPanel.cs           — Right-side panel section for creating/renaming/deleting/editing blackboard variables
@@ -89,10 +90,11 @@ Editor/                        — Editor-only C# code (assembly: CleanStateMach
     DeleteBlackboardVariableCommand.cs — Undoable blackboard variable deletion
     ModifyBlackboardVariableCommand.cs — Undoable blackboard variable edit (rename, type, default value)
 
-  Styles/                      — USS (Unity Style Sheets) for UI Toolkit
-    StateView.uss              — State node styling
-    CommentGroupView.uss       — Group node styling
-    SidePanel.uss              — Right side panel
+   Styles/                      — USS (Unity Style Sheets) for UI Toolkit
+     StateView.uss              — State node styling
+     CommentGroupView.uss       — Group node styling
+     GraphPreview.uss           — Minimap preview window styling
+     SidePanel.uss              — Right side panel
     MenuDropdown.uss           — Context menu dropdown
     ComponentInspector.uss     — StateMachineComponent inspector
     ControllerInspector.uss    — Controller inspector

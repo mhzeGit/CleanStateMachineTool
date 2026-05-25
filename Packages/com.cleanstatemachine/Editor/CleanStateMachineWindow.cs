@@ -148,6 +148,7 @@ namespace CleanStateMachine
 
         internal GridBackground GridBackground;
         internal ConnectionArrowsLayer ConnectionArrowsLayer;
+        internal GraphPreview GraphPreview;
         internal VisualElement StateLayer;
         internal VisualElement GroupContainer;
         internal IMGUIContainer GraphCanvas;
@@ -328,6 +329,13 @@ namespace CleanStateMachine
 
             rootVisualElement.Add(SelectionBox.Element);
 
+            GraphPreview = new GraphPreview();
+            GraphPreview.AddToClassList("graph-preview");
+            var previewStyleSheet = ScriptReferenceUtility.LoadStyleSheet("GraphPreview");
+            if (previewStyleSheet != null)
+                rootVisualElement.styleSheets.Add(previewStyleSheet);
+            rootVisualElement.Add(GraphPreview);
+
             SidePanelElement = new SidePanel(this);
             SidePanelElement.style.position = Position.Absolute;
             SidePanelElement.style.right = 0f;
@@ -471,6 +479,7 @@ namespace CleanStateMachine
             SyncStateHierarchy();
             UpdateStateTransforms();
             UpdateGroupPositions();
+            UpdateGraphPreview(graphRect);
             GraphCanvas.MarkDirtyRepaint();
 
             if (PanController.IsPanning || DragController.IsActive || SelectionBox.IsActive || ConnectionController.IsConnecting)
@@ -647,6 +656,33 @@ namespace CleanStateMachine
         {
             for (int i = 0; i < Groups.Count; i++)
                 Groups[i].UpdateScreenPosition(_zoom, _panOffset);
+        }
+
+        private void UpdateGraphPreview(Rect graphRect)
+        {
+            if (GraphPreview == null) return;
+
+            float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
+            float barH = 24f;
+
+            float previewW = 200f;
+            float previewH = 150f;
+            float rightPos = sideW + 8f;
+            float bottomPos = 8f;
+
+            GraphPreview.style.right = rightPos;
+            GraphPreview.style.bottom = bottomPos;
+            GraphPreview.style.width = previewW;
+            GraphPreview.style.height = previewH;
+
+            GraphPreview.UpdateView(
+                States,
+                Connections,
+                state => IsStateVisible(state),
+                conn => IsConnectionVisible(conn),
+                _panOffset,
+                _zoom,
+                graphRect);
         }
 
         internal void UpdateConnectionOffsets()

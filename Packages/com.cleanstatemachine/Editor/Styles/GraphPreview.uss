@@ -1,0 +1,22 @@
+.graph-preview {
+    position: absolute;
+    width: 200px;
+    height: 150px;
+    background-color: rgba(20, 20, 20, 0.85);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border-left-color: rgb(60, 60, 60);
+    border-right-color: rgb(60, 60, 60);
+    border-top-color: rgb(60, 60, 60);
+    border-bottom-color: rgb(60, 60, 60);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+}
+
+.graph-preview--hidden {
+    display: none;
+}
