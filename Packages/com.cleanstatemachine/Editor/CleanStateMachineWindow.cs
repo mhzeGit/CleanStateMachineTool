@@ -295,7 +295,7 @@ namespace CleanStateMachine
 
             _lastMouseGraphPos = (e.mousePosition - _panOffset) / _zoom;
 
-            if (!_connectionController.IsConnecting && _editingState == null)
+            if (!_connectionController.IsConnecting && _editingState == null && _editingGroup == null)
                 HandleKeyboardShortcuts(e);
 
             if (e.type == EventType.ContextClick && graphRect.Contains(e.mousePosition))
@@ -444,6 +444,64 @@ namespace CleanStateMachine
                 e.Use();
                 Repaint();
                 return;
+            }
+
+            if (e.keyCode == KeyCode.F2)
+            {
+                Vector2 graphPos = (e.mousePosition - _panOffset) / _zoom;
+                ISelectable hovered = HitTest(graphPos);
+
+                if (hovered is StateView hoveredState)
+                {
+                    StartEditing(hoveredState);
+                    e.Use();
+                    Repaint();
+                    return;
+                }
+
+                if (hovered is CommentGroupView hoveredGroup)
+                {
+                    StartEditingGroup(hoveredGroup);
+                    e.Use();
+                    Repaint();
+                    return;
+                }
+
+                StateView singleState = null;
+                for (int i = 0; i < _selectionController.Count; i++)
+                {
+                    if (_selectionController.Selected[i] is StateView s)
+                    {
+                        if (singleState != null) { singleState = null; break; }
+                        singleState = s;
+                    }
+                }
+
+                if (singleState != null)
+                {
+                    StartEditing(singleState);
+                    e.Use();
+                    Repaint();
+                    return;
+                }
+
+                CommentGroupView singleGroup = null;
+                for (int i = 0; i < _selectionController.Count; i++)
+                {
+                    if (_selectionController.Selected[i] is CommentGroupView g)
+                    {
+                        if (singleGroup != null) { singleGroup = null; break; }
+                        singleGroup = g;
+                    }
+                }
+
+                if (singleGroup != null)
+                {
+                    StartEditingGroup(singleGroup);
+                    e.Use();
+                    Repaint();
+                    return;
+                }
             }
 
             if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
@@ -828,12 +886,27 @@ namespace CleanStateMachine
                 }
             }
 
+            HashSet<StateView> subChildren = new();
+            for (int i = 0; i < selected.Count; i++)
+            {
+                if (selected[i] is StateView sv && sv.IsSubStateMachine)
+                {
+                    for (int j = 0; j < sv.ChildIndices.Count; j++)
+                    {
+                        var child = GetStateByIndex(sv.ChildIndices[j]);
+                        if (child != null)
+                            subChildren.Add(child);
+                    }
+                }
+            }
+
             for (int i = selected.Count - 1; i >= 0; i--)
             {
-                if (selected[i] is StateView s && groupMembers.Contains(s))
+                if (selected[i] is StateView s && (groupMembers.Contains(s) || subChildren.Contains(s)))
                     selected.RemoveAt(i);
             }
 
+            selected.AddRange(subChildren);
             return selected;
         }
 

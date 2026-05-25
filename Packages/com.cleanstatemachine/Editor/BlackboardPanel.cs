@@ -462,6 +462,16 @@ namespace CleanStateMachine
                 return;
             }
 
+            if (e.keyCode == KeyCode.F2)
+            {
+                if (_editingIndex < 0 && _selectedIndex >= 0)
+                {
+                    StartNameEdit(_selectedIndex);
+                    e.StopPropagation();
+                    return;
+                }
+            }
+
             if (e.keyCode != KeyCode.Delete && e.keyCode != KeyCode.Backspace) return;
             if (!_isMouseOver) return;
             if (_editingIndex >= 0) return;

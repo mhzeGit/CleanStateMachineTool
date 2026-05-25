@@ -248,6 +248,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: Hello World
+--- !u!114 &-5792897123396371162
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State02->State03_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.3
 --- !u!114 &-5505361700147888996
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -288,6 +305,23 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 2
   comparison: 1
+--- !u!114 &-5088050094878318290
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State03_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 3
 --- !u!114 &-4984312468142295952
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -373,6 +407,23 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 3
   comparison: 0
+--- !u!114 &-3547766199571372246
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State01->State02_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.3
 --- !u!114 &-3272854633350445534
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -435,6 +486,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: 'STATE: 03'
+--- !u!114 &-1624701279358024294
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State01_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 1
 --- !u!114 &-482169798527592677
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -548,14 +616,41 @@ MonoBehaviour:
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: 6480756955754394530}
     - Name: Sub State Machine
-      Position: {x: 556.1568, y: 529.3428}
+      Position: {x: 529.3804, y: 422.23682}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
       IsSubStateMachine: 1
-      ChildIndices: 
+      ChildIndices: 080000000700000009000000
       BehaviourType: 
       Behaviour: {fileID: 0}
+    - Name: State03
+      Position: {x: 967.67224, y: 256.36554}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      ChildIndices: 
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -5088050094878318290}
+    - Name: State02
+      Position: {x: 1001.9949, y: 498.45273}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      ChildIndices: 
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 5987374819319054559}
+    - Name: State01
+      Position: {x: 764.4862, y: 417.02444}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      ChildIndices: 
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: -1624701279358024294}
     Connections:
     - FromIndex: 0
       ToIndex: 5
@@ -610,6 +705,24 @@ MonoBehaviour:
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -4457444995765923352}
+    - FromIndex: 6
+      ToIndex: 9
+      Conditions: []
+    - FromIndex: 9
+      ToIndex: 8
+      Conditions:
+      - TypeName: Timer_ConditionBehaviours
+        Instance: {fileID: -3547766199571372246}
+    - FromIndex: 8
+      ToIndex: 7
+      Conditions:
+      - TypeName: Timer_ConditionBehaviours
+        Instance: {fileID: -5792897123396371162}
+    - FromIndex: 7
+      ToIndex: 9
+      Conditions:
+      - TypeName: Timer_ConditionBehaviours
+        Instance: {fileID: 1600089491654748903}
     Groups: []
     BlackboardVariables:
     - Name: WrongState
@@ -627,7 +740,7 @@ MonoBehaviour:
     - Name: EnterSubState
       Type: 0
       StringValue: False
-    PanOffset: {x: -167.15222, y: 21.539398}
+    PanOffset: {x: -135.87512, y: 224.30127}
     Zoom: 0.6348858
     ShowSidePanel: 1
     SidePanelWidth: 299
@@ -655,6 +768,23 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 1
   comparison: 1
+--- !u!114 &1600089491654748903
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24e1c4c976021a42992b2297f2d1a25, type: 3}
+  m_Name: State03->State01_Condition_0
+  m_EditorClassIdentifier: 
+  duration:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 2
+    DefaultValue: 0.3
 --- !u!114 &1918339782861410973
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -767,6 +897,23 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: 03
+--- !u!114 &5987374819319054559
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State02_Behaviour
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: 2
 --- !u!114 &6010543952496397576
 MonoBehaviour:
   m_ObjectHideFlags: 1
