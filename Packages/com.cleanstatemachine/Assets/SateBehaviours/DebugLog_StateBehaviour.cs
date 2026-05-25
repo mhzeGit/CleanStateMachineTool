@@ -3,6 +3,8 @@ using CleanStateMachine;
 
 public class DebugLog_StateBehaviour : StateBehaviour
 {
+    public override string DisplayName => "Log Message";
+
     public CleanStateMachine.BlackboardVariableReference message = new CleanStateMachine.BlackboardVariableReference
     {
         ValueType = CleanStateMachine.BlackboardVariableType.String,

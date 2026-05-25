@@ -222,7 +222,7 @@ namespace CleanStateMachine
             var header = new VisualElement();
             header.AddToClassList("behaviour-entry-header");
 
-            var headerLabel = new Label($"Behaviour {index + 1}");
+            var headerLabel = new Label(entry.Script != null ? GetBehaviourDisplayName(entry.Script) : $"Behaviour {index + 1}");
             headerLabel.AddToClassList("behaviour-entry-label");
             header.Add(headerLabel);
 
@@ -248,7 +248,7 @@ namespace CleanStateMachine
 
             var pickerBtn = new Button();
             pickerBtn.AddToClassList("script-picker-button");
-            pickerBtn.text = entry.Script != null ? entry.Script.name : "None (Select...)";
+            pickerBtn.text = entry.Script != null ? GetBehaviourDisplayName(entry.Script) : "None (Select...)";
             pickerBtn.clicked += () =>
             {
                 var filtered = FindFilteredScripts(IsValidStateBehaviour);
@@ -261,7 +261,7 @@ namespace CleanStateMachine
                     foreach (var script in filtered)
                     {
                         var captured = script;
-                        menu.AddItem(script.name, () => OnBehaviourEntryScriptChanged(state, index, captured));
+                        menu.AddItem(GetBehaviourDisplayName(script), () => OnBehaviourEntryScriptChanged(state, index, captured));
                     }
                     if (filtered.Count == 0)
                         menu.AddDisabledItem("No matching scripts found");
@@ -281,9 +281,7 @@ namespace CleanStateMachine
 
             if (entry.Script != null)
             {
-                var scriptType = entry.Script.GetClass();
-                string typeName = scriptType != null ? scriptType.Name : entry.Script.name;
-                var typeLabel = new Label(typeName);
+                var typeLabel = new Label(GetBehaviourDisplayName(entry.Script));
                 typeLabel.AddToClassList("script-type-name");
                 container.Add(typeLabel);
 
@@ -1629,6 +1627,20 @@ namespace CleanStateMachine
         {
             var type = script.GetClass();
             return type != null && type.IsSubclassOf(typeof(ConditionScript));
+        }
+
+        private static string GetBehaviourDisplayName(MonoScript script)
+        {
+            var type = script.GetClass();
+            if (type == null) return script.name;
+            if (type.IsSubclassOf(typeof(StateBehaviour)))
+            {
+                var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                string name = instance.DisplayName;
+                Object.DestroyImmediate(instance);
+                return name;
+            }
+            return type.Name;
         }
 
         private static string GetConditionDisplayName(MonoScript script)

@@ -3,6 +3,8 @@ using CleanStateMachine;
 
 public class SetVariable_StateBehaviour : StateBehaviour
 {
+    public override string DisplayName => "Set Variable";
+
     public BlackboardVariableSelector target = new BlackboardVariableSelector
     {
         ValueType = BlackboardVariableType.Bool,
