@@ -105,6 +105,10 @@ namespace CleanStateMachine
         private int _activeStateIndex = -1;
         private bool _isAutoNavigating;
 
+        private List<int> _pendingExpandStack;
+        private double _pendingExpandTime;
+        private const float AutoExpandDelay = 0.35f;
+
         private bool _isAnimatingView;
         private Vector2 _animFromPan;
         private Vector2 _animToPan;
@@ -187,6 +191,7 @@ namespace CleanStateMachine
                     _controller.Data = _controller.Data;
                 }
                 _expandedSubStateStack.Clear();
+                _pendingExpandStack = null;
             }
             else if (change == PlayModeStateChange.EnteredEditMode)
             {
@@ -2181,6 +2186,7 @@ namespace CleanStateMachine
             _undoRedoSystem = new UndoRedoSystem();
             _activeStateIndex = -1;
             _trackedComponent = null;
+            _pendingExpandStack = null;
             _expandedSubStateStack.Clear();
             if (_expandedModeBar != null)
                 _expandedModeBar.style.display = DisplayStyle.None;
@@ -2346,6 +2352,7 @@ namespace CleanStateMachine
             _sidePanelWidth = 220f;
             _detailsHeightRatio = 0.5f;
             _expandedSubStateStack.Clear();
+            _pendingExpandStack = null;
             if (_expandedModeBar != null)
                 _expandedModeBar.style.display = DisplayStyle.None;
 
@@ -2372,6 +2379,7 @@ namespace CleanStateMachine
                 {
                     _activeStateIndex = -1;
                     _expandedSubStateStack.Clear();
+                    _pendingExpandStack = null;
                     for (int i = 0; i < _states.Count; i++)
                         _states[i].IsActive = false;
                     for (int i = 0; i < _connections.Count; i++)
@@ -2402,19 +2410,48 @@ namespace CleanStateMachine
                         var newStack = new List<int>();
                         FindActiveStateHierarchy(_activeStateIndex, newStack);
 
-                        if (_expandedSubStateStack.Count != newStack.Count ||
-                            !AreListsEqual(_expandedSubStateStack, newStack))
+                        if (!AreListsEqual(_expandedSubStateStack, newStack))
                         {
-                            _expandedSubStateStack.Clear();
-                            _expandedSubStateStack.AddRange(newStack);
-                            UpdateExpandedModeBar();
-                            if (!_isAnimatingView)
-                                StartSmoothFocusOnContent();
+                            if (newStack.Count > _expandedSubStateStack.Count &&
+                                _pendingExpandStack == null)
+                            {
+                                _pendingExpandStack = new List<int>(newStack);
+                                _pendingExpandTime = Time.realtimeSinceStartup;
+                            }
+                            else
+                            {
+                                _pendingExpandStack = null;
+                                _expandedSubStateStack.Clear();
+                                _expandedSubStateStack.AddRange(newStack);
+                                UpdateExpandedModeBar();
+                                if (!_isAnimatingView)
+                                    StartSmoothFocusOnContent();
+                            }
                         }
                     }
                     _isAutoNavigating = false;
 
                     Repaint();
+                }
+
+                if (_pendingExpandStack != null)
+                {
+                    var checkStack = new List<int>();
+                    FindActiveStateHierarchy(_activeStateIndex, checkStack);
+                    if (!AreListsEqual(checkStack, _pendingExpandStack))
+                    {
+                        _pendingExpandStack = null;
+                    }
+                    else if (Time.realtimeSinceStartup - _pendingExpandTime >= AutoExpandDelay)
+                    {
+                        _expandedSubStateStack.Clear();
+                        _expandedSubStateStack.AddRange(_pendingExpandStack);
+                        _pendingExpandStack = null;
+                        UpdateExpandedModeBar();
+                        if (!_isAnimatingView)
+                            StartSmoothFocusOnContent();
+                        Repaint();
+                    }
                 }
 
                 var transitions = _trackedComponent.RecentTransitions;
@@ -2453,6 +2490,7 @@ namespace CleanStateMachine
             else if (_activeStateIndex >= 0)
             {
                 _activeStateIndex = -1;
+                _pendingExpandStack = null;
                 for (int i = 0; i < _states.Count; i++)
                     _states[i].IsActive = false;
                 for (int i = 0; i < _connections.Count; i++)
