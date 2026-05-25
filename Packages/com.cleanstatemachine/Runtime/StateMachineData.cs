@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace CleanStateMachine
 {
@@ -37,8 +38,8 @@ namespace CleanStateMachine
         public BlackboardVariableType ExternalBlackboardParmType;
         public string ExternalBlackboardParmValue;
 
-        [SerializeField] private string _legacyBehaviourType;
-        [SerializeField] private StateBehaviour _legacyBehaviour;
+        [SerializeField] [FormerlySerializedAs("BehaviourType")] private string _legacyBehaviourType;
+        [SerializeField] [FormerlySerializedAs("Behaviour")] private StateBehaviour _legacyBehaviour;
 
         public void OnBeforeSerialize()
         {

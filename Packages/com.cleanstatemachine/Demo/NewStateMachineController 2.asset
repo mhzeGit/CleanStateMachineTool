@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-5562600923768858386
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: Entry->State_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: BoolPar
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  comparison: 0
+  ignoreCase: 1
+--- !u!114 &-1444083742183814559
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9ff187ff1290df4ebe8ec3d6a1913d7, type: 3}
+  m_Name: State_Behaviour_0
+  m_EditorClassIdentifier: 
+  message:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 3
+    DefaultValue: OOHH MY GOD
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c8ac4c5ebd661479707db0a7e39504, type: 3}
+  m_Name: NewStateMachineController 2
+  m_EditorClassIdentifier: 
+  _data:
+    States:
+    - Name: Entry
+      Position: {x: 50, y: 200}
+      Size: {x: 160, y: 40}
+      IsEntry: 1
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      IsExternalReference: 0
+      ChildIndices: 
+      Behaviours: []
+      ExternalAction: 0
+      ExternalStateMachine: {fileID: 0}
+      ExternalTargetStateName: 
+      ExternalBlackboardParmName: 
+      ExternalBlackboardParmType: 0
+      ExternalBlackboardParmValue: 
+      _legacyBehaviourType: 
+      _legacyBehaviour: {fileID: 0}
+    - Name: State
+      Position: {x: 340.2238, y: 196.36766}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      IsExternalReference: 0
+      ChildIndices: 
+      Behaviours:
+      - TypeName: DebugLog_StateBehaviour
+        Instance: {fileID: -1444083742183814559}
+      ExternalAction: 0
+      ExternalStateMachine: {fileID: 0}
+      ExternalTargetStateName: 
+      ExternalBlackboardParmName: 
+      ExternalBlackboardParmType: 0
+      ExternalBlackboardParmValue: 
+      _legacyBehaviourType: 
+      _legacyBehaviour: {fileID: 0}
+    Connections:
+    - FromIndex: 0
+      ToIndex: 1
+      Conditions:
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -5562600923768858386}
+    Groups: []
+    BlackboardVariables:
+    - Name: BoolPar
+      Type: 0
+      StringValue: False
+    PanOffset: {x: 29.723969, y: 113.46524}
+    Zoom: 1.4095212
+    ShowSidePanel: 1
+    SidePanelWidth: 220
+    DetailsHeightRatio: 0.5

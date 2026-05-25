@@ -3,8 +3,11 @@ using CleanStateMachine;
 
 public class SetVariable_StateBehaviour : StateBehaviour
 {
-    public string variableName;
-    public BlackboardVariableType variableType = BlackboardVariableType.Bool;
+    public BlackboardVariableReference target = new BlackboardVariableReference
+    {
+        UseBlackboard = true,
+        ValueType = BlackboardVariableType.Bool,
+    };
     public BlackboardVariableReference value = new BlackboardVariableReference
     {
         ValueType = BlackboardVariableType.Bool,
@@ -13,25 +16,28 @@ public class SetVariable_StateBehaviour : StateBehaviour
 
     public override void OnStateEnter(StateMachineComponent stateMachine)
     {
-        switch (variableType)
+        if (string.IsNullOrEmpty(target.BlackboardVariableName))
+            return;
+
+        switch (target.ValueType)
         {
             case BlackboardVariableType.Bool:
-                stateMachine.SetBoolParameter(variableName, value.GetBoolValue(stateMachine));
+                stateMachine.SetBoolParameter(target.BlackboardVariableName, value.GetBoolValue(stateMachine));
                 break;
             case BlackboardVariableType.Int:
-                stateMachine.SetIntParameter(variableName, value.GetIntValue(stateMachine));
+                stateMachine.SetIntParameter(target.BlackboardVariableName, value.GetIntValue(stateMachine));
                 break;
             case BlackboardVariableType.Float:
-                stateMachine.SetFloatParameter(variableName, value.GetFloatValue(stateMachine));
+                stateMachine.SetFloatParameter(target.BlackboardVariableName, value.GetFloatValue(stateMachine));
                 break;
             case BlackboardVariableType.String:
-                stateMachine.SetStringParameter(variableName, value.GetStringValue(stateMachine));
+                stateMachine.SetStringParameter(target.BlackboardVariableName, value.GetStringValue(stateMachine));
                 break;
             case BlackboardVariableType.Vector2:
-                stateMachine.SetVector2Parameter(variableName, value.GetVector2Value(stateMachine));
+                stateMachine.SetVector2Parameter(target.BlackboardVariableName, value.GetVector2Value(stateMachine));
                 break;
             case BlackboardVariableType.Vector3:
-                stateMachine.SetVector3Parameter(variableName, value.GetVector3Value(stateMachine));
+                stateMachine.SetVector3Parameter(target.BlackboardVariableName, value.GetVector3Value(stateMachine));
                 break;
         }
     }
