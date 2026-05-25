@@ -28,6 +28,13 @@ namespace CleanStateMachine
         public StateBehaviour behaviourInstance;
         public List<int> childIndices;
         public bool isSubStateMachine;
+        public bool isExternalReference;
+        public ExternalStateMachineAction externalAction;
+        public GameObject externalStateMachine;
+        public string externalTargetStateName;
+        public string externalBlackboardParmName;
+        public BlackboardVariableType externalBlackboardParmType;
+        public string externalBlackboardParmValue;
     }
 
     public class CleanStateMachineWindow : EditorWindow
@@ -211,6 +218,7 @@ namespace CleanStateMachine
 
             ContextMenu.CreateStateRequested += OnCreateStateRequested;
             ContextMenu.CreateSubStateMachineRequested += OnCreateSubStateMachineRequested;
+            ContextMenu.CreateExternalReferenceRequested += OnCreateExternalReferenceRequested;
             ContextMenu.ConnectRequested += OnConnectRequested;
             ContextMenu.UngroupRequested += OnUngroupRequested;
             ContextMenu.CopyRequested += CopySelectedStates;
@@ -223,6 +231,7 @@ namespace CleanStateMachine
         {
             ContextMenu.CreateStateRequested -= OnCreateStateRequested;
             ContextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
+            ContextMenu.CreateExternalReferenceRequested -= OnCreateExternalReferenceRequested;
             ContextMenu.ConnectRequested -= OnConnectRequested;
             ContextMenu.UngroupRequested -= OnUngroupRequested;
             ContextMenu.CopyRequested -= CopySelectedStates;
@@ -548,6 +557,7 @@ namespace CleanStateMachine
 
         private void OnCreateStateRequested(Vector2 pos) => GraphOperations.CreateState(pos);
         private void OnCreateSubStateMachineRequested(Vector2 pos) => GraphOperations.CreateSubStateMachine(pos);
+        private void OnCreateExternalReferenceRequested(Vector2 pos) => GraphOperations.CreateExternalReferenceState(pos);
         private void OnConnectRequested(StateView source) => GraphOperations.ConnectRequested(source);
         private void OnUngroupRequested(CommentGroupView group) => GraphOperations.UngroupRequested(group);
         private void CopySelectedStates() => GraphOperations.CopySelectedStates();
@@ -663,15 +673,20 @@ namespace CleanStateMachine
             if (GraphPreview == null) return;
 
             float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
-            float barH = 24f;
 
             float previewW = 200f;
             float previewH = 150f;
-            float rightPos = sideW + 8f;
-            float bottomPos = 8f;
+            float defaultRight = sideW + 8f;
+            float defaultBottom = 8f;
 
-            GraphPreview.style.right = rightPos;
-            GraphPreview.style.bottom = bottomPos;
+            float leftPos = position.width - defaultRight - previewW + GraphPreview.DragOffset.x;
+            float topPos = position.height - defaultBottom - previewH + GraphPreview.DragOffset.y;
+
+            leftPos = Mathf.Clamp(leftPos, 0f, position.width - previewW);
+            topPos = Mathf.Clamp(topPos, 0f, position.height - previewH);
+
+            GraphPreview.style.left = leftPos;
+            GraphPreview.style.top = topPos;
             GraphPreview.style.width = previewW;
             GraphPreview.style.height = previewH;
 

@@ -4,6 +4,13 @@ using UnityEngine;
 
 namespace CleanStateMachine
 {
+    public enum ExternalStateMachineAction
+    {
+        StartStateMachine,
+        SetStateByName,
+        SetBlackboardParameter
+    }
+
     [Serializable]
     public class StateData
     {
@@ -13,9 +20,16 @@ namespace CleanStateMachine
         public bool IsEntry;
         public bool IsSubEntry;
         public bool IsSubStateMachine;
+        public bool IsExternalReference;
         public List<int> ChildIndices = new List<int>();
         public string BehaviourType;
         public StateBehaviour Behaviour;
+        public ExternalStateMachineAction ExternalAction;
+        public GameObject ExternalStateMachine;
+        public string ExternalTargetStateName;
+        public string ExternalBlackboardParmName;
+        public BlackboardVariableType ExternalBlackboardParmType;
+        public string ExternalBlackboardParmValue;
     }
 
     [Serializable]

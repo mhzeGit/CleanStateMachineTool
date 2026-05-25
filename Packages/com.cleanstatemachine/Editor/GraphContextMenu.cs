@@ -14,6 +14,7 @@ namespace CleanStateMachine
 
         public event Action<Vector2> CreateStateRequested;
         public event Action<Vector2> CreateSubStateMachineRequested;
+        public event Action<Vector2> CreateExternalReferenceRequested;
         public event Action<StateView> ConnectRequested;
         public event Action<CommentGroupView> UngroupRequested;
         public event Action CopyRequested;
@@ -50,6 +51,7 @@ namespace CleanStateMachine
         {
             menu.AddItem("Create State", () => CreateStateRequested?.Invoke(graphMousePosition));
             menu.AddItem("Create Sub State Machine", () => CreateSubStateMachineRequested?.Invoke(graphMousePosition));
+            menu.AddItem("Create External Reference", () => CreateExternalReferenceRequested?.Invoke(graphMousePosition));
 
             if (_contextNode != null)
             {

@@ -15,6 +15,10 @@ namespace CleanStateMachine
         private float _zoom;
         private Rect _graphScreenRect;
 
+        private bool _isDragging;
+        private Vector2 _dragStartMouse;
+        private Vector2 _dragOffset;
+
         private const float Padding = 8f;
         private static readonly Color ViewportBorderColor = new Color(0.9f, 0.9f, 0.9f, 0.7f);
         private static readonly Color ViewportOverlayColor = new Color(0f, 0f, 0f, 0.55f);
@@ -23,12 +27,51 @@ namespace CleanStateMachine
         private static readonly Color EntryStateColor = new Color(0.35f, 0.6f, 0.35f, 1f);
         private static readonly Color SubStateMachineColor = new Color(0.7f, 0.45f, 0.2f, 1f);
         private static readonly Color SubEntryStateColor = new Color(0.85f, 0.6f, 0.2f, 1f);
+        private static readonly Color ExternalReferenceColor = new Color(0.25f, 0.25f, 0.55f, 1f);
         private static readonly Color ConnectionColor = new Color(0.35f, 0.35f, 0.35f, 1f);
+
+        public Vector2 DragOffset => _dragOffset;
 
         public GraphPreview()
         {
-            pickingMode = PickingMode.Ignore;
+            pickingMode = PickingMode.Position;
             generateVisualContent += OnGenerateVisualContent;
+
+            RegisterCallback<MouseDownEvent>(OnMouseDown);
+            RegisterCallback<MouseMoveEvent>(OnMouseMove);
+            RegisterCallback<MouseUpEvent>(OnMouseUp);
+        }
+
+        private void OnMouseDown(MouseDownEvent e)
+        {
+            if (e.button == 0)
+            {
+                _isDragging = true;
+                _dragStartMouse = e.mousePosition;
+                this.CaptureMouse();
+                e.StopPropagation();
+            }
+        }
+
+        private void OnMouseMove(MouseMoveEvent e)
+        {
+            if (!_isDragging) return;
+
+            Vector2 delta = e.mousePosition - _dragStartMouse;
+            _dragOffset += delta;
+            _dragStartMouse = e.mousePosition;
+
+            e.StopPropagation();
+        }
+
+        private void OnMouseUp(MouseUpEvent e)
+        {
+            if (_isDragging && e.button == 0)
+            {
+                _isDragging = false;
+                this.ReleaseMouse();
+                e.StopPropagation();
+            }
         }
 
         public void UpdateView(
@@ -179,6 +222,8 @@ namespace CleanStateMachine
                     color = SubStateMachineColor;
                 else if (state.IsEntry)
                     color = EntryStateColor;
+                else if (state.IsExternalReference)
+                    color = ExternalReferenceColor;
                 else
                     color = DefaultStateColor;
 

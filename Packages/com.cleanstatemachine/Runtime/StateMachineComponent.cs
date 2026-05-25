@@ -361,6 +361,7 @@ namespace CleanStateMachine
                     var behaviour = GetOrCreateBehaviour(stateData);
                     if (behaviour != null)
                         behaviour.OnStateEnter(this);
+                    ExecuteExternalAction(stateData);
                 }
             }
         }
@@ -376,6 +377,7 @@ namespace CleanStateMachine
                     var behaviour = GetOrCreateBehaviour(stateData);
                     if (behaviour != null)
                         behaviour.OnStateEnter(this);
+                    ExecuteExternalAction(stateData);
                 }
             }
         }
@@ -575,6 +577,163 @@ namespace CleanStateMachine
                     return v.Vector3Value;
             }
             return Vector3.zero;
+        }
+
+        public void SetState(string stateName)
+        {
+            if (Data == null) return;
+            for (int i = 0; i < Data.States.Count; i++)
+            {
+                if (Data.States[i].Name == stateName)
+                {
+                    TransitionToStateDirect(i);
+                    return;
+                }
+            }
+        }
+
+        private void TransitionToStateDirect(int targetIndex)
+        {
+            if (_isTransitioning) return;
+            if (targetIndex < 0 || targetIndex >= Data.States.Count) return;
+            if (_activeStatePath.Count > 0 && _activeStatePath[^1] == targetIndex) return;
+
+            _isTransitioning = true;
+            try
+            {
+                int fromLeaf = CurrentStateIndex;
+                string previousLeafName = CurrentStateName;
+                var oldPath = new List<int>(_activeStatePath);
+                BuildFullPath(targetIndex);
+
+                int commonDepth = 0;
+                while (commonDepth < oldPath.Count &&
+                       commonDepth < _activeStatePath.Count &&
+                       oldPath[commonDepth] == _activeStatePath[commonDepth])
+                    commonDepth++;
+
+                for (int i = oldPath.Count - 1; i >= commonDepth; i--)
+                {
+                    int idx = oldPath[i];
+                    if (idx >= 0 && idx < Data.States.Count)
+                    {
+                        var stateData = Data.States[idx];
+                        var behaviour = GetOrCreateBehaviour(stateData);
+                        if (behaviour != null)
+                            behaviour.OnStateExit(this);
+                    }
+                }
+
+                OnStateExited?.Invoke(previousLeafName);
+                _stateEnterTime = Time.time;
+
+                int newLeaf = CurrentStateIndex;
+                OnStateChanged?.Invoke(fromLeaf, newLeaf);
+                OnStateEntered?.Invoke(CurrentStateName);
+
+                for (int i = commonDepth; i < _activeStatePath.Count; i++)
+                {
+                    int idx = _activeStatePath[i];
+                    if (idx >= 0 && idx < Data.States.Count)
+                    {
+                        var stateData = Data.States[idx];
+                        var behaviour = GetOrCreateBehaviour(stateData);
+                        if (behaviour != null)
+                            behaviour.OnStateEnter(this);
+                        ExecuteExternalAction(stateData);
+                    }
+                }
+            }
+            finally
+            {
+                _isTransitioning = false;
+            }
+        }
+
+        private void ExecuteExternalAction(StateData state)
+        {
+            if (!state.IsExternalReference || state.ExternalStateMachine == null)
+                return;
+
+            var externalSm = state.ExternalStateMachine.GetComponent<StateMachineComponent>();
+            if (externalSm == null) return;
+
+            switch (state.ExternalAction)
+            {
+                case ExternalStateMachineAction.StartStateMachine:
+                    externalSm.ResetStateMachine();
+                    break;
+                case ExternalStateMachineAction.SetStateByName:
+                    if (!string.IsNullOrEmpty(state.ExternalTargetStateName))
+                        externalSm.SetState(state.ExternalTargetStateName);
+                    break;
+                case ExternalStateMachineAction.SetBlackboardParameter:
+                    if (!string.IsNullOrEmpty(state.ExternalBlackboardParmName))
+                        SetExternalBlackboardParm(externalSm, state);
+                    break;
+            }
+        }
+
+        private static void SetExternalBlackboardParm(StateMachineComponent sm, StateData state)
+        {
+            switch (state.ExternalBlackboardParmType)
+            {
+                case BlackboardVariableType.Bool:
+                    sm.SetBoolParameter(state.ExternalBlackboardParmName,
+                        bool.TryParse(state.ExternalBlackboardParmValue, out var bv) && bv);
+                    break;
+                case BlackboardVariableType.Int:
+                    sm.SetIntParameter(state.ExternalBlackboardParmName,
+                        int.TryParse(state.ExternalBlackboardParmValue, out var iv) ? iv : 0);
+                    break;
+                case BlackboardVariableType.Float:
+                    sm.SetFloatParameter(state.ExternalBlackboardParmName,
+                        float.TryParse(state.ExternalBlackboardParmValue,
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var fv) ? fv : 0f);
+                    break;
+                case BlackboardVariableType.String:
+                    sm.SetStringParameter(state.ExternalBlackboardParmName,
+                        state.ExternalBlackboardParmValue);
+                    break;
+                case BlackboardVariableType.Vector2:
+                    sm.SetVector2Parameter(state.ExternalBlackboardParmName,
+                        ParseVector2Value(state.ExternalBlackboardParmValue));
+                    break;
+                case BlackboardVariableType.Vector3:
+                    sm.SetVector3Parameter(state.ExternalBlackboardParmName,
+                        ParseVector3Value(state.ExternalBlackboardParmValue));
+                    break;
+            }
+        }
+
+        private static Vector2 ParseVector2Value(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return Vector2.zero;
+            var parts = value.Split(',');
+            float x = parts.Length > 0 && float.TryParse(parts[0].Trim(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fx) ? fx : 0f;
+            float y = parts.Length > 1 && float.TryParse(parts[1].Trim(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fy) ? fy : 0f;
+            return new Vector2(x, y);
+        }
+
+        private static Vector3 ParseVector3Value(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return Vector3.zero;
+            var parts = value.Split(',');
+            float x = parts.Length > 0 && float.TryParse(parts[0].Trim(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fx) ? fx : 0f;
+            float y = parts.Length > 1 && float.TryParse(parts[1].Trim(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fy) ? fy : 0f;
+            float z = parts.Length > 2 && float.TryParse(parts[2].Trim(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var fz) ? fz : 0f;
+            return new Vector3(x, y, z);
         }
 
         public void ResetStateMachine()

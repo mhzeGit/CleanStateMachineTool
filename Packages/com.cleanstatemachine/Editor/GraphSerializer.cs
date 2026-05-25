@@ -55,9 +55,16 @@ namespace CleanStateMachine
                     IsEntry = state.IsEntry,
                     IsSubEntry = state.IsSubEntry,
                     IsSubStateMachine = state.IsSubStateMachine,
+                    IsExternalReference = state.IsExternalReference,
                     ChildIndices = childIndices,
                     BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript),
-                    Behaviour = state.BehaviourInstance
+                    Behaviour = state.BehaviourInstance,
+                    ExternalAction = state.ExternalAction,
+                    ExternalStateMachine = state.ExternalStateMachine,
+                    ExternalTargetStateName = state.ExternalTargetStateName,
+                    ExternalBlackboardParmName = state.ExternalBlackboardParmName,
+                    ExternalBlackboardParmType = state.ExternalBlackboardParmType,
+                    ExternalBlackboardParmValue = state.ExternalBlackboardParmValue
                 });
             }
 
@@ -151,6 +158,13 @@ namespace CleanStateMachine
                         BehaviourInstance = sd.Behaviour,
                         ChildIndices = new List<int>(sd.ChildIndices),
                         IsSubStateMachine = sd.IsSubStateMachine,
+                        IsExternalReference = sd.IsExternalReference,
+                        ExternalAction = sd.ExternalAction,
+                        ExternalStateMachine = sd.ExternalStateMachine,
+                        ExternalTargetStateName = sd.ExternalTargetStateName,
+                        ExternalBlackboardParmName = sd.ExternalBlackboardParmName,
+                        ExternalBlackboardParmType = sd.ExternalBlackboardParmType,
+                        ExternalBlackboardParmValue = sd.ExternalBlackboardParmValue,
                         DataIndex = i
                     };
                     _window.States.Add(state);

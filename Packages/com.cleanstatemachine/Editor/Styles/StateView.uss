@@ -82,7 +82,26 @@
     background-color: rgb(220, 160, 60);
 }
 
+.state-view__fill--external {
+    background-color: rgb(70, 70, 120);
+    border-color: rgb(120, 130, 220);
+}
+
+.state-view__fill--external.state-view__fill--selected {
+    border-color: rgb(137, 180, 250);
+}
+
+.state-view__fill--external.state-view__fill--active {
+    background-color: rgb(90, 90, 140);
+}
+
 .state-view__sub-icon {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    -unity-text-align: upper-right;
+}
+
+.state-view__external-icon {
     position: absolute;
     color: rgba(255, 255, 255, 0.7);
     -unity-text-align: upper-right;

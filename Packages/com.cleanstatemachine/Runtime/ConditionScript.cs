@@ -7,5 +7,7 @@ namespace CleanStateMachine
         public abstract bool Evaluate(StateMachineComponent stateMachine);
 
         public virtual string DisplayName => GetType().Name;
+
+        public virtual bool ShouldShowProperty(string propertyName) => true;
     }
 }

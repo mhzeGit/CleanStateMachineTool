@@ -67,6 +67,33 @@ namespace CleanStateMachine
             _window.Repaint();
         }
 
+        public void CreateExternalReferenceState(Vector2 graphMousePosition)
+        {
+            var state = new StateView(graphMousePosition, "External Reference")
+            {
+                DataIndex = _window.States.Count,
+                IsExternalReference = true
+            };
+
+            if (_window.EntryState != null && GetEntryOutgoingConnection() == null)
+            {
+                var cmd = new CompositeCommand("Create External Reference");
+                cmd.Add(new CreateStateCommand(_window.States, state));
+                cmd.Add(new CreateConnectionCommand(_window.Connections, new ConnectionView(_window.EntryState, state)));
+                _window.UndoRedoSystem.Execute(cmd);
+            }
+            else
+            {
+                var cmd = new CreateStateCommand(_window.States, state);
+                _window.UndoRedoSystem.Execute(cmd);
+            }
+
+            _window.MarkChangedInternal();
+            SyncStatesWithGroups();
+            AddToExpandedContainer(state);
+            _window.Repaint();
+        }
+
         public void ConnectRequested(StateView source)
         {
             _window.ConnectionController.StartConnection(source);
@@ -125,7 +152,14 @@ namespace CleanStateMachine
                     behaviourScript = s.BehaviourScript,
                     behaviourInstance = s.BehaviourInstance,
                     childIndices = new List<int>(s.ChildIndices),
-                    isSubStateMachine = s.IsSubStateMachine
+                    isSubStateMachine = s.IsSubStateMachine,
+                    isExternalReference = s.IsExternalReference,
+                    externalAction = s.ExternalAction,
+                    externalStateMachine = s.ExternalStateMachine,
+                    externalTargetStateName = s.ExternalTargetStateName,
+                    externalBlackboardParmName = s.ExternalBlackboardParmName,
+                    externalBlackboardParmType = s.ExternalBlackboardParmType,
+                    externalBlackboardParmValue = s.ExternalBlackboardParmValue
                 });
             }
         }
@@ -184,7 +218,14 @@ namespace CleanStateMachine
                     DataIndex = newIndex,
                     BehaviourScript = data.behaviourScript,
                     IsSubStateMachine = data.isSubStateMachine,
-                    IsSubEntry = false
+                    IsSubEntry = false,
+                    IsExternalReference = data.isExternalReference,
+                    ExternalAction = data.externalAction,
+                    ExternalStateMachine = data.externalStateMachine,
+                    ExternalTargetStateName = data.externalTargetStateName,
+                    ExternalBlackboardParmName = data.externalBlackboardParmName,
+                    ExternalBlackboardParmType = data.externalBlackboardParmType,
+                    ExternalBlackboardParmValue = data.externalBlackboardParmValue
                 };
                 state.ChildIndices.Clear();
 

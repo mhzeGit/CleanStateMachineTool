@@ -141,6 +141,10 @@ namespace CleanStateMachine
                     _scrollView.Add(openBtn);
                 }
             }
+            else if (state.IsExternalReference)
+            {
+                BuildExternalReferenceContent(state);
+            }
             else
             {
                 AddDivider();
@@ -352,40 +356,55 @@ namespace CleanStateMachine
                     var propsContainer = new VisualElement();
                     propsContainer.AddToClassList("condition-properties");
                     var so = new SerializedObject(_currentSO);
-                    var prop = so.GetIterator();
-                    bool enterChildren = true;
-                    while (prop.NextVisible(enterChildren))
+
+                    Action rebuildConditionProperties = null;
+                    rebuildConditionProperties = () =>
                     {
-                        enterChildren = false;
-                        if (prop.name == "m_Script") continue;
-
-                        var card = new VisualElement();
-                        card.AddToClassList("property-card");
-
-                        var label = new Label(prop.displayName);
-                        label.AddToClassList("property-card-label");
-                        card.Add(label);
-
-                        VisualElement content;
-                        if (prop.type == "BlackboardVariableReference")
+                        propsContainer.Clear();
+                        so.Update();
+                        var prop = so.GetIterator();
+                        bool enterChildren = true;
+                        while (prop.NextVisible(enterChildren))
                         {
-                            content = BuildBbVarRefField(so, prop.Copy());
-                        }
-                        else
-                        {
-                            var pf = new PropertyField(prop.Copy(), "");
-                            content = pf;
-                        }
-                        content.AddToClassList("property-card-content");
-                        card.Add(content);
+                            enterChildren = false;
+                            if (prop.name == "m_Script") continue;
+                            if (_currentSO is ConditionScript condition && !condition.ShouldShowProperty(prop.name)) continue;
 
-                        propsContainer.Add(card);
-                    }
+                            var card = new VisualElement();
+                            card.AddToClassList("property-card");
+
+                            var label = new Label(prop.displayName);
+                            label.AddToClassList("property-card-label");
+                            card.Add(label);
+
+                            VisualElement content;
+                            if (prop.type == "BlackboardVariableReference")
+                            {
+                                content = BuildBbVarRefField(so, prop.Copy());
+                            }
+                            else if (prop.name == "variableType")
+                            {
+                                var pf = new PropertyField(prop.Copy(), "");
+                                pf.RegisterValueChangedCallback(_ => rebuildConditionProperties());
+                                content = pf;
+                            }
+                            else
+                            {
+                                content = new PropertyField(prop.Copy(), "");
+                            }
+                            content.AddToClassList("property-card-content");
+                            card.Add(content);
+
+                            propsContainer.Add(card);
+                        }
+                        if (propsContainer.childCount > 0)
+                            propsContainer.Bind(so);
+                    };
+
+                    rebuildConditionProperties();
+
                     if (propsContainer.childCount > 0)
-                    {
-                        propsContainer.Bind(so);
                         container.Add(propsContainer);
-                    }
                     _currentSO = null;
                 }
             }
@@ -568,6 +587,173 @@ namespace CleanStateMachine
         {
             AddSectionTitle("Inspector");
             AddInfoRow("Type", item.GetType().Name);
+        }
+
+        // ─── EXTERNAL REFERENCE CONTENT ────────────────────────────────
+
+        private void BuildExternalReferenceContent(StateView state)
+        {
+            AddDivider();
+            AddSectionTitle("External State Machine");
+
+            var targetRow = new VisualElement();
+            targetRow.AddToClassList("info-row");
+
+            var targetLabel = new Label("Target");
+            targetLabel.AddToClassList("info-row-label");
+            targetRow.Add(targetLabel);
+
+            var objectField = new ObjectField();
+            objectField.objectType = typeof(GameObject);
+            objectField.value = state.ExternalStateMachine;
+            objectField.AddToClassList("info-row-value");
+            objectField.RegisterValueChangedCallback(evt =>
+            {
+                state.ExternalStateMachine = evt.newValue as GameObject;
+                _window.NotifySidePanelChanged();
+            });
+            targetRow.Add(objectField);
+            _scrollView.Add(targetRow);
+
+            AddDivider();
+            AddSectionTitle("Action");
+
+            var actionRow = new VisualElement();
+            actionRow.AddToClassList("info-row");
+
+            var actionLabel = new Label("Action");
+            actionLabel.AddToClassList("info-row-label");
+            actionRow.Add(actionLabel);
+
+            var currentAction = state.ExternalAction;
+            var actionBtn = new Button();
+            actionBtn.AddToClassList("script-picker-button");
+            actionBtn.text = currentAction switch
+            {
+                ExternalStateMachineAction.StartStateMachine => "Start State Machine",
+                ExternalStateMachineAction.SetStateByName => "Set State By Name",
+                ExternalStateMachineAction.SetBlackboardParameter => "Set Blackboard Parameter",
+                _ => "Start State Machine"
+            };
+            actionBtn.clicked += () =>
+            {
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(actionBtn.worldBound.x, actionBtn.worldBound.y + actionBtn.worldBound.height));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    menu.AddItem("Start State Machine", () =>
+                    {
+                        state.ExternalAction = ExternalStateMachineAction.StartStateMachine;
+                        _window.NotifySidePanelChanged();
+                        UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                    });
+                    menu.AddItem("Set State By Name", () =>
+                    {
+                        state.ExternalAction = ExternalStateMachineAction.SetStateByName;
+                        _window.NotifySidePanelChanged();
+                        UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                    });
+                    menu.AddItem("Set Blackboard Parameter", () =>
+                    {
+                        state.ExternalAction = ExternalStateMachineAction.SetBlackboardParameter;
+                        _window.NotifySidePanelChanged();
+                        UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                    });
+                });
+            };
+            actionRow.Add(actionBtn);
+            _scrollView.Add(actionRow);
+
+            if (state.ExternalAction == ExternalStateMachineAction.SetStateByName)
+            {
+                var nameRow = new VisualElement();
+                nameRow.AddToClassList("info-row");
+
+                var nameLabel = new Label("State Name");
+                nameLabel.AddToClassList("info-row-label");
+                nameRow.Add(nameLabel);
+
+                var nameField = new TextField();
+                nameField.value = state.ExternalTargetStateName ?? "";
+                nameField.AddToClassList("info-row-value");
+                nameField.RegisterValueChangedCallback(evt =>
+                {
+                    state.ExternalTargetStateName = evt.newValue;
+                    _window.NotifySidePanelChanged();
+                });
+                nameRow.Add(nameField);
+                _scrollView.Add(nameRow);
+            }
+            else if (state.ExternalAction == ExternalStateMachineAction.SetBlackboardParameter)
+            {
+                var parmNameRow = new VisualElement();
+                parmNameRow.AddToClassList("info-row");
+
+                var parmLabel = new Label("Parameter Name");
+                parmLabel.AddToClassList("info-row-label");
+                parmNameRow.Add(parmLabel);
+
+                var parmNameField = new TextField();
+                parmNameField.value = state.ExternalBlackboardParmName ?? "";
+                parmNameField.AddToClassList("info-row-value");
+                parmNameField.RegisterValueChangedCallback(evt =>
+                {
+                    state.ExternalBlackboardParmName = evt.newValue;
+                    _window.NotifySidePanelChanged();
+                });
+                parmNameRow.Add(parmNameField);
+                _scrollView.Add(parmNameRow);
+
+                var typeRow = new VisualElement();
+                typeRow.AddToClassList("info-row");
+
+                var typeLabel = new Label("Type");
+                typeLabel.AddToClassList("info-row-label");
+                typeRow.Add(typeLabel);
+
+                var bbType = state.ExternalBlackboardParmType;
+                var typeBtn = new Button();
+                typeBtn.AddToClassList("script-picker-button");
+                typeBtn.text = bbType.ToString();
+                typeBtn.clicked += () =>
+                {
+                    var pos = _window.rootVisualElement.WorldToLocal(
+                        new Vector2(typeBtn.worldBound.x, typeBtn.worldBound.y + typeBtn.worldBound.height));
+                    MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                    {
+                        foreach (BlackboardVariableType t in System.Enum.GetValues(typeof(BlackboardVariableType)))
+                        {
+                            var captured = t;
+                            menu.AddItem(t.ToString(), () =>
+                            {
+                                state.ExternalBlackboardParmType = captured;
+                                _window.NotifySidePanelChanged();
+                                UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                            });
+                        }
+                    });
+                };
+                typeRow.Add(typeBtn);
+                _scrollView.Add(typeRow);
+
+                var valueRow = new VisualElement();
+                valueRow.AddToClassList("info-row");
+
+                var valueLabel = new Label("Value");
+                valueLabel.AddToClassList("info-row-label");
+                valueRow.Add(valueLabel);
+
+                var valueField = new TextField();
+                valueField.value = state.ExternalBlackboardParmValue ?? "";
+                valueField.AddToClassList("info-row-value");
+                valueField.RegisterValueChangedCallback(evt =>
+                {
+                    state.ExternalBlackboardParmValue = evt.newValue;
+                    _window.NotifySidePanelChanged();
+                });
+                valueRow.Add(valueField);
+                _scrollView.Add(valueRow);
+            }
         }
 
         // ─── MULTI SELECTION ──────────────────────────────────────────

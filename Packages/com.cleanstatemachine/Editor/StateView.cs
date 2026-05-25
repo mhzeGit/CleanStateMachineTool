@@ -56,11 +56,27 @@ namespace CleanStateMachine
                 UpdateSubStateMachineVisual();
             }
         }
+        private bool _isExternalReference;
+        public bool IsExternalReference
+        {
+            get => _isExternalReference;
+            set
+            {
+                _isExternalReference = value;
+                UpdateSubStateMachineVisual();
+            }
+        }
         public bool IsEditing { get; private set; }
         public string EditingBuffer { get; private set; }
         public MonoScript BehaviourScript { get; set; }
         public StateBehaviour BehaviourInstance { get; set; }
         public List<int> ChildIndices { get; set; } = new List<int>();
+        public GameObject ExternalStateMachine { get; set; }
+        public ExternalStateMachineAction ExternalAction { get; set; }
+        public string ExternalTargetStateName { get; set; }
+        public string ExternalBlackboardParmName { get; set; }
+        public BlackboardVariableType ExternalBlackboardParmType { get; set; }
+        public string ExternalBlackboardParmValue { get; set; }
 
         private bool _isActive;
         private double _activatedAtTime;
@@ -102,6 +118,7 @@ namespace CleanStateMachine
         private TextField _editField;
         private VisualElement _editFieldInput;
         private VisualElement _subIcon;
+        private VisualElement _externalIcon;
 
         public const float DefaultWidth = 160f;
         public const float DefaultHeight = 40f;
@@ -186,6 +203,13 @@ namespace CleanStateMachine
             _subIcon.style.position = UnityEngine.UIElements.Position.Absolute;
             _subIcon.style.display = DisplayStyle.None;
             Add(_subIcon);
+
+            _externalIcon = new Label("\u2B05");
+            _externalIcon.AddToClassList("state-view__external-icon");
+            _externalIcon.pickingMode = PickingMode.Ignore;
+            _externalIcon.style.position = UnityEngine.UIElements.Position.Absolute;
+            _externalIcon.style.display = DisplayStyle.None;
+            Add(_externalIcon);
 
             InitializeGlowAnimation();
         }
@@ -298,6 +322,15 @@ namespace CleanStateMachine
                 _subIcon.style.fontSize = iconSize;
             }
 
+            _externalIcon.style.display = IsExternalReference ? DisplayStyle.Flex : DisplayStyle.None;
+            if (IsExternalReference)
+            {
+                int iconSize = Mathf.RoundToInt(14 * zoom);
+                _externalIcon.style.right = Mathf.RoundToInt(4 * zoom);
+                _externalIcon.style.top = Mathf.RoundToInt(2 * zoom);
+                _externalIcon.style.fontSize = iconSize;
+            }
+
             if (IsEditing)
             {
                 int fontSize = Mathf.RoundToInt(12 * zoom);
@@ -395,9 +428,12 @@ namespace CleanStateMachine
                 _fill.EnableInClassList("state-view__fill--sub", IsSubStateMachine);
                 _fill.EnableInClassList("state-view__fill--sub-entry", IsSubEntry);
                 _fill.EnableInClassList("state-view__fill--entry", IsEntry && !IsSubEntry);
+                _fill.EnableInClassList("state-view__fill--external", IsExternalReference);
             }
             if (_subIcon != null)
                 _subIcon.style.display = IsSubStateMachine ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_externalIcon != null)
+                _externalIcon.style.display = IsExternalReference ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void InitializeGlowAnimation()
