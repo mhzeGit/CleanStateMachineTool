@@ -267,6 +267,10 @@ namespace CleanStateMachine
                         {
                             content = BuildBbVarRefField(so, prop.Copy());
                         }
+                        else if (prop.type == "BlackboardVariableSelector")
+                        {
+                            content = BuildBbVarSelectorField(so, prop.Copy());
+                        }
                         else
                         {
                             var pf = new PropertyField(prop.Copy(), "");
@@ -512,6 +516,10 @@ namespace CleanStateMachine
                             if (prop.type == "BlackboardVariableReference")
                             {
                                 content = BuildBbVarRefField(so, prop.Copy());
+                            }
+                            else if (prop.type == "BlackboardVariableSelector")
+                            {
+                                content = BuildBbVarSelectorField(so, prop.Copy());
                             }
                             else if (prop.name == "variableType")
                             {
@@ -803,22 +811,45 @@ namespace CleanStateMachine
 
             if (state.ExternalAction == ExternalStateMachineAction.SetStateByName)
             {
+                var targetStates = GetTargetStateNames(state);
+
                 var nameRow = new VisualElement();
                 nameRow.AddToClassList("info-row");
 
-                var nameLabel = new Label("State Name");
+                var nameLabel = new Label("State");
                 nameLabel.AddToClassList("info-row-label");
                 nameRow.Add(nameLabel);
 
-                var nameField = new TextField();
-                nameField.value = state.ExternalTargetStateName ?? "";
-                nameField.AddToClassList("info-row-value");
-                nameField.RegisterValueChangedCallback(evt =>
+                var currentStateName = state.ExternalTargetStateName;
+                var nameBtn = new Button();
+                nameBtn.AddToClassList("script-picker-button");
+                nameBtn.text = string.IsNullOrEmpty(currentStateName) ? "Select state..." : currentStateName;
+                nameBtn.clicked += () =>
                 {
-                    state.ExternalTargetStateName = evt.newValue;
-                    _window.NotifySidePanelChanged();
-                });
-                nameRow.Add(nameField);
+                    var pos = _window.rootVisualElement.WorldToLocal(
+                        new Vector2(nameBtn.worldBound.x, nameBtn.worldBound.y + nameBtn.worldBound.height));
+                    MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                    {
+                        if (targetStates != null && targetStates.Count > 0)
+                        {
+                            for (int i = 0; i < targetStates.Count; i++)
+                            {
+                                var captured = targetStates[i];
+                                menu.AddItem(captured, () =>
+                                {
+                                    state.ExternalTargetStateName = captured;
+                                    _window.NotifySidePanelChanged();
+                                    UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                                });
+                            }
+                        }
+                        else
+                        {
+                            menu.AddDisabledItem("No states on target");
+                        }
+                    });
+                };
+                nameRow.Add(nameBtn);
                 _scrollView.Add(nameRow);
             }
             else if (state.ExternalAction == ExternalStateMachineAction.SetBlackboardParameter)
@@ -1080,6 +1111,10 @@ namespace CleanStateMachine
                 {
                     content = BuildBbVarRefField(so, prop.Copy());
                 }
+                else if (prop.type == "BlackboardVariableSelector")
+                {
+                    content = BuildBbVarSelectorField(so, prop.Copy());
+                }
                 else
                 {
                     var pf = new PropertyField(prop.Copy(), "");
@@ -1277,6 +1312,67 @@ namespace CleanStateMachine
             return row;
         }
 
+        private VisualElement BuildBbVarSelectorField(SerializedObject so, SerializedProperty prop)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("bb-varref-row");
+
+            var varNameProp = prop.FindPropertyRelative("VariableName");
+            var valueTypeProp = prop.FindPropertyRelative("ValueType");
+
+            var dropdownBtn = new Button();
+            dropdownBtn.AddToClassList("bb-dropdown-button");
+            row.Add(dropdownBtn);
+
+            Action rebuild = null;
+            rebuild = () =>
+            {
+                so.Update();
+                string currentVarName = varNameProp.stringValue;
+                dropdownBtn.text = string.IsNullOrEmpty(currentVarName)
+                    ? "Select variable..." : currentVarName;
+            };
+
+            dropdownBtn.clicked += () =>
+            {
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(dropdownBtn.worldBound.x, dropdownBtn.worldBound.y + dropdownBtn.worldBound.height));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    menu.AddItem("None", () =>
+                    {
+                        varNameProp.stringValue = "";
+                        so.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(so.targetObject);
+                        rebuild();
+                    });
+                    menu.AddSeparator();
+                    bool hasMatch = false;
+                    for (int i = 0; i < _blackboardVariables.Count; i++)
+                    {
+                        hasMatch = true;
+                        var bv = _blackboardVariables[i];
+                        string varName = bv.Name;
+                        string captured = varName;
+                        BlackboardVariableType capturedType = bv.Type;
+                        menu.AddItem($"{varName}  ({bv.Type})", () =>
+                        {
+                            varNameProp.stringValue = captured;
+                            valueTypeProp.enumValueIndex = (int)capturedType;
+                            so.ApplyModifiedProperties();
+                            EditorUtility.SetDirty(so.targetObject);
+                            rebuild();
+                        });
+                    }
+                    if (!hasMatch)
+                        menu.AddDisabledItem("No variables in blackboard");
+                });
+            };
+
+            rebuild();
+            return row;
+        }
+
         // ─── VALIDATION ────────────────────────────────────────────────
 
         private static bool IsValidStateBehaviour(MonoScript script)
@@ -1317,6 +1413,135 @@ namespace CleanStateMachine
                     count++;
             }
             return count;
+        }
+
+        private static List<BlackboardVariable> GetTargetBlackboardVariables(StateView state)
+        {
+            if (state.ExternalStateMachine == null) return null;
+
+            var sm = state.ExternalStateMachine.GetComponent<StateMachineComponent>();
+            if (sm == null || sm.Controller == null || sm.Controller.Data == null)
+                return null;
+
+            return sm.Controller.Data.BlackboardVariables;
+        }
+
+        private static List<string> GetTargetStateNames(StateView state)
+        {
+            if (state.ExternalStateMachine == null) return null;
+
+            var sm = state.ExternalStateMachine.GetComponent<StateMachineComponent>();
+            if (sm == null || sm.Controller == null || sm.Controller.Data == null)
+                return null;
+
+            var data = sm.Controller.Data;
+            var names = new List<string>(data.States.Count);
+            for (int i = 0; i < data.States.Count; i++)
+                names.Add(data.States[i].Name);
+
+            return names;
+        }
+
+        private VisualElement BuildTypedBlackboardValueEditor(StateView state)
+        {
+            var bbType = state.ExternalBlackboardParmType;
+            var currentValue = state.ExternalBlackboardParmValue ?? "";
+
+            switch (bbType)
+            {
+                case BlackboardVariableType.Bool:
+                {
+                    var toggle = new Toggle();
+                    toggle.value = bool.TryParse(currentValue, out var bv) && bv;
+                    toggle.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue.ToString();
+                        _window.NotifySidePanelChanged();
+                    });
+                    return toggle;
+                }
+                case BlackboardVariableType.Int:
+                {
+                    var field = new IntegerField();
+                    field.value = int.TryParse(currentValue, out var iv) ? iv : 0;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue.ToString();
+                        _window.NotifySidePanelChanged();
+                    });
+                    return field;
+                }
+                case BlackboardVariableType.Float:
+                {
+                    var field = new FloatField();
+                    field.value = float.TryParse(currentValue,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var fv) ? fv : 0f;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue.ToString("G",
+                            System.Globalization.CultureInfo.InvariantCulture);
+                        _window.NotifySidePanelChanged();
+                    });
+                    return field;
+                }
+                case BlackboardVariableType.String:
+                {
+                    var field = new TextField();
+                    field.value = currentValue;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    return field;
+                }
+                case BlackboardVariableType.Vector2:
+                {
+                    var field = new TextField();
+                    field.value = currentValue;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    var hint = new Label("Format: x,y");
+                    hint.style.color = new StyleColor(new Color(0.5f, 0.5f, 0.5f));
+                    hint.style.fontSize = 10;
+                    var container = new VisualElement();
+                    container.Add(field);
+                    container.Add(hint);
+                    return container;
+                }
+                case BlackboardVariableType.Vector3:
+                {
+                    var field = new TextField();
+                    field.value = currentValue;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    var hint = new Label("Format: x,y,z");
+                    hint.style.color = new StyleColor(new Color(0.5f, 0.5f, 0.5f));
+                    hint.style.fontSize = 10;
+                    var container = new VisualElement();
+                    container.Add(field);
+                    container.Add(hint);
+                    return container;
+                }
+                default:
+                {
+                    var field = new TextField();
+                    field.value = currentValue;
+                    field.RegisterValueChangedCallback(evt =>
+                    {
+                        state.ExternalBlackboardParmValue = evt.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    return field;
+                }
+            }
         }
     }
 }

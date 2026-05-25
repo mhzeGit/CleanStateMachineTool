@@ -110,6 +110,8 @@ The Runtime assembly (`CleanStateMachine.Runtime`) is the engine-agnostic core: 
 
 **`BlackboardVariableReference.cs`** — A `[Serializable]` utility class used by behaviour/condition scripts to toggle between reading a value from the blackboard or using a hardcoded default. Fields: `bool UseBlackboard`, `string BlackboardVariableName`, `BlackboardVariableType ValueType`, `string DefaultValue`. Provides typed getter methods (`GetBoolValue`, `GetFloatValue`, `GetVector3Value`, etc.) that check `UseBlackboard` and either call the component's parameter API or parse `DefaultValue` (with invariant culture and comma-separated vector parsing).
 
+**`BlackboardVariableSelector.cs`** — A `[Serializable]` utility class for selecting a blackboard variable by name in behaviour/condition inspector fields. Has `string VariableName` and `BlackboardVariableType ValueType`. Rendered as a dropdown button in `DetailsPanel.BuildBbVarSelectorField` — clicking shows all blackboard variables from the controller and sets both name and type on selection.
+
 ---
 
 ## EDITOR SYSTEM
@@ -278,7 +280,7 @@ The `Assets/` folder (with its own `CleanStateMachine.Behaviours.asmdef` referen
 
 **`DebugLog_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to log a configurable string `message` (default "Hello World") via `Debug.Log`. `OnStateUpdate` and `OnStateExit` only call base. Simple diagnostic tool for tracing state machine flow.
 
-**`SetVariable_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to write a `value` into a `target` blackboard variable on the same state machine. Both `target` and `value` are `BlackboardVariableReference` fields — `target` is set to "Blackboard" mode (dropdown of existing blackboard variables) and `value` can be either a direct value or a reference to another blackboard variable.
+**`SetVariable_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to write a `value` into a `target` blackboard variable on the same state machine. `target` is a `BlackboardVariableSelector` (rendered as a dropdown of all blackboard variables), `value` is a `BlackboardVariableReference` (direct value or reference to another variable).
 
 ---
 
