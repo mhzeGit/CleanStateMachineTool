@@ -7,18 +7,31 @@ using UnityEngine.UIElements;
 
 namespace CleanStateMachine
 {
+    [System.Flags]
+    internal enum ResizeEdge
+    {
+        None = 0,
+        Left = 1,
+        Right = 2,
+        Top = 4,
+        Bottom = 8,
+    }
+
+    [System.Serializable]
+    internal class CopiedStateData
+    {
+        public int sourceDataIndex;
+        public Vector2 position;
+        public string name;
+        public Vector2 size;
+        public MonoScript behaviourScript;
+        public StateBehaviour behaviourInstance;
+        public List<int> childIndices;
+        public bool isSubStateMachine;
+    }
+
     public class CleanStateMachineWindow : EditorWindow
     {
-        [System.Flags]
-        private enum ResizeEdge
-        {
-            None = 0,
-            Left = 1,
-            Right = 2,
-            Top = 4,
-            Bottom = 8,
-        }
-
         [MenuItem("Tools/CleanStateMachine")]
         public static void ShowWindow()
         {
@@ -35,145 +48,186 @@ namespace CleanStateMachine
             window.Show();
         }
 
-        [System.Serializable]
-        private class CopiedStateData
-        {
-            public int sourceDataIndex;
-            public Vector2 position;
-            public string name;
-            public Vector2 size;
-            public MonoScript behaviourScript;
-            public StateBehaviour behaviourInstance;
-            public List<int> childIndices;
-            public bool isSubStateMachine;
-        }
-
-        private static List<CopiedStateData> _clipboard;
+        // ─── Serialized & Internal State ──────────────────────────────
 
         [SerializeField] private Vector2 _panOffset;
         [SerializeField] private float _zoom = 1f;
-
         [SerializeField] private bool _showSidePanel = true;
         [SerializeField] private float _sidePanelWidth = 220f;
-        private List<BlackboardVariable> _blackboardVariables = new();
         [SerializeField] private StateMachineController _controller;
+        [SerializeField] private float _detailsHeightRatio = 0.5f;
 
-        private bool _hasUnsavedChanges;
-        private bool _isLoading;
+        internal Vector2 PanOffset { get => _panOffset; set => _panOffset = value; }
+        internal float Zoom { get => _zoom; set => _zoom = value; }
+        internal bool ShowSidePanel { get => _showSidePanel; set => _showSidePanel = value; }
+        internal float SidePanelWidth { get => _sidePanelWidth; set => _sidePanelWidth = value; }
+        internal float DetailsHeightRatio { get => _detailsHeightRatio; set => _detailsHeightRatio = value; }
+        internal StateMachineController Controller { get => _controller; set => _controller = value; }
+
+        internal SerializableData CurrentData;
+
+        internal bool IsLoading
+        {
+            get => _isLoading;
+            set => _isLoading = value;
+        }
+
+        internal bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            set
+            {
+                _hasUnsavedChanges = value;
+                hasUnsavedChanges = value;
+            }
+        }
+
+        internal List<CopiedStateData> Clipboard;
+
+        internal readonly List<StateView> States = new();
+        internal readonly List<ConnectionView> Connections = new();
+        internal readonly List<CommentGroupView> Groups = new();
+        internal List<BlackboardVariable> BlackboardVariables = new();
+
+        internal readonly List<int> ExpandedSubStateStack = new();
+
+        internal StateView EntryState;
+        internal StateView EditingState;
+        internal CommentGroupView EditingGroup;
+
+        internal CommentGroupView ResizingGroup;
+        internal ResizeEdge ResizeEdgeFlags;
+        internal Vector2 ResizeStartGraphPos;
+        internal Rect ResizeStartRect;
+
+        internal int ActiveStateIndex = -1;
+        internal StateMachineComponent TrackedComponent;
+        internal bool IsAutoNavigating;
+        internal bool WasPlaying;
+
+        internal List<int> PendingExpandStack;
+        internal double PendingExpandTime;
+
+        internal int LastTransitionFromIndex = -1;
+        internal int LastTransitionToIndex = -1;
+        internal int LastTransitionConnectionIndex = -1;
+
+        internal bool IsAnimatingView;
+        internal Vector2 AnimFromPan;
+        internal Vector2 AnimToPan;
+        internal float AnimFromZoom;
+        internal float AnimToZoom;
+        internal double AnimStartTime;
+
+        internal long LastClickTimestamp;
+        internal StateView LastDoubleClickCandidate;
+        internal CommentGroupView LastDoubleClickCandidateGroup;
+
+        internal Vector2 LastMouseGraphPos;
+
+        // ─── Controllers ──────────────────────────────────────────────
+
+        internal SelectionController SelectionController;
+        internal UndoRedoSystem UndoRedoSystem;
+        internal GraphPanController PanController;
+        internal GraphContextMenu ContextMenu;
+        internal DragController DragController;
+        internal SelectionBox SelectionBox;
+        internal ConnectionController ConnectionController;
+
+        // ─── Helper Modules ───────────────────────────────────────────
+
+        internal GraphOperations GraphOperations;
+        internal GraphInputHandler InputHandler;
+        internal ExpandedViewManager ExpandedView;
+        internal GraphSerializer GraphSerializer;
+        internal PlayModeTracker PlayModeTracker;
+        internal GraphViewAnimator ViewAnimator;
+
+        // ─── UI Elements ──────────────────────────────────────────────
+
+        internal GridBackground GridBackground;
+        internal ConnectionArrowsLayer ConnectionArrowsLayer;
+        internal VisualElement StateLayer;
+        internal VisualElement GroupContainer;
+        internal IMGUIContainer GraphCanvas;
+        internal SidePanel SidePanelElement;
+        internal VisualElement ExpandedModeBar;
+        internal Label ExpandedModeLabel;
+        internal VisualElement BreadcrumbContainer;
+
+        // ─── Private Helpers ──────────────────────────────────────────
+
         private StateMachineController _pendingController;
         private bool _pendingFocusOnContent;
-        private float _detailsHeightRatio = 0.5f;
-        private SidePanel _sidePanelElement;
+        private bool _hasUnsavedChanges;
+        private bool _isLoading;
 
-        private Vector2 _lastMouseGraphPos;
+        internal static readonly Stopwatch ClickStopwatch = Stopwatch.StartNew();
+        internal static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
+        internal const float CollapsedPanelWidth = 35f;
+        internal const float ResizeHandleScreenSize = 8f;
+        internal const int DoubleClickTimeMs = 300;
+        internal const float MinGroupWidth = 60f;
+        internal const float MinGroupHeight = 50f;
+        internal const float AnimDuration = 0.35f;
+        internal const float AutoExpandDelay = 0.35f;
 
-        private GridBackground _gridBackground;
-        private ConnectionArrowsLayer _connectionArrowsLayer;
-        private VisualElement _stateLayer;
-        private VisualElement _groupContainer;
-        private IMGUIContainer _graphCanvas;
-        private UndoRedoSystem _undoRedoSystem;
-        private GraphPanController _panController;
-        private GraphContextMenu _contextMenu;
-        private SelectionController _selectionController;
-        private DragController _dragController;
-        private SelectionBox _selectionBox;
-        private ConnectionController _connectionController;
-
-        private readonly List<StateView> _states = new();
-        private readonly List<ConnectionView> _connections = new();
-        private readonly List<CommentGroupView> _groups = new();
-
-        private SerializableData _currentData;
-        private readonly List<int> _expandedSubStateStack = new List<int>();
-        private VisualElement _expandedModeBar;
-        private Label _expandedModeLabel;
-        private VisualElement _breadcrumbContainer;
-        private Dictionary<ISelectable, Vector2> _preDragPositions;
-        private StateView _entryState;
-        private StateView _editingState;
-        private CommentGroupView _editingGroup;
-        private CommentGroupView _resizingGroup;
-        private ResizeEdge _resizeEdgeFlags;
-        private Vector2 _resizeStartGraphPos;
-        private Rect _resizeStartRect;
-        private static readonly Stopwatch _clickStopwatch = Stopwatch.StartNew();
-        private long _lastClickTimestamp;
-        private StateView _lastDoubleClickCandidate;
-        private CommentGroupView _lastDoubleClickCandidateGroup;
-
-        private StateMachineComponent _trackedComponent;
-        private int _activeStateIndex = -1;
-        private bool _isAutoNavigating;
-        private bool _wasPlaying;
-
-        private List<int> _pendingExpandStack;
-        private double _pendingExpandTime;
-        private const float AutoExpandDelay = 0.35f;
-
-        private int _lastTransitionFromIndex = -1;
-        private int _lastTransitionToIndex = -1;
-        private int _lastTransitionConnectionIndex = -1;
-
-        private bool _isAnimatingView;
-        private Vector2 _animFromPan;
-        private Vector2 _animToPan;
-        private float _animFromZoom;
-        private float _animToZoom;
-        private double _animStartTime;
-        private const float AnimDuration = 0.35f;
-
-        private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
-        private const float CollapsedPanelWidth = 35f;
-        private const float ResizeHandleScreenSize = 8f;
-        private const int DoubleClickTimeMs = 300;
+        // ─── Window Lifecycle ────────────────────────────────────────
 
         private void OnEnable()
         {
             wantsMouseMove = true;
-            _undoRedoSystem = new UndoRedoSystem();
-            _panController = new GraphPanController();
-            _contextMenu = new GraphContextMenu();
-            _selectionController = new SelectionController();
-            _dragController = new DragController();
-            _selectionBox = new SelectionBox();
-            _connectionController = new ConnectionController();
+            UndoRedoSystem = new UndoRedoSystem();
+            PanController = new GraphPanController();
+            ContextMenu = new GraphContextMenu();
+            SelectionController = new SelectionController();
+            DragController = new DragController();
+            SelectionBox = new SelectionBox();
+            ConnectionController = new ConnectionController();
+
+            GraphOperations = new GraphOperations(this);
+            InputHandler = new GraphInputHandler(this, GraphOperations);
+            ExpandedView = new ExpandedViewManager(this);
+            GraphSerializer = new GraphSerializer(this);
+            PlayModeTracker = new PlayModeTracker(this, ExpandedView);
+            ViewAnimator = new GraphViewAnimator(this);
 
             EditorApplication.update += OnEditorUpdate;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 
             if (_controller != null)
             {
-                _currentData = _controller.Data;
-                LoadFromController();
+                CurrentData = _controller.Data;
+                GraphSerializer.LoadFromController();
                 _pendingFocusOnContent = true;
             }
             else
             {
-                _currentData = new SerializableData();
-                EnsureEntryStateExists();
+                CurrentData = new SerializableData();
+                GraphOperations.EnsureEntryStateExists();
             }
 
-            _contextMenu.CreateStateRequested += OnCreateStateRequested;
-            _contextMenu.CreateSubStateMachineRequested += OnCreateSubStateMachineRequested;
-            _contextMenu.ConnectRequested += OnConnectRequested;
-            _contextMenu.UngroupRequested += OnUngroupRequested;
-            _contextMenu.CopyRequested += CopySelectedStates;
-            _contextMenu.PasteRequested += PasteStates;
-            _contextMenu.DeleteRequested += DeleteSelected;
-            _selectionController.SelectionChanged += OnSelectionChanged;
+            ContextMenu.CreateStateRequested += OnCreateStateRequested;
+            ContextMenu.CreateSubStateMachineRequested += OnCreateSubStateMachineRequested;
+            ContextMenu.ConnectRequested += OnConnectRequested;
+            ContextMenu.UngroupRequested += OnUngroupRequested;
+            ContextMenu.CopyRequested += CopySelectedStates;
+            ContextMenu.PasteRequested += PasteStates;
+            ContextMenu.DeleteRequested += DeleteSelected;
+            SelectionController.SelectionChanged += OnSelectionChanged;
         }
 
         private void OnDisable()
         {
-            _contextMenu.CreateStateRequested -= OnCreateStateRequested;
-            _contextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
-            _contextMenu.ConnectRequested -= OnConnectRequested;
-            _contextMenu.UngroupRequested -= OnUngroupRequested;
-            _contextMenu.CopyRequested -= CopySelectedStates;
-            _contextMenu.PasteRequested -= PasteStates;
-            _contextMenu.DeleteRequested -= DeleteSelected;
-            _selectionController.SelectionChanged -= OnSelectionChanged;
+            ContextMenu.CreateStateRequested -= OnCreateStateRequested;
+            ContextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
+            ContextMenu.ConnectRequested -= OnConnectRequested;
+            ContextMenu.UngroupRequested -= OnUngroupRequested;
+            ContextMenu.CopyRequested -= CopySelectedStates;
+            ContextMenu.PasteRequested -= PasteStates;
+            ContextMenu.DeleteRequested -= DeleteSelected;
+            SelectionController.SelectionChanged -= OnSelectionChanged;
 
             EditorApplication.update -= OnEditorUpdate;
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -182,7 +236,7 @@ namespace CleanStateMachine
             {
                 if (_hasUnsavedChanges || Application.isPlaying)
                 {
-                    SaveCurrentData();
+                    GraphSerializer.SaveCurrentData();
                     _controller.Data = _controller.Data;
                 }
             }
@@ -190,126 +244,104 @@ namespace CleanStateMachine
 
         private void OnPlayModeStateChanged(PlayModeStateChange change)
         {
-            if (change == PlayModeStateChange.ExitingPlayMode)
-            {
-                if (_controller != null)
-                {
-                    SaveCurrentData();
-                    _controller.Data = _controller.Data;
-                }
-                _expandedSubStateStack.Clear();
-                _pendingExpandStack = null;
-                _lastTransitionFromIndex = -1;
-                _lastTransitionToIndex = -1;
-                _lastTransitionConnectionIndex = -1;
-            }
-            else if (change == PlayModeStateChange.EnteredEditMode)
-            {
-                if (_controller != null)
-                {
-                    _currentData = _controller.Data;
-                    LoadFromCurrentData();
-                    StartSmoothFocusOnContent();
-                }
-                Repaint();
-            }
+            PlayModeTracker.OnPlayModeStateChanged(change);
         }
 
         private void CreateGUI()
         {
             rootVisualElement.Clear();
 
-            _gridBackground = new GridBackground();
-            _gridBackground.style.position = Position.Absolute;
-            _gridBackground.style.left = 0f;
-            _gridBackground.style.top = 0f;
-            _gridBackground.style.right = 0f;
-            _gridBackground.style.bottom = 0f;
-            _gridBackground.style.overflow = Overflow.Hidden;
-            _gridBackground.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
-            _gridBackground.pickingMode = PickingMode.Ignore;
-            rootVisualElement.Add(_gridBackground);
+            GridBackground = new GridBackground();
+            GridBackground.style.position = Position.Absolute;
+            GridBackground.style.left = 0f;
+            GridBackground.style.top = 0f;
+            GridBackground.style.right = 0f;
+            GridBackground.style.bottom = 0f;
+            GridBackground.style.overflow = Overflow.Hidden;
+            GridBackground.style.backgroundColor = new Color(0.12f, 0.12f, 0.12f);
+            GridBackground.pickingMode = PickingMode.Ignore;
+            rootVisualElement.Add(GridBackground);
 
-            _groupContainer = new VisualElement();
-            _groupContainer.style.position = Position.Absolute;
-            _groupContainer.style.left = 0f;
-            _groupContainer.style.top = 0f;
-            _groupContainer.style.right = 0f;
-            _groupContainer.style.bottom = 0f;
-            _groupContainer.pickingMode = PickingMode.Ignore;
-            _groupContainer.style.overflow = Overflow.Hidden;
-            rootVisualElement.Add(_groupContainer);
+            GroupContainer = new VisualElement();
+            GroupContainer.style.position = Position.Absolute;
+            GroupContainer.style.left = 0f;
+            GroupContainer.style.top = 0f;
+            GroupContainer.style.right = 0f;
+            GroupContainer.style.bottom = 0f;
+            GroupContainer.pickingMode = PickingMode.Ignore;
+            GroupContainer.style.overflow = Overflow.Hidden;
+            rootVisualElement.Add(GroupContainer);
 
             var groupStyleSheet = ScriptReferenceUtility.LoadStyleSheet("CommentGroupView");
             if (groupStyleSheet != null)
-                _groupContainer.styleSheets.Add(groupStyleSheet);
+                GroupContainer.styleSheets.Add(groupStyleSheet);
 
-            _connectionArrowsLayer = new ConnectionArrowsLayer(_connections, _connectionController);
-            _connectionArrowsLayer.IsConnectionHidden = conn => !IsConnectionVisible(conn);
-            rootVisualElement.Add(_connectionArrowsLayer);
+            ConnectionArrowsLayer = new ConnectionArrowsLayer(Connections, ConnectionController);
+            ConnectionArrowsLayer.IsConnectionHidden = conn => !ExpandedView.IsConnectionVisible(conn);
+            rootVisualElement.Add(ConnectionArrowsLayer);
 
-            _stateLayer = new VisualElement();
-            _stateLayer.style.position = Position.Absolute;
-            _stateLayer.style.left = 0f;
-            _stateLayer.style.top = 0f;
-            _stateLayer.style.right = 0f;
-            _stateLayer.style.bottom = 0f;
-            _stateLayer.pickingMode = PickingMode.Ignore;
-            rootVisualElement.Add(_stateLayer);
+            StateLayer = new VisualElement();
+            StateLayer.style.position = Position.Absolute;
+            StateLayer.style.left = 0f;
+            StateLayer.style.top = 0f;
+            StateLayer.style.right = 0f;
+            StateLayer.style.bottom = 0f;
+            StateLayer.pickingMode = PickingMode.Ignore;
+            rootVisualElement.Add(StateLayer);
 
             var stateStyleSheet = ScriptReferenceUtility.LoadStyleSheet("StateView");
             if (stateStyleSheet != null)
                 rootVisualElement.styleSheets.Add(stateStyleSheet);
 
-            _graphCanvas = new IMGUIContainer(OnGraphCanvasGUI);
-            _graphCanvas.style.position = Position.Absolute;
-            _graphCanvas.style.left = 0f;
-            _graphCanvas.style.top = 0f;
-            _graphCanvas.style.right = 0f;
-            _graphCanvas.style.bottom = 0f;
-            _graphCanvas.pickingMode = PickingMode.Ignore;
-            rootVisualElement.Add(_graphCanvas);
+            GraphCanvas = new IMGUIContainer(OnGraphCanvasGUI);
+            GraphCanvas.style.position = Position.Absolute;
+            GraphCanvas.style.left = 0f;
+            GraphCanvas.style.top = 0f;
+            GraphCanvas.style.right = 0f;
+            GraphCanvas.style.bottom = 0f;
+            GraphCanvas.pickingMode = PickingMode.Ignore;
+            rootVisualElement.Add(GraphCanvas);
 
-            _expandedModeBar = new VisualElement();
-            _expandedModeBar.style.position = Position.Absolute;
-            _expandedModeBar.style.left = 0f;
-            _expandedModeBar.style.right = 0f;
-            _expandedModeBar.style.top = 0f;
-            _expandedModeBar.style.height = 24f;
-            _expandedModeBar.style.backgroundColor = new Color(0.08f, 0.08f, 0.08f, 0.85f);
-            _expandedModeBar.style.flexDirection = FlexDirection.Row;
-            _expandedModeBar.style.alignItems = Align.Center;
-            _expandedModeBar.style.paddingLeft = 8f;
-            _expandedModeBar.style.paddingRight = 8f;
-            _expandedModeBar.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f);
-            _expandedModeBar.style.borderBottomWidth = 1f;
-            _expandedModeBar.style.display = DisplayStyle.None;
-            _expandedModeBar.pickingMode = PickingMode.Position;
-            rootVisualElement.Add(_expandedModeBar);
+            ExpandedModeBar = new VisualElement();
+            ExpandedModeBar.style.position = Position.Absolute;
+            ExpandedModeBar.style.left = 0f;
+            ExpandedModeBar.style.right = 0f;
+            ExpandedModeBar.style.top = 0f;
+            ExpandedModeBar.style.height = 24f;
+            ExpandedModeBar.style.backgroundColor = new Color(0.08f, 0.08f, 0.08f, 0.85f);
+            ExpandedModeBar.style.flexDirection = FlexDirection.Row;
+            ExpandedModeBar.style.alignItems = Align.Center;
+            ExpandedModeBar.style.paddingLeft = 8f;
+            ExpandedModeBar.style.paddingRight = 8f;
+            ExpandedModeBar.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f);
+            ExpandedModeBar.style.borderBottomWidth = 1f;
+            ExpandedModeBar.style.display = DisplayStyle.None;
+            ExpandedModeBar.pickingMode = PickingMode.Position;
+            rootVisualElement.Add(ExpandedModeBar);
 
-            _breadcrumbContainer = new VisualElement();
-            _breadcrumbContainer.style.flexDirection = FlexDirection.Row;
-            _breadcrumbContainer.style.alignItems = Align.Center;
-            _breadcrumbContainer.style.flexGrow = 1f;
-            _breadcrumbContainer.style.overflow = Overflow.Hidden;
-            _expandedModeBar.Add(_breadcrumbContainer);
+            BreadcrumbContainer = new VisualElement();
+            BreadcrumbContainer.style.flexDirection = FlexDirection.Row;
+            BreadcrumbContainer.style.alignItems = Align.Center;
+            BreadcrumbContainer.style.flexGrow = 1f;
+            BreadcrumbContainer.style.overflow = Overflow.Hidden;
+            ExpandedModeBar.Add(BreadcrumbContainer);
 
-            rootVisualElement.Add(_selectionBox.Element);
+            rootVisualElement.Add(SelectionBox.Element);
 
-            _sidePanelElement = new SidePanel(this);
-            _sidePanelElement.style.position = Position.Absolute;
-            _sidePanelElement.style.right = 0f;
-            _sidePanelElement.style.top = 0f;
-            _sidePanelElement.style.bottom = 0f;
-            rootVisualElement.Add(_sidePanelElement);
+            SidePanelElement = new SidePanel(this);
+            SidePanelElement.style.position = Position.Absolute;
+            SidePanelElement.style.right = 0f;
+            SidePanelElement.style.top = 0f;
+            SidePanelElement.style.bottom = 0f;
+            rootVisualElement.Add(SidePanelElement);
 
-            SyncGroupElements();
+            GraphOperations.SyncGroupElements();
             rootVisualElement.schedule.Execute(() =>
             {
-                _sidePanelElement?.SyncFromWindow();
-                _sidePanelElement?.UpdateBlackboard();
-                _sidePanelElement?.UpdateSelection();
-                _gridBackground?.UpdateView(_panOffset, _zoom);
+                SidePanelElement?.SyncFromWindow();
+                SidePanelElement?.UpdateBlackboard();
+                SidePanelElement?.UpdateSelection();
+                GridBackground?.UpdateView(_panOffset, _zoom);
             }).StartingIn(10);
 
             rootVisualElement.RegisterCallback<KeyDownEvent>(OnRootKeyDown);
@@ -324,85 +356,65 @@ namespace CleanStateMachine
             {
                 var pending = _pendingController;
                 _pendingController = null;
-                LoadController(pending);
+                GraphSerializer.LoadController(pending);
             }
 
             if (_pendingFocusOnContent)
             {
                 _pendingFocusOnContent = false;
-                StartSmoothFocusOnContent();
+                ViewAnimator.StartSmoothFocusOnContent(ExpandedView.ComputeVisibleContentBounds());
             }
 
             var e = Event.current;
 
-            _panController.ResetFrameState();
+            PanController.ResetFrameState();
 
             float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
             const float barH = 24f;
             Rect graphRect = new Rect(0f, barH, position.width - sideW, position.height - barH);
 
-            _panController.HandleInput(graphRect, ref _panOffset, ref _zoom);
+            PanController.HandleInput(graphRect, ref _panOffset, ref _zoom);
 
-            if (_isAnimatingView)
-            {
-                if (_panController.UserInteractedThisFrame || _panController.IsPanning)
-                    _isAnimatingView = false;
-                else
-                {
-                    float t = (float)(EditorApplication.timeSinceStartup - _animStartTime) / AnimDuration;
-                    if (t >= 1f)
-                    {
-                        _panOffset = _animToPan;
-                        _zoom = _animToZoom;
-                        _isAnimatingView = false;
-                    }
-                    else
-                    {
-                        float smoothT = t * t * (3f - 2f * t);
-                        _panOffset = Vector2.Lerp(_animFromPan, _animToPan, smoothT);
-                        _zoom = Mathf.Lerp(_animFromZoom, _animToZoom, smoothT);
-                    }
-                    Repaint();
-                }
-            }
+            if (ViewAnimator.UpdateAnimation(ref _panOffset, ref _zoom, PanController))
+                Repaint();
 
             UpdateConnectionOffsets();
 
-            _lastMouseGraphPos = (e.mousePosition - _panOffset) / _zoom;
+            LastMouseGraphPos = (e.mousePosition - _panOffset) / _zoom;
 
-            if (!_connectionController.IsConnecting && _editingState == null && _editingGroup == null)
-                HandleKeyboardShortcuts(e);
+            if (!ConnectionController.IsConnecting && EditingState == null && EditingGroup == null)
+                InputHandler.HandleKeyboardShortcuts(e);
 
             if (e.type == EventType.ContextClick && graphRect.Contains(e.mousePosition))
             {
-                if (_editingState != null)
-                    _editingState.CommitEditing();
+                if (EditingState != null)
+                    EditingState.CommitEditing();
 
-                _connectionController.Cancel();
+                ConnectionController.Cancel();
                 Vector2 graphMousePosition = (e.mousePosition - _panOffset) / _zoom;
-                ISelectable hit = HitTest(graphMousePosition);
+                ISelectable hit = InputHandler.HitTest(graphMousePosition);
                 StateView hitState = hit as StateView;
                 CommentGroupView hitGroup = hit as CommentGroupView;
-                _contextMenu.Show(rootVisualElement, e.mousePosition, graphMousePosition, hitState, hitGroup,
-                    _selectionController.Count > 0,
-                    _clipboard is { Count: > 0 });
+                ContextMenu.Show(rootVisualElement, e.mousePosition, graphMousePosition, hitState, hitGroup,
+                    SelectionController.Count > 0,
+                    Clipboard is { Count: > 0 });
                 e.Use();
             }
 
-            if (_connectionController.IsConnecting)
-                HandleConnectingInput(graphRect);
+            if (ConnectionController.IsConnecting)
+                InputHandler.HandleConnectingInput(graphRect);
             else
-                HandleLeftClickInteraction(graphRect);
+                InputHandler.HandleLeftClickInteraction(graphRect);
 
-            if ((e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && e.type == EventType.KeyDown && _editingState == null)
+            if ((e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && e.type == EventType.KeyDown && EditingState == null)
             {
-                if (_expandedSubStateStack.Count > 0)
+                if (ExpandedSubStateStack.Count > 0)
                 {
-                    int topExpanded = _expandedSubStateStack[^1];
+                    int topExpanded = ExpandedSubStateStack[ExpandedSubStateStack.Count - 1];
                     bool canGoBack = false;
-                    for (int i = 0; i < _selectionController.Count; i++)
+                    for (int i = 0; i < SelectionController.Count; i++)
                     {
-                        if (_selectionController.Selected[i] is StateView s)
+                        if (SelectionController.Selected[i] is StateView s)
                         {
                             if (s.DataIndex == topExpanded || s.IsSubEntry)
                             {
@@ -413,7 +425,7 @@ namespace CleanStateMachine
                     }
                     if (canGoBack)
                     {
-                        ExitExpandedSubState();
+                        ExpandedView.ExitExpandedSubState();
                         e.Use();
                         Repaint();
                         return;
@@ -421,9 +433,9 @@ namespace CleanStateMachine
                 }
 
                 StateView subStateNode = null;
-                for (int i = 0; i < _selectionController.Count; i++)
+                for (int i = 0; i < SelectionController.Count; i++)
                 {
-                    if (_selectionController.Selected[i] is StateView s && s.IsSubStateMachine)
+                    if (SelectionController.Selected[i] is StateView s && s.IsSubStateMachine)
                     {
                         if (subStateNode != null) { subStateNode = null; break; }
                         subStateNode = s;
@@ -432,7 +444,7 @@ namespace CleanStateMachine
 
                 if (subStateNode != null)
                 {
-                    EnterExpandSubState(subStateNode);
+                    ExpandedView.EnterExpandSubState(subStateNode);
                     e.Use();
                     Repaint();
                 }
@@ -440,35 +452,35 @@ namespace CleanStateMachine
 
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
             {
-                if (_connectionController.IsConnecting)
+                if (ConnectionController.IsConnecting)
                 {
-                    _connectionController.Cancel();
+                    ConnectionController.Cancel();
                     e.Use();
                     Repaint();
                 }
-                else if (_expandedSubStateStack.Count > 0 && _editingState == null)
+                else if (ExpandedSubStateStack.Count > 0 && EditingState == null)
                 {
-                    ExitExpandedSubState();
+                    ExpandedView.ExitExpandedSubState();
                     e.Use();
                     Repaint();
                 }
             }
 
-            _gridBackground.UpdateView(_panOffset, _zoom);
-            _connectionArrowsLayer.UpdateView(_zoom, _panOffset);
+            GridBackground.UpdateView(_panOffset, _zoom);
+            ConnectionArrowsLayer.UpdateView(_zoom, _panOffset);
             SyncStateHierarchy();
             UpdateStateTransforms();
             UpdateGroupPositions();
-            _graphCanvas.MarkDirtyRepaint();
+            GraphCanvas.MarkDirtyRepaint();
 
-            if (_panController.IsPanning || _dragController.IsActive || _selectionBox.IsActive || _connectionController.IsConnecting)
+            if (PanController.IsPanning || DragController.IsActive || SelectionBox.IsActive || ConnectionController.IsConnecting)
                 Repaint();
         }
 
         private void OnGraphCanvasGUI()
         {
             DrawSelectionOverlays();
-            _selectionBox.DrawScreen(_zoom, _panOffset);
+            SelectionBox.DrawScreen(_zoom, _panOffset);
 
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -479,15 +491,15 @@ namespace CleanStateMachine
         private void OnRootKeyDown(KeyDownEvent e)
         {
             if (e.keyCode != KeyCode.Return && e.keyCode != KeyCode.KeypadEnter) return;
-            if (_editingState != null || _editingGroup != null) return;
+            if (EditingState != null || EditingGroup != null) return;
 
-            if (_expandedSubStateStack.Count > 0)
+            if (ExpandedSubStateStack.Count > 0)
             {
-                int topExpanded = _expandedSubStateStack[^1];
+                int topExpanded = ExpandedSubStateStack[ExpandedSubStateStack.Count - 1];
                 bool canGoBack = false;
-                for (int i = 0; i < _selectionController.Count; i++)
+                for (int i = 0; i < SelectionController.Count; i++)
                 {
-                    if (_selectionController.Selected[i] is StateView s)
+                    if (SelectionController.Selected[i] is StateView s)
                     {
                         if (s.DataIndex == topExpanded || s.IsSubEntry)
                         {
@@ -498,7 +510,7 @@ namespace CleanStateMachine
                 }
                 if (canGoBack)
                 {
-                    ExitExpandedSubState();
+                    ExpandedView.ExitExpandedSubState();
                     e.StopPropagation();
                     Repaint();
                     return;
@@ -506,9 +518,9 @@ namespace CleanStateMachine
             }
 
             StateView subStateNode = null;
-            for (int i = 0; i < _selectionController.Count; i++)
+            for (int i = 0; i < SelectionController.Count; i++)
             {
-                if (_selectionController.Selected[i] is StateView s && s.IsSubStateMachine)
+                if (SelectionController.Selected[i] is StateView s && s.IsSubStateMachine)
                 {
                     if (subStateNode != null) { subStateNode = null; break; }
                     subStateNode = s;
@@ -517,717 +529,81 @@ namespace CleanStateMachine
 
             if (subStateNode != null)
             {
-                EnterExpandSubState(subStateNode);
+                ExpandedView.EnterExpandSubState(subStateNode);
                 e.StopPropagation();
                 Repaint();
             }
         }
 
-        private void HandleKeyboardShortcuts(Event e)
+        // ─── Context Menu Event Handlers ──────────────────────────────
+
+        private void OnCreateStateRequested(Vector2 pos) => GraphOperations.CreateState(pos);
+        private void OnCreateSubStateMachineRequested(Vector2 pos) => GraphOperations.CreateSubStateMachine(pos);
+        private void OnConnectRequested(StateView source) => GraphOperations.ConnectRequested(source);
+        private void OnUngroupRequested(CommentGroupView group) => GraphOperations.UngroupRequested(group);
+        private void CopySelectedStates() => GraphOperations.CopySelectedStates();
+        private void PasteStates() => GraphOperations.PasteStates();
+        private void DeleteSelected() => GraphOperations.DeleteSelected();
+
+        // ─── Selection Changed ────────────────────────────────────────
+
+        private void OnSelectionChanged()
         {
-            if (e.type != EventType.KeyDown) return;
+            List<StateView> pickedStates = new();
+            for (int i = 0; i < States.Count; i++)
+                if (States[i].IsSelected)
+                    pickedStates.Add(States[i]);
 
-            if (e.keyCode == KeyCode.Z && e.control)
+            if (pickedStates.Count > 0)
             {
-                if (_undoRedoSystem.Undo())
-                {
-                    MarkChanged();
-                    SyncGroupElements();
-                    SyncStatesWithSubMachines();
-                    _sidePanelElement?.UpdateBlackboard();
-                    _sidePanelElement?.UpdateSelection();
-                    Repaint();
-                }
-                e.Use();
-                return;
+                for (int i = States.Count - 1; i >= 0; i--)
+                    if (States[i].IsSelected)
+                        States.RemoveAt(i);
+                States.AddRange(pickedStates);
             }
 
-            if (e.keyCode == KeyCode.Y && e.control)
+            if (EntryState != null && States.Count > 0 && States[0] != EntryState)
             {
-                if (_undoRedoSystem.Redo())
-                {
-                    MarkChanged();
-                    SyncGroupElements();
-                    SyncStatesWithSubMachines();
-                    _sidePanelElement?.UpdateBlackboard();
-                    _sidePanelElement?.UpdateSelection();
-                    Repaint();
-                }
-                e.Use();
-                return;
+                States.Remove(EntryState);
+                States.Insert(0, EntryState);
             }
 
-            if (e.keyCode == KeyCode.G && e.control)
+            List<ConnectionView> pickedConnections = new();
+            for (int i = 0; i < Connections.Count; i++)
+                if (Connections[i].IsSelected)
+                    pickedConnections.Add(Connections[i]);
+
+            if (pickedConnections.Count > 0)
             {
-                CreateGroupFromSelectedStates();
-                e.Use();
-                Repaint();
-                return;
+                for (int i = Connections.Count - 1; i >= 0; i--)
+                    if (Connections[i].IsSelected)
+                        Connections.RemoveAt(i);
+                Connections.AddRange(pickedConnections);
             }
 
-            if (e.keyCode == KeyCode.C && e.control)
+            List<CommentGroupView> pickedGroups = new();
+            for (int i = 0; i < Groups.Count; i++)
+                if (Groups[i].IsSelected)
+                    pickedGroups.Add(Groups[i]);
+
+            if (pickedGroups.Count > 0)
             {
-                CopySelectedStates();
-                e.Use();
-                Repaint();
-                return;
+                for (int i = Groups.Count - 1; i >= 0; i--)
+                    if (Groups[i].IsSelected)
+                        Groups.RemoveAt(i);
+                Groups.AddRange(pickedGroups);
+                GraphOperations.SyncGroupElements();
             }
 
-            if (e.keyCode == KeyCode.C && !e.control)
-            {
-                StateView source = null;
-                for (int i = 0; i < _selectionController.Count; i++)
-                {
-                    if (_selectionController.Selected[i] is StateView s)
-                    {
-                        if (source != null) { source = null; break; }
-                        source = s;
-                    }
-                }
-
-                if (source != null)
-                {
-                    _connectionController.StartConnection(source);
-                    e.Use();
-                    Repaint();
-                    return;
-                }
-            }
-
-            if (e.keyCode == KeyCode.V && e.control)
-            {
-                PasteStates();
-                e.Use();
-                Repaint();
-                return;
-            }
-
-            if (e.keyCode == KeyCode.D && e.control)
-            {
-                DuplicateSelectedStates();
-                e.Use();
-                Repaint();
-                return;
-            }
-
-            if (e.keyCode == KeyCode.F2)
-            {
-                Vector2 graphPos = (e.mousePosition - _panOffset) / _zoom;
-                ISelectable hovered = HitTest(graphPos);
-
-                if (hovered is StateView hoveredState)
-                {
-                    StartEditing(hoveredState);
-                    e.Use();
-                    Repaint();
-                    return;
-                }
-
-                if (hovered is CommentGroupView hoveredGroup)
-                {
-                    StartEditingGroup(hoveredGroup);
-                    e.Use();
-                    Repaint();
-                    return;
-                }
-
-                StateView singleState = null;
-                for (int i = 0; i < _selectionController.Count; i++)
-                {
-                    if (_selectionController.Selected[i] is StateView s)
-                    {
-                        if (singleState != null) { singleState = null; break; }
-                        singleState = s;
-                    }
-                }
-
-                if (singleState != null)
-                {
-                    StartEditing(singleState);
-                    e.Use();
-                    Repaint();
-                    return;
-                }
-
-                CommentGroupView singleGroup = null;
-                for (int i = 0; i < _selectionController.Count; i++)
-                {
-                    if (_selectionController.Selected[i] is CommentGroupView g)
-                    {
-                        if (singleGroup != null) { singleGroup = null; break; }
-                        singleGroup = g;
-                    }
-                }
-
-                if (singleGroup != null)
-                {
-                    StartEditingGroup(singleGroup);
-                    e.Use();
-                    Repaint();
-                    return;
-                }
-            }
-
-            if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
-            {
-                DeleteSelected();
-                e.Use();
-                Repaint();
-            }
-
-            if (e.keyCode == KeyCode.S && e.control)
-            {
-                if (_controller != null)
-                {
-                    SaveToController();
-                    _controller.Save();
-                    MarkSaved();
-                }
-                e.Use();
-                Repaint();
-            }
+            if (SidePanelElement != null)
+                SidePanelElement.UpdateSelection();
         }
 
-        private void HandleConnectingInput(Rect viewRect)
-        {
-            var e = Event.current;
-            Vector2 graphMousePos = (e.mousePosition - _panOffset) / _zoom;
-
-            switch (e.type)
-            {
-                case EventType.MouseMove:
-                case EventType.MouseDrag:
-                    _connectionController.UpdatePending(graphMousePos);
-                    Repaint();
-                    e.Use();
-                    break;
-
-                case EventType.MouseDown when e.button == 0 && viewRect.Contains(e.mousePosition):
-                {
-                    StateView source = _connectionController.SourceNode;
-                    StateView target = HitTestState(graphMousePos);
-
-                    if (target != null)
-                    {
-                        bool targetIsBlockedEntry = target.IsEntry && !target.IsSubEntry;
-                        if (target == source || targetIsBlockedEntry)
-                        {
-                            _connectionController.Cancel();
-                            e.Use();
-                            Repaint();
-                            break;
-                        }
-
-                        var cmd = new CompositeCommand("Create Connection");
-
-                        if (source.IsEntry)
-                        {
-                            ConnectionView existing = GetEntryOutgoingConnection();
-                            if (existing != null)
-                                cmd.Add(new DeleteConnectionCommand(_connections, existing));
-                        }
-
-                        cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(source, target)));
-                        _undoRedoSystem.Execute(cmd);
-                        MarkChanged();
-                    }
-                    else
-                    {
-                        var newState = new StateView(graphMousePos - new Vector2(80f, 20f)) { DataIndex = _states.Count };
-                        var cmd = new CompositeCommand("Create State and Connect");
-
-                        if (source.IsEntry)
-                        {
-                            ConnectionView existing = GetEntryOutgoingConnection();
-                            if (existing != null)
-                                cmd.Add(new DeleteConnectionCommand(_connections, existing));
-                        }
-
-                        cmd.Add(new CreateStateCommand(_states, newState));
-                        cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(source, newState)));
-                        _undoRedoSystem.Execute(cmd);
-
-                        AddToExpandedContainer(newState);
-                        MarkChanged();
-                    }
-
-                    _connectionController.Cancel();
-                    e.Use();
-                    Repaint();
-                    break;
-                }
-
-                case EventType.MouseDown when e.button == 1:
-                    _connectionController.Cancel();
-                    e.Use();
-                    Repaint();
-                    break;
-            }
-        }
-
-        private void HandleLeftClickInteraction(Rect viewRect)
-        {
-            var e = Event.current;
-            if (e.button != 0)
-                return;
-
-            Vector2 graphMousePos = (e.mousePosition - _panOffset) / _zoom;
-
-            switch (e.type)
-            {
-                case EventType.MouseDown when viewRect.Contains(e.mousePosition):
-                    OnLeftMouseDown(graphMousePos, e);
-                    break;
-
-                case EventType.MouseDrag when viewRect.Contains(e.mousePosition):
-                    OnLeftMouseDrag(graphMousePos, e);
-                    break;
-
-                case EventType.MouseUp:
-                    OnLeftMouseUp(graphMousePos, e);
-                    break;
-            }
-        }
-
-        private void OnLeftMouseDown(Vector2 graphPos, Event e)
-        {
-            // Check for resize on selected group edges first
-            if (_editingState == null && _editingGroup == null && !e.shift)
-            {
-                for (int i = _groups.Count - 1; i >= 0; i--)
-                {
-                    var group = _groups[i];
-
-                    var edge = GetResizeEdge(group, graphPos);
-                    if (edge != ResizeEdge.None)
-                    {
-                        _resizingGroup = group;
-                        _resizeEdgeFlags = edge;
-                        _resizeStartGraphPos = graphPos;
-                        _resizeStartRect = group.GetGraphBounds();
-                        e.Use();
-                        return;
-                    }
-                }
-            }
-
-            ISelectable hit = HitTest(graphPos);
-
-            if (hit is StateView sv)
-            {
-                long now = _clickStopwatch.ElapsedMilliseconds;
-                long elapsed = now - _lastClickTimestamp;
-                bool sameState = sv == _lastDoubleClickCandidate;
-                bool doubleClick = sameState && elapsed < DoubleClickTimeMs;
-
-                if (doubleClick)
-                {
-                    _lastDoubleClickCandidate = null;
-                    if (!_selectionController.IsSelected(sv))
-                        _selectionController.SelectOnly(sv);
-
-                    StartEditing(sv);
-                }
-
-                if (!doubleClick)
-                {
-                    _lastClickTimestamp = now;
-                    _lastDoubleClickCandidate = sv;
-                }
-            }
-            else if (hit is CommentGroupView gv)
-            {
-                long now = _clickStopwatch.ElapsedMilliseconds;
-                long elapsed = now - _lastClickTimestamp;
-                bool sameGroup = gv == _lastDoubleClickCandidateGroup;
-                bool doubleClick = sameGroup && elapsed < DoubleClickTimeMs;
-
-                if (doubleClick)
-                {
-                    _lastDoubleClickCandidateGroup = null;
-                    if (!_selectionController.IsSelected(gv))
-                        _selectionController.SelectOnly(gv);
-                    StartEditingGroup(gv);
-                }
-
-                if (!doubleClick)
-                {
-                    _lastClickTimestamp = now;
-                    _lastDoubleClickCandidateGroup = gv;
-                }
-            }
-            else
-            {
-                _lastDoubleClickCandidate = null;
-                _lastDoubleClickCandidateGroup = null;
-            }
-
-            if (_editingState != null && hit != _editingState)
-            {
-                _editingState.CommitEditing();
-            }
-
-            if (hit != null)
-            {
-                if (e.shift)
-                {
-                    _selectionController.Toggle(hit);
-                }
-                else if (!_selectionController.IsSelected(hit))
-                {
-                    _selectionController.SelectOnly(hit);
-                }
-
-                    if (_editingState == null && _editingGroup == null)
-                {
-                    var dragItems = GetDragItems();
-                    CapturePreDragPositions(dragItems);
-                    _dragController.StartDrag(graphPos, dragItems);
-                }
-            }
-            else
-            {
-                if (!e.shift)
-                    _selectionController.Clear();
-
-                if (_editingState == null && _editingGroup == null)
-                    _selectionBox.Start(graphPos);
-            }
-
-            if (!(_editingState != null && hit == _editingState))
-            {
-                e.Use();
-            }
-        }
-
-        private void OnLeftMouseDrag(Vector2 graphPos, Event e)
-        {
-            if (_resizingGroup != null)
-            {
-                Vector2 delta = graphPos - _resizeStartGraphPos;
-                Rect r = _resizeStartRect;
-
-                if (_resizeEdgeFlags.HasFlag(ResizeEdge.Left))
-                {
-                    float newX = Mathf.Min(r.xMax - MinGroupWidth, r.x + delta.x);
-                    r.xMin = newX;
-                }
-                if (_resizeEdgeFlags.HasFlag(ResizeEdge.Right))
-                {
-                    r.xMax = Mathf.Max(r.xMin + MinGroupWidth, r.xMax + delta.x);
-                }
-                if (_resizeEdgeFlags.HasFlag(ResizeEdge.Top))
-                {
-                    float newY = Mathf.Min(r.yMax - MinGroupHeight, r.y + delta.y);
-                    r.yMin = newY;
-                }
-                if (_resizeEdgeFlags.HasFlag(ResizeEdge.Bottom))
-                {
-                    r.yMax = Mathf.Max(r.yMin + MinGroupHeight, r.yMax + delta.y);
-                }
-
-                _resizingGroup.SetRect(r);
-                _lastDoubleClickCandidate = null;
-                e.Use();
-            }
-            else if (_dragController.IsActive)
-            {
-                _dragController.UpdateDrag(graphPos, _zoom);
-                if (_dragController.IsMoving)
-                    _lastDoubleClickCandidate = null;
-            }
-            else if (_selectionBox.IsActive)
-            {
-                _selectionBox.Update(graphPos);
-                PerformBoxSelection(_selectionBox.GetGraphRect(), e.shift);
-                _lastDoubleClickCandidate = null;
-            }
-
-            e.Use();
-        }
-
-        private void OnLeftMouseUp(Vector2 graphPos, Event e)
-        {
-            if (_resizingGroup != null)
-            {
-                Rect newRect = _resizingGroup.GetGraphBounds();
-                if (Mathf.Abs(newRect.x - _resizeStartRect.x) > 0.001f ||
-                    Mathf.Abs(newRect.y - _resizeStartRect.y) > 0.001f ||
-                    Mathf.Abs(newRect.width - _resizeStartRect.width) > 0.001f ||
-                    Mathf.Abs(newRect.height - _resizeStartRect.height) > 0.001f)
-                {
-                    var cmd = new ResizeGroupCommand(_resizingGroup, _resizeStartRect, newRect);
-                    _undoRedoSystem.Execute(cmd);
-                    MarkChanged();
-                }
-                _resizingGroup = null;
-                SyncStatesWithGroups();
-                SyncStatesWithSubMachines();
-                e.Use();
-            }
-            else if (_dragController.IsActive)
-            {
-                bool wasMoving = _dragController.IsMoving;
-                _dragController.EndDrag();
-                var moveCmd = CreateMoveCommandIfMoved();
-                if (moveCmd != null)
-                {
-                    _undoRedoSystem.Execute(moveCmd);
-                    MarkChanged();
-                }
-                _preDragPositions = null;
-                if (wasMoving)
-                    _lastDoubleClickCandidate = null;
-                SyncStatesWithGroups();
-                SyncStatesWithSubMachines();
-                e.Use();
-            }
-            else if (_selectionBox.IsActive)
-            {
-                PerformBoxSelection(_selectionBox.GetGraphRect(), e.shift);
-                _selectionBox.End();
-                _lastDoubleClickCandidate = null;
-                e.Use();
-            }
-        }
-
-        private void PerformBoxSelection(Rect graphRect, bool shiftHeld)
-        {
-            if (!shiftHeld)
-                _selectionController.Clear();
-
-            var boxStates = new List<StateView>();
-            for (int i = 0; i < _states.Count; i++)
-            {
-                if (!IsStateVisible(_states[i])) continue;
-                if (graphRect.Overlaps(_states[i].GetGraphBounds()))
-                    boxStates.Add(_states[i]);
-            }
-            _selectionController.SelectRange(boxStates);
-
-            var boxConnections = new List<ConnectionView>();
-            for (int i = 0; i < _connections.Count; i++)
-            {
-                if (!IsConnectionVisible(_connections[i])) continue;
-                if (_connections[i].BoxOverlaps(graphRect))
-                    boxConnections.Add(_connections[i]);
-            }
-            _selectionController.SelectRange(boxConnections);
-
-            var boxGroups = new List<CommentGroupView>();
-            for (int i = 0; i < _groups.Count; i++)
-                if (graphRect.Overlaps(_groups[i].GetGraphBounds()))
-                    boxGroups.Add(_groups[i]);
-            _selectionController.SelectRange(boxGroups);
-        }
-
-        private List<ISelectable> GetDragItems()
-        {
-            List<ISelectable> selected = new(_selectionController.Selected);
-            HashSet<StateView> groupMembers = new();
-            for (int i = 0; i < _groups.Count; i++)
-            {
-                if (_selectionController.IsSelected(_groups[i]))
-                {
-                    for (int j = 0; j < _groups[i].Members.Count; j++)
-                        groupMembers.Add(_groups[i].Members[j]);
-                }
-            }
-
-            HashSet<StateView> subChildren = new();
-            for (int i = 0; i < selected.Count; i++)
-            {
-                if (selected[i] is StateView sv && sv.IsSubStateMachine)
-                {
-                    for (int j = 0; j < sv.ChildIndices.Count; j++)
-                    {
-                        var child = GetStateByIndex(sv.ChildIndices[j]);
-                        if (child != null)
-                            subChildren.Add(child);
-                    }
-                }
-            }
-
-            for (int i = selected.Count - 1; i >= 0; i--)
-            {
-                if (selected[i] is StateView s && (groupMembers.Contains(s) || subChildren.Contains(s)))
-                    selected.RemoveAt(i);
-            }
-
-            selected.AddRange(subChildren);
-            return selected;
-        }
-
-        private void CapturePreDragPositions(List<ISelectable> items)
-        {
-            _preDragPositions = new Dictionary<ISelectable, Vector2>(items.Count);
-            for (int i = 0; i < items.Count; i++)
-                _preDragPositions[items[i]] = items[i].Position;
-        }
-
-        private MoveStatesCommand CreateMoveCommandIfMoved()
-        {
-            if (_preDragPositions == null || _preDragPositions.Count == 0)
-                return null;
-
-            var items = new List<ISelectable>(_preDragPositions.Count);
-            var startPositions = new List<Vector2>(_preDragPositions.Count);
-            var endPositions = new List<Vector2>(_preDragPositions.Count);
-            bool moved = false;
-
-            foreach (var kvp in _preDragPositions)
-            {
-                Vector2 currentPos = kvp.Key.Position;
-                if ((currentPos - kvp.Value).sqrMagnitude > 0.0001f)
-                    moved = true;
-
-                items.Add(kvp.Key);
-                startPositions.Add(kvp.Value);
-                endPositions.Add(currentPos);
-            }
-
-            return moved ? new MoveStatesCommand(items, startPositions, endPositions) : null;
-        }
-
-        private ISelectable HitTest(Vector2 graphPos)
-        {
-            for (int i = _states.Count - 1; i >= 0; i--)
-            {
-                if (!IsStateVisible(_states[i])) continue;
-                if (_states[i].ContainsPoint(graphPos))
-                    return _states[i];
-            }
-
-            for (int i = _connections.Count - 1; i >= 0; i--)
-            {
-                if (!IsConnectionVisible(_connections[i])) continue;
-                if (_connections[i].ContainsPoint(graphPos))
-                    return _connections[i];
-            }
-
-            for (int i = _groups.Count - 1; i >= 0; i--)
-            {
-                if (_groups[i].ContainsPoint(graphPos))
-                    return _groups[i];
-            }
-
-            return null;
-        }
-
-        private StateView HitTestState(Vector2 graphPos)
-        {
-            for (int i = _states.Count - 1; i >= 0; i--)
-            {
-                if (!IsStateVisible(_states[i])) continue;
-                if (_states[i].ContainsPoint(graphPos))
-                    return _states[i];
-            }
-
-            return null;
-        }
-
-        private const float MinGroupWidth = 60f;
-        private const float MinGroupHeight = 50f;
-
-        private ResizeEdge GetResizeEdge(CommentGroupView group, Vector2 graphPos)
-        {
-            float threshold = ResizeHandleScreenSize / _zoom;
-            Rect r = group.GetGraphBounds();
-
-            bool nearLeft = Mathf.Abs(graphPos.x - r.xMin) <= threshold;
-            bool nearRight = Mathf.Abs(graphPos.x - r.xMax) <= threshold;
-            bool nearTop = Mathf.Abs(graphPos.y - r.yMin) <= threshold;
-            bool nearBottom = Mathf.Abs(graphPos.y - r.yMax) <= threshold;
-
-            ResizeEdge edge = ResizeEdge.None;
-            if (nearLeft) edge |= ResizeEdge.Left;
-            if (nearRight) edge |= ResizeEdge.Right;
-            if (nearTop) edge |= ResizeEdge.Top;
-            if (nearBottom) edge |= ResizeEdge.Bottom;
-
-            return edge;
-        }
-
-        private void UpdateResizeCursor()
-        {
-            float hs = ResizeHandleScreenSize;
-
-            for (int i = 0; i < _groups.Count; i++)
-            {
-                var group = _groups[i];
-
-                Rect r = group.GetGraphBounds();
-                Vector2 sp = r.position * _zoom + _panOffset;
-                Vector2 ss = r.size * _zoom;
-
-                float edgeW = hs * 2f;
-                float inset = hs;
-
-                // Left edge (excluding corners)
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x - hs, sp.y + inset, edgeW, ss.y - inset * 2f),
-                    MouseCursor.ResizeHorizontal);
-                // Right edge (excluding corners)
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x + ss.x - hs, sp.y + inset, edgeW, ss.y - inset * 2f),
-                    MouseCursor.ResizeHorizontal);
-
-                // Top edge (excluding corners)
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x + inset, sp.y - hs, ss.x - inset * 2f, edgeW),
-                    MouseCursor.ResizeVertical);
-                // Bottom edge (excluding corners)
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x + inset, sp.y + ss.y - hs, ss.x - inset * 2f, edgeW),
-                    MouseCursor.ResizeVertical);
-
-                // Corners
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x - hs, sp.y - hs, edgeW, edgeW),
-                    MouseCursor.ResizeUpLeft);
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x + ss.x - hs, sp.y - hs, edgeW, edgeW),
-                    MouseCursor.ResizeUpRight);
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x - hs, sp.y + ss.y - hs, edgeW, edgeW),
-                    MouseCursor.ResizeUpRight);
-                EditorGUIUtility.AddCursorRect(
-                    new Rect(sp.x + ss.x - hs, sp.y + ss.y - hs, edgeW, edgeW),
-                    MouseCursor.ResizeUpLeft);
-            }
-        }
-
-        private void CreateGroupFromSelectedStates()
-        {
-            var selectedStates = new List<StateView>();
-            for (int i = 0; i < _selectionController.Count; i++)
-            {
-                if (_selectionController.Selected[i] is StateView s && !s.IsEntry)
-                    selectedStates.Add(s);
-            }
-
-            if (selectedStates.Count < 1) return;
-
-            var group = new CommentGroupView(selectedStates, $"Group {_groups.Count + 1}");
-            var cmd = new CreateGroupCommand(_groups, group);
-            _undoRedoSystem.Execute(cmd);
-            MarkChanged();
-            SyncGroupElements();
-
-            _selectionController.Clear();
-            _selectionController.Select(group);
-            SyncStatesWithGroups();
-        }
-
-        private void SyncStatesWithGroups()
-        {
-            for (int i = 0; i < _groups.Count; i++)
-                _groups[i].SyncContainedStates(_states);
-        }
+        // ─── Render Helpers ───────────────────────────────────────────
 
         private void DrawSelectionOverlays()
         {
-            var selected = _selectionController.Selected;
+            var selected = SelectionController.Selected;
             for (int i = 0; i < selected.Count; i++)
             {
                 if (selected[i] is StateView) continue;
@@ -1235,63 +611,50 @@ namespace CleanStateMachine
             }
         }
 
-        private void SyncStateHierarchy()
+        internal void SyncStateHierarchy()
         {
-            for (int i = 0; i < _states.Count; i++)
+            for (int i = 0; i < States.Count; i++)
             {
-                var state = _states[i];
+                var state = States[i];
                 if (state.parent == null)
                 {
-                    _stateLayer.Add(state);
+                    StateLayer.Add(state);
                 }
             }
 
-            for (int i = _stateLayer.childCount - 1; i >= 0; i--)
+            for (int i = StateLayer.childCount - 1; i >= 0; i--)
             {
-                var child = _stateLayer[i];
-                if (child is StateView sv && !_states.Contains(sv))
+                var child = StateLayer[i];
+                if (child is StateView sv && !States.Contains(sv))
                 {
                     sv.RemoveFromHierarchy();
                 }
             }
         }
 
-        private void UpdateStateTransforms()
+        internal void UpdateStateTransforms()
         {
-            for (int i = 0; i < _states.Count; i++)
+            for (int i = 0; i < States.Count; i++)
             {
-                bool visible = IsStateVisible(_states[i]);
-                _states[i].style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                bool visible = ExpandedView.IsStateVisible(States[i]);
+                States[i].style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
                 if (visible)
-                    _states[i].UpdateTransform(_zoom, _panOffset);
+                    States[i].UpdateTransform(_zoom, _panOffset);
             }
         }
 
-        private void UpdateGroupPositions()
+        internal void UpdateGroupPositions()
         {
-            for (int i = 0; i < _groups.Count; i++)
-                _groups[i].UpdateScreenPosition(_zoom, _panOffset);
+            for (int i = 0; i < Groups.Count; i++)
+                Groups[i].UpdateScreenPosition(_zoom, _panOffset);
         }
 
-        private void SyncGroupElements()
-        {
-            if (_groupContainer == null) return;
-            if (_editingGroup != null && !_groups.Contains(_editingGroup))
-                _editingGroup = null;
-            _groupContainer.Clear();
-            for (int i = 0; i < _groups.Count; i++)
-            {
-                _groupContainer.Add(_groups[i]);
-                _groups[i].UpdateScreenPosition(_zoom, _panOffset);
-            }
-        }
-
-        private void UpdateConnectionOffsets()
+        internal void UpdateConnectionOffsets()
         {
             var groups = new Dictionary<(StateView, StateView), List<ConnectionView>>();
-            for (int i = 0; i < _connections.Count; i++)
+            for (int i = 0; i < Connections.Count; i++)
             {
-                var conn = _connections[i];
+                var conn = Connections[i];
                 var key = conn.From.GetHashCode() < conn.To.GetHashCode()
                     ? (conn.From, conn.To)
                     : (conn.To, conn.From);
@@ -1315,913 +678,151 @@ namespace CleanStateMachine
             }
         }
 
-        private void OnCreateStateRequested(Vector2 graphMousePosition)
+        internal void UpdateResizeCursor()
         {
-            var state = new StateView(graphMousePosition) { DataIndex = _states.Count };
+            float hs = ResizeHandleScreenSize;
 
-            if (_entryState != null && GetEntryOutgoingConnection() == null)
+            for (int i = 0; i < Groups.Count; i++)
             {
-                var cmd = new CompositeCommand("Create State");
-                cmd.Add(new CreateStateCommand(_states, state));
-                cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(_entryState, state)));
-                _undoRedoSystem.Execute(cmd);
-            }
-            else
-            {
-                var cmd = new CreateStateCommand(_states, state);
-                _undoRedoSystem.Execute(cmd);
-            }
+                var group = Groups[i];
 
-            MarkChanged();
-            SyncStatesWithGroups();
-            SyncStatesWithSubMachines();
-            AddToExpandedContainer(state);
-            Repaint();
-        }
+                Rect r = group.GetGraphBounds();
+                Vector2 sp = r.position * _zoom + _panOffset;
+                Vector2 ss = r.size * _zoom;
 
-        private void OnCreateSubStateMachineRequested(Vector2 graphMousePosition)
-        {
-            var container = new StateView(graphMousePosition, "Sub State Machine")
-            {
-                DataIndex = _states.Count,
-                IsSubStateMachine = true
-            };
+                float edgeW = hs * 2f;
+                float inset = hs;
 
-            if (_entryState != null && GetEntryOutgoingConnection() == null)
-            {
-                var cmd = new CompositeCommand("Create Sub State Machine");
-                cmd.Add(new CreateStateCommand(_states, container));
-                cmd.Add(new CreateConnectionCommand(_connections, new ConnectionView(_entryState, container)));
-                _undoRedoSystem.Execute(cmd);
-            }
-            else
-            {
-                var cmd = new CreateStateCommand(_states, container);
-                _undoRedoSystem.Execute(cmd);
-            }
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x - hs, sp.y + inset, edgeW, ss.y - inset * 2f),
+                    MouseCursor.ResizeHorizontal);
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x + ss.x - hs, sp.y + inset, edgeW, ss.y - inset * 2f),
+                    MouseCursor.ResizeHorizontal);
 
-            MarkChanged();
-            SyncStatesWithGroups();
-            SyncStatesWithSubMachines();
-            AddToExpandedContainer(container);
-            Repaint();
-        }
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x + inset, sp.y - hs, ss.x - inset * 2f, edgeW),
+                    MouseCursor.ResizeVertical);
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x + inset, sp.y + ss.y - hs, ss.x - inset * 2f, edgeW),
+                    MouseCursor.ResizeVertical);
 
-        private void OnConnectRequested(StateView source)
-        {
-            _connectionController.StartConnection(source);
-            Repaint();
-        }
-
-        private ConnectionView GetEntryOutgoingConnection()
-        {
-            if (_entryState == null)
-                return null;
-
-            for (int i = 0; i < _connections.Count; i++)
-            {
-                if (_connections[i].From == _entryState)
-                    return _connections[i];
-            }
-
-            return null;
-        }
-
-        private void OnUngroupRequested(CommentGroupView group)
-        {
-            _selectionController.Deselect(group);
-            var cmd = new UngroupCommand(_groups, group);
-            _undoRedoSystem.Execute(cmd);
-            MarkChanged();
-            SyncGroupElements();
-            Repaint();
-        }
-
-        private void CopySelectedStates()
-        {
-            _clipboard = new List<CopiedStateData>();
-
-            var toCopy = new HashSet<int>();
-            for (int i = 0; i < _selectionController.Count; i++)
-            {
-                if (_selectionController.Selected[i] is StateView s && !s.IsEntry)
-                    CollectCopySet(s, toCopy);
-            }
-
-            var indexToState = new Dictionary<int, StateView>();
-            for (int i = 0; i < _states.Count; i++)
-                indexToState[_states[i].DataIndex] = _states[i];
-
-            foreach (int dataIdx in toCopy)
-            {
-                if (!indexToState.TryGetValue(dataIdx, out var s)) continue;
-
-                _clipboard.Add(new CopiedStateData
-                {
-                    sourceDataIndex = s.DataIndex,
-                    position = s.Position,
-                    name = s.Name,
-                    size = s.Size,
-                    behaviourScript = s.BehaviourScript,
-                    behaviourInstance = s.BehaviourInstance,
-                    childIndices = new List<int>(s.ChildIndices),
-                    isSubStateMachine = s.IsSubStateMachine
-                });
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x - hs, sp.y - hs, edgeW, edgeW),
+                    MouseCursor.ResizeUpLeft);
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x + ss.x - hs, sp.y - hs, edgeW, edgeW),
+                    MouseCursor.ResizeUpRight);
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x - hs, sp.y + ss.y - hs, edgeW, edgeW),
+                    MouseCursor.ResizeUpRight);
+                EditorGUIUtility.AddCursorRect(
+                    new Rect(sp.x + ss.x - hs, sp.y + ss.y - hs, edgeW, edgeW),
+                    MouseCursor.ResizeUpLeft);
             }
         }
 
-        private void CollectCopySet(StateView state, HashSet<int> set)
-        {
-            if (state.IsEntry) return;
-            if (!set.Add(state.DataIndex)) return;
+        // ─── Internal Helpers for Modules ────────────────────────────
 
-            if (state.IsSubStateMachine)
-            {
-                for (int i = 0; i < state.ChildIndices.Count; i++)
-                {
-                    var child = GetStateByIndex(state.ChildIndices[i]);
-                    if (child != null)
-                        CollectCopySet(child, set);
-                }
-            }
+        internal void MarkChangedInternal()
+        {
+            if (_isLoading) return;
+            _hasUnsavedChanges = true;
+            hasUnsavedChanges = true;
+            UpdateTitleInternal();
         }
 
-        private void PasteStates()
+        internal void MarkSavedInternal()
         {
-            if (_clipboard == null || _clipboard.Count == 0) return;
-
-            Vector2 mouseGraphPos = _lastMouseGraphPos;
-
-            float minX = float.MaxValue, maxX = float.MinValue;
-            float minY = float.MaxValue, maxY = float.MinValue;
-            for (int i = 0; i < _clipboard.Count; i++)
-            {
-                var d = _clipboard[i];
-                if (d.position.x < minX) minX = d.position.x;
-                if (d.position.x + d.size.x > maxX) maxX = d.position.x + d.size.x;
-                if (d.position.y < minY) minY = d.position.y;
-                if (d.position.y + d.size.y > maxY) maxY = d.position.y + d.size.y;
-            }
-
-            Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
-            Vector2 offset = mouseGraphPos - center;
-
-            _selectionController.Clear();
-
-            var composite = new CompositeCommand("Paste States");
-            var pastedStates = new List<StateView>();
-            var oldToNewIndex = new Dictionary<int, int>();
-
-            for (int i = 0; i < _clipboard.Count; i++)
-            {
-                var data = _clipboard[i];
-                int newIndex = _states.Count;
-                oldToNewIndex[data.sourceDataIndex] = newIndex;
-
-                var state = new StateView(data.position + offset, data.name)
-                {
-                    Size = data.size,
-                    DataIndex = newIndex,
-                    BehaviourScript = data.behaviourScript,
-                    IsSubStateMachine = data.isSubStateMachine,
-                    IsSubEntry = false
-                };
-                state.ChildIndices.Clear();
-
-                if (data.behaviourScript != null && data.behaviourInstance != null)
-                {
-                    var type = data.behaviourScript.GetClass();
-                    if (type != null && type.IsSubclassOf(typeof(StateBehaviour)))
-                    {
-                        var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                        EditorUtility.CopySerialized(data.behaviourInstance, instance);
-                        instance.name = $"{state.Name}_Behaviour";
-                        instance.hideFlags = HideFlags.HideInHierarchy;
-                        state.BehaviourInstance = instance;
-                    }
-                }
-
-                composite.Add(new CreateStateCommand(_states, state));
-                pastedStates.Add(state);
-            }
-
-            _undoRedoSystem.Execute(composite);
-
-            MarkChanged();
-            SyncStatesWithGroups();
-            SyncStatesWithSubMachines();
-
-            // Remap child indices after sync so they aren't cleared
-            for (int i = 0; i < _clipboard.Count; i++)
-            {
-                var data = _clipboard[i];
-                if (data.childIndices != null && data.childIndices.Count > 0 && data.isSubStateMachine)
-                {
-                    if (!oldToNewIndex.TryGetValue(data.sourceDataIndex, out int newContainerIndex))
-                        continue;
-
-                    var container = pastedStates.Find(s => s.DataIndex == newContainerIndex);
-                    if (container != null)
-                    {
-                        container.ChildIndices.Clear();
-                        foreach (var oldChildIdx in data.childIndices)
-                        {
-                            if (oldToNewIndex.TryGetValue(oldChildIdx, out int newChildIdx))
-                            {
-                                container.ChildIndices.Add(newChildIdx);
-                                var child = _states.Find(s => s.DataIndex == newChildIdx);
-                                if (child != null)
-                                    child.IsSubEntry = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (int i = 0; i < pastedStates.Count; i++)
-                AddToExpandedContainer(pastedStates[i]);
-
-            for (int i = 0; i < pastedStates.Count; i++)
-                _selectionController.Select(pastedStates[i]);
-
-            Repaint();
+            _hasUnsavedChanges = false;
+            hasUnsavedChanges = false;
+            UpdateTitleInternal();
         }
 
-        private void DuplicateSelectedStates()
-        {
-            CopySelectedStates();
-            if (_clipboard == null || _clipboard.Count == 0) return;
-
-            for (int i = 0; i < _clipboard.Count; i++)
-            {
-                var d = _clipboard[i];
-                d.position += new Vector2(20f, 20f);
-            }
-
-            PasteStates();
-        }
-
-        private void DeleteSelected()
-        {
-            if (_selectionController.Count == 0) return;
-
-            for (int i = _selectionController.Count - 1; i >= 0; i--)
-            {
-                if (_selectionController.Selected[i] is StateView s && s.IsEntry)
-                    _selectionController.Deselect(s);
-            }
-
-            if (_selectionController.Count == 0) return;
-
-            var deletedStates = new List<StateView>();
-            for (int i = 0; i < _selectionController.Count; i++)
-            {
-                if (_selectionController.Selected[i] is StateView s)
-                    deletedStates.Add(s);
-            }
-
-            // Remove deleted states from any parent sub-state machine's ChildIndices
-            foreach (var state in _states)
-            {
-                if (state.IsSubStateMachine && state.ChildIndices.Count > 0)
-                {
-                    foreach (var deleted in deletedStates)
-                    {
-                        state.ChildIndices.Remove(deleted.DataIndex);
-                    }
-                }
-            }
-
-            if (_expandedSubStateStack.Count > 0)
-            {
-                bool expandedBeingDeleted = false;
-                for (int i = 0; i < deletedStates.Count; i++)
-                {
-                    if (_expandedSubStateStack.Contains(deletedStates[i].DataIndex))
-                    {
-                        expandedBeingDeleted = true;
-                        break;
-                    }
-                }
-                if (expandedBeingDeleted)
-                {
-                    for (int i = _expandedSubStateStack.Count - 1; i >= 0; i--)
-                    {
-                        for (int j = 0; j < deletedStates.Count; j++)
-                        {
-                            if (_expandedSubStateStack[i] == deletedStates[j].DataIndex)
-                            {
-                                _expandedSubStateStack.RemoveAt(i);
-                                break;
-                            }
-                        }
-                    }
-                    UpdateExpandedModeBar();
-                }
-            }
-
-            var cmd = new DeleteStatesCommand(_states, _connections, _groups, _selectionController);
-            _undoRedoSystem.Execute(cmd);
-            MarkChanged();
-            SyncGroupElements();
-
-            _selectionController.Clear();
-            Repaint();
-        }
-
-        private void StartEditing(StateView state)
-        {
-            if (_editingState != null && _editingState != state)
-            {
-                _editingState.CommitEditing();
-            }
-
-            _editingState = state;
-            state.EditingCommitted += OnStateEditingCommitted;
-            state.StartEditing();
-        }
-
-        private void OnStateEditingCommitted(StateView state, string oldName, string newName)
-        {
-            state.EditingCommitted -= OnStateEditingCommitted;
-
-            if (_editingState != state)
-                return;
-
-            _editingState = null;
-
-            if (oldName != newName && !string.IsNullOrEmpty(newName))
-            {
-                var cmd = new RenameStateCommand(state, oldName, newName);
-                _undoRedoSystem.Execute(cmd);
-                MarkChanged();
-            }
-        }
-
-        private void StartEditingGroup(CommentGroupView group)
-        {
-            _editingGroup = group;
-            group.EditingCommitted += OnGroupEditingCommitted;
-            group.StartEditing();
-        }
-
-        private void OnGroupEditingCommitted(CommentGroupView group, string oldName, string newName)
-        {
-            group.EditingCommitted -= OnGroupEditingCommitted;
-            _editingGroup = null;
-
-            if (oldName != newName && !string.IsNullOrEmpty(newName))
-            {
-                var cmd = new RenameGroupCommand(group, oldName, newName);
-                _undoRedoSystem.Execute(cmd);
-                MarkChanged();
-            }
-        }
-
-        private void CommitEditing()
-        {
-            if (_editingState != null)
-                _editingState.CommitEditing();
-        }
-
-        private void CancelEditing()
-        {
-            if (_editingState != null)
-                _editingState.CancelEditing();
-        }
-
-        private void EnsureEntryStateExists()
-        {
-            _entryState = null;
-            for (int i = 0; i < _states.Count; i++)
-            {
-                if (_states[i].IsEntry)
-                {
-                    _entryState = _states[i];
-                    break;
-                }
-            }
-
-            if (_entryState == null)
-            {
-                _entryState = new StateView(EntryStatePosition, "Entry", isEntry: true) { DataIndex = 0 };
-                _states.Insert(0, _entryState);
-            }
-        }
-
-        private void OnSelectionChanged()
-        {
-            List<StateView> pickedStates = new();
-            for (int i = 0; i < _states.Count; i++)
-                if (_states[i].IsSelected)
-                    pickedStates.Add(_states[i]);
-
-            if (pickedStates.Count > 0)
-            {
-                for (int i = _states.Count - 1; i >= 0; i--)
-                    if (_states[i].IsSelected)
-                        _states.RemoveAt(i);
-                _states.AddRange(pickedStates);
-            }
-
-            if (_entryState != null && _states.Count > 0 && _states[0] != _entryState)
-            {
-                _states.Remove(_entryState);
-                _states.Insert(0, _entryState);
-            }
-
-            List<ConnectionView> pickedConnections = new();
-            for (int i = 0; i < _connections.Count; i++)
-                if (_connections[i].IsSelected)
-                    pickedConnections.Add(_connections[i]);
-
-            if (pickedConnections.Count > 0)
-            {
-                for (int i = _connections.Count - 1; i >= 0; i--)
-                    if (_connections[i].IsSelected)
-                        _connections.RemoveAt(i);
-                _connections.AddRange(pickedConnections);
-            }
-
-            List<CommentGroupView> pickedGroups = new();
-            for (int i = 0; i < _groups.Count; i++)
-                if (_groups[i].IsSelected)
-                    pickedGroups.Add(_groups[i]);
-
-            if (pickedGroups.Count > 0)
-            {
-                for (int i = _groups.Count - 1; i >= 0; i--)
-                    if (_groups[i].IsSelected)
-                        _groups.RemoveAt(i);
-                _groups.AddRange(pickedGroups);
-                SyncGroupElements();
-            }
-
-            if (_sidePanelElement != null)
-                _sidePanelElement.UpdateSelection();
-        }
-
-        private void UpdateTitle()
+        internal void UpdateTitleInternal()
         {
             string name = _controller != null ? _controller.name : "CleanStateMachine";
             titleContent = new GUIContent(name);
         }
 
-        private void MarkChanged()
+        internal void OnSaveCommandInternal()
         {
-            if (_isLoading) return;
-            _hasUnsavedChanges = true;
-            hasUnsavedChanges = true;
-            UpdateTitle();
-        }
-
-        private void MarkSaved()
-        {
-            _hasUnsavedChanges = false;
-            hasUnsavedChanges = false;
-            UpdateTitle();
-        }
-
-        // ─── Expanded Sub-State Machine View ───────────────────────────
-
-        private bool IsStateVisible(StateView state)
-        {
-            if (_expandedSubStateStack.Count > 0)
+            if (_controller != null)
             {
-                int topExpanded = _expandedSubStateStack[^1];
-                if (state.DataIndex == topExpanded) return true;
-                var expandedState = GetStateByIndex(topExpanded);
-                if (expandedState != null && expandedState.ChildIndices.Contains(state.DataIndex))
-                    return true;
-                return false;
+                GraphSerializer.SaveToController();
+                _controller.Save();
+                MarkSavedInternal();
             }
-
-            if (state.IsEntry) return true;
-
-            for (int i = 0; i < _states.Count; i++)
-            {
-                var container = _states[i];
-                if (container.IsSubStateMachine && container.ChildIndices.Contains(state.DataIndex))
-                    return false;
-            }
-            return true;
+            Repaint();
         }
 
-        private bool IsConnectionVisible(ConnectionView conn)
+        internal void OnSaveCommand() => OnSaveCommandInternal();
+
+        internal void EnsureEntryStateExistsInternal() => GraphOperations.EnsureEntryStateExists();
+
+        internal void EnterExpandSubStateInternal(StateView s)
         {
-            return IsStateVisible(conn.From) && IsStateVisible(conn.To);
+            ExpandedView.EnterExpandSubState(s);
+            Repaint();
         }
 
-        private StateView GetStateByIndex(int index)
+        internal void ExitExpandedSubStateInternal()
         {
-            for (int i = 0; i < _states.Count; i++)
-            {
-                if (_states[i].DataIndex == index)
-                    return _states[i];
-            }
-            return null;
+            ExpandedView.ExitExpandedSubState();
+            Repaint();
         }
 
-        internal void EnterExpandSubState(StateView subStateView)
+        internal void EnterExpandSubState(StateView s) => ExpandedView.EnterExpandSubState(s);
+        internal void ExitExpandedSubState() => ExpandedView.ExitExpandedSubState();
+        internal bool IsCurrentExpandedSubState(StateView state) => ExpandedView.IsCurrentExpandedSubState(state);
+
+        internal void StartSmoothFocusOnContentInternal()
         {
-            if (subStateView == null || !subStateView.IsSubStateMachine) return;
-            if (_expandedSubStateStack.Contains(subStateView.DataIndex)) return;
-
-            _expandedSubStateStack.Add(subStateView.DataIndex);
-            UpdateExpandedModeBar();
-            StartSmoothFocusOnContent();
-            _sidePanelElement?.UpdateSelection();
+            ViewAnimator.StartSmoothFocusOnContent(ExpandedView.ComputeVisibleContentBounds());
         }
 
-        internal bool IsCurrentExpandedSubState(StateView state)
+        internal void BeginGroupResize(CommentGroupView group, ResizeEdge edge, Vector2 graphPos)
         {
-            return _expandedSubStateStack.Count > 0 && _expandedSubStateStack[^1] == state.DataIndex;
+            ResizingGroup = group;
+            ResizeEdgeFlags = edge;
+            ResizeStartGraphPos = graphPos;
+            ResizeStartRect = group.GetGraphBounds();
         }
 
-        internal void ExitExpandedSubState()
+        internal void UndoRedoSystemClear()
         {
-            if (_expandedSubStateStack.Count > 0)
-                _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
-            UpdateExpandedModeBar();
-            StartSmoothFocusOnContent();
-            _sidePanelElement?.UpdateSelection();
+            UndoRedoSystem = new UndoRedoSystem();
         }
 
-        private Rect ComputeVisibleContentBounds()
-        {
-            bool first = true;
-            float minX = 0f, minY = 0f, maxX = 0f, maxY = 0f;
+        // ─── Visibility Delegates ─────────────────────────────────────
 
-            for (int i = 0; i < _states.Count; i++)
-            {
-                if (!IsStateVisible(_states[i])) continue;
+        internal bool IsStateVisible(StateView state) => ExpandedView.IsStateVisible(state);
+        internal bool IsConnectionVisible(ConnectionView conn) => ExpandedView.IsConnectionVisible(conn);
 
-                Rect bounds = _states[i].GetGraphBounds();
-                if (first)
-                {
-                    minX = bounds.xMin;
-                    minY = bounds.yMin;
-                    maxX = bounds.xMax;
-                    maxY = bounds.yMax;
-                    first = false;
-                }
-                else
-                {
-                    if (bounds.xMin < minX) minX = bounds.xMin;
-                    if (bounds.yMin < minY) minY = bounds.yMin;
-                    if (bounds.xMax > maxX) maxX = bounds.xMax;
-                    if (bounds.yMax > maxY) maxY = bounds.yMax;
-                }
-            }
-
-            if (first)
-                return new Rect(0f, 0f, 0f, 0f);
-
-            return Rect.MinMaxRect(minX, minY, maxX, maxY);
-        }
-
-        private void StartSmoothFocusOnContent()
-        {
-            Rect contentBounds = ComputeVisibleContentBounds();
-            if (contentBounds.width < 0.001f || contentBounds.height < 0.001f)
-                return;
-
-            float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
-            const float barH = 24f;
-            Rect graphRect = new Rect(0f, barH, position.width - sideW, position.height - barH);
-            if (graphRect.width < 1f || graphRect.height < 1f)
-                return;
-
-            const float padding = 0.12f;
-            float availableWidth = graphRect.width * (1f - 2f * padding);
-            float availableHeight = graphRect.height * (1f - 2f * padding);
-
-            float zoomX = availableWidth / contentBounds.width;
-            float zoomY = availableHeight / contentBounds.height;
-            float targetZoom = Mathf.Min(zoomX, zoomY);
-            targetZoom = Mathf.Clamp(targetZoom, 0.1f, 5f);
-
-            Vector2 contentCenter = contentBounds.center;
-            Vector2 viewportCenter = graphRect.center;
-            Vector2 targetPan = viewportCenter - contentCenter * targetZoom;
-
-            _animFromPan = _panOffset;
-            _animToPan = targetPan;
-            _animFromZoom = _zoom;
-            _animToZoom = targetZoom;
-            _animStartTime = EditorApplication.timeSinceStartup;
-            _isAnimatingView = true;
-        }
-
-        private void UpdateExpandedModeBar()
-        {
-            if (_expandedSubStateStack.Count > 0)
-            {
-                _expandedModeBar.style.display = DisplayStyle.Flex;
-                _breadcrumbContainer.Clear();
-
-                string baseName = _controller != null ? _controller.name : "StateMachine";
-                var rootBtn = new Button(() =>
-                {
-                    _expandedSubStateStack.Clear();
-                    UpdateExpandedModeBar();
-                    StartSmoothFocusOnContent();
-                    Repaint();
-                });
-                rootBtn.text = baseName;
-                rootBtn.style.fontSize = 11;
-                rootBtn.style.backgroundColor = Color.clear;
-                rootBtn.style.color = new Color(0.6f, 0.6f, 0.6f);
-                rootBtn.style.borderLeftWidth = 0f;
-                rootBtn.style.borderRightWidth = 0f;
-                rootBtn.style.borderTopWidth = 0f;
-                rootBtn.style.borderBottomWidth = 0f;
-                rootBtn.style.unityFontStyleAndWeight = FontStyle.Normal;
-                rootBtn.style.paddingLeft = 2f;
-                rootBtn.style.paddingRight = 2f;
-                rootBtn.style.marginLeft = 0f;
-                rootBtn.style.marginRight = 4f;
-                _breadcrumbContainer.Add(rootBtn);
-
-                for (int i = 0; i < _expandedSubStateStack.Count; i++)
-                {
-                    int idx = _expandedSubStateStack[i];
-                    var state = GetStateByIndex(idx);
-                    string name = state != null ? state.Name : "?";
-
-                    var sep = new Label(" / ");
-                    sep.style.fontSize = 11;
-                    sep.style.color = new Color(0.4f, 0.4f, 0.4f);
-                    _breadcrumbContainer.Add(sep);
-
-                    int capturedLevel = i;
-                    var crumb = new Button(() =>
-                    {
-                        while (_expandedSubStateStack.Count > capturedLevel + 1)
-                            _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
-                        UpdateExpandedModeBar();
-                        StartSmoothFocusOnContent();
-                        Repaint();
-                    });
-                    crumb.text = name;
-                    crumb.style.fontSize = 11;
-                    crumb.style.backgroundColor = Color.clear;
-                    crumb.style.color = new Color(0.8f, 0.8f, 0.8f);
-                    crumb.style.borderLeftWidth = 0f;
-                    crumb.style.borderRightWidth = 0f;
-                    crumb.style.borderTopWidth = 0f;
-                    crumb.style.borderBottomWidth = 0f;
-                    crumb.style.unityFontStyleAndWeight = FontStyle.Normal;
-                    crumb.style.paddingLeft = 2f;
-                    crumb.style.paddingRight = 2f;
-                    crumb.style.marginLeft = 0f;
-                    crumb.style.marginRight = 0f;
-                    _breadcrumbContainer.Add(crumb);
-                }
-            }
-            else
-            {
-                _expandedModeBar.style.display = DisplayStyle.None;
-            }
-        }
-
-        private void AddToExpandedContainer(StateView state)
-        {
-            if (_expandedSubStateStack.Count == 0) return;
-            int topExpanded = _expandedSubStateStack[^1];
-            var container = GetStateByIndex(topExpanded);
-            if (container != null && !container.ChildIndices.Contains(state.DataIndex))
-                container.ChildIndices.Add(state.DataIndex);
-        }
-
-        private void FindActiveStateHierarchy(int leafIndex, List<int> result)
-        {
-            var leafState = GetStateByIndex(leafIndex);
-            if (leafState != null && leafState.IsSubStateMachine)
-            {
-                result.Add(leafIndex);
-                return;
-            }
-            FindParentChain(leafIndex, result);
-            result.Reverse();
-        }
-
-        private bool FindParentChain(int childIndex, List<int> chain)
-        {
-            for (int i = 0; i < _states.Count; i++)
-            {
-                var container = _states[i];
-                if (container.IsSubStateMachine && container.ChildIndices.Contains(childIndex))
-                {
-                    chain.Add(container.DataIndex);
-                    FindParentChain(container.DataIndex, chain);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool AreListsEqual(List<int> a, List<int> b)
-        {
-            if (a.Count != b.Count) return false;
-            for (int i = 0; i < a.Count; i++)
-                if (a[i] != b[i]) return false;
-            return true;
-        }
-
-        // ─── Sub-State Machine Membership Sync ─────────────────────────
-
-        private void SyncStatesWithSubMachines()
-        {
-            for (int i = 0; i < _states.Count; i++)
-            {
-                var container = _states[i];
-                if (!container.IsSubStateMachine) continue;
-
-                float cLeft = container.Position.x;
-                float cTop = container.Position.y;
-                float cRight = cLeft + container.Size.x;
-                float cBottom = cTop + container.Size.y;
-
-                for (int j = 0; j < _states.Count; j++)
-                {
-                    var child = _states[j];
-                    if (child == container) continue;
-                    if (child.IsEntry) continue;
-
-                    bool alreadyChild = container.ChildIndices.Contains(child.DataIndex);
-
-                    Rect childRect = child.GetGraphBounds();
-                    bool inside = childRect.xMin >= cLeft - 0.001f &&
-                                  childRect.yMin >= cTop - 0.001f &&
-                                  childRect.xMax <= cRight + 0.001f &&
-                                  childRect.yMax <= cBottom + 0.001f;
-
-                    if (inside && !alreadyChild)
-                    {
-                        container.ChildIndices.Add(child.DataIndex);
-                        bool hasSubEntry = false;
-                        for (int k = 0; k < container.ChildIndices.Count; k++)
-                        {
-                            int ci = container.ChildIndices[k];
-                            if (ci >= 0 && ci < _states.Count && _states[ci].IsSubEntry)
-                            {
-                                hasSubEntry = true;
-                                break;
-                            }
-                        }
-                        if (!hasSubEntry)
-                            child.IsSubEntry = true;
-                    }
-                }
-            }
-        }
-
-        // ─── Save / Load ─────────────────────────────────────────────
-
-        private void SaveCurrentData()
-        {
-            if (_currentData == null) return;
-            _currentData.States.Clear();
-            _currentData.Connections.Clear();
-            _currentData.Groups.Clear();
-            _currentData.BlackboardVariables.Clear();
-
-            var stateToIndex = new Dictionary<StateView, int>();
-            for (int i = 0; i < _states.Count; i++)
-                stateToIndex[_states[i]] = i;
-
-            foreach (var state in _states)
-            {
-                if (state.BehaviourInstance != null)
-                    state.BehaviourInstance.name = $"{state.Name}_Behaviour";
-
-                var childIndices = new List<int>();
-                if (state.IsSubStateMachine)
-                {
-                    foreach (var childDataIdx in state.ChildIndices)
-                    {
-                        for (int si = 0; si < _states.Count; si++)
-                        {
-                            if (_states[si].DataIndex == childDataIdx)
-                            {
-                                childIndices.Add(stateToIndex[_states[si]]);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                _currentData.States.Add(new StateData
-                {
-                    Name = state.Name,
-                    Position = state.Position,
-                    Size = state.Size,
-                    IsEntry = state.IsEntry,
-                    IsSubEntry = state.IsSubEntry,
-                    IsSubStateMachine = state.IsSubStateMachine,
-                    ChildIndices = childIndices,
-                    BehaviourType = ScriptReferenceUtility.GetTypeName(state.BehaviourScript),
-                    Behaviour = state.BehaviourInstance
-                });
-            }
-
-            foreach (var conn in _connections)
-            {
-                for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                {
-                    var entry = conn.ConditionEntries[j];
-                    if (entry.Instance != null)
-                    {
-                        string fromName = conn.From?.Name ?? "?";
-                        string toName = conn.To?.Name ?? "?";
-                        entry.Instance.name = $"{fromName}->{toName}_Condition_{j}";
-                    }
-                }
-
-                var cd = new ConnectionData
-                {
-                    FromIndex = stateToIndex[conn.From],
-                    ToIndex = stateToIndex[conn.To]
-                };
-                for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                {
-                    var entry = conn.ConditionEntries[j];
-                    cd.Conditions.Add(new ConditionEntry
-                    {
-                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
-                        Instance = entry.Instance
-                    });
-                }
-                _currentData.Connections.Add(cd);
-            }
-
-            foreach (var group in _groups)
-            {
-                var gd = new GroupData { Label = group.Label, Color = group.GroupColor };
-                foreach (var member in group.Members)
-                    gd.MemberIndices.Add(stateToIndex[member]);
-                _currentData.Groups.Add(gd);
-            }
-
-            foreach (var v in _blackboardVariables)
-                _currentData.BlackboardVariables.Add(v.Clone());
-
-            _currentData.PanOffset = _panOffset;
-            _currentData.Zoom = _zoom;
-            _currentData.ShowSidePanel = _showSidePanel;
-            _currentData.SidePanelWidth = _sidePanelWidth;
-            _currentData.DetailsHeightRatio = _detailsHeightRatio;
-        }
-
-        // ─── Internal accessors for UITK SidePanel ─────────────────────
+        // ─── Internal Accessors for SidePanel / DetailsPanel ─────────
 
         internal bool GetShowSidePanel() => _showSidePanel;
         internal void SetShowSidePanel(bool value)
         {
             _showSidePanel = value;
-            if (_sidePanelElement != null)
-                _sidePanelElement.SetExpanded(value);
+            if (SidePanelElement != null)
+                SidePanelElement.SetExpanded(value);
         }
 
         internal float GetSidePanelWidth() => _sidePanelWidth;
-        internal void SetSidePanelWidth(float value)
-        {
-            _sidePanelWidth = value;
-        }
+        internal void SetSidePanelWidth(float value) { _sidePanelWidth = value; }
 
         internal float GetDetailsHeightRatio() => _detailsHeightRatio;
-        internal void SetDetailsHeightRatio(float value)
-        {
-            _detailsHeightRatio = value;
-        }
+        internal void SetDetailsHeightRatio(float value) { _detailsHeightRatio = value; }
 
-        internal SerializableData CurrentData => _currentData;
-
-        internal UndoRedoSystem UndoRedoSystem => _undoRedoSystem;
-
-        internal List<BlackboardVariable> GetBlackboardVariables() => _blackboardVariables;
-
-        internal IReadOnlyList<ISelectable> GetSelection() => _selectionController.Selected;
-
-        internal List<StateView> GetStates() => _states;
-
-        internal List<ConnectionView> GetConnections() => _connections;
+        internal IReadOnlyList<ISelectable> GetSelection() => SelectionController.Selected;
+        internal List<StateView> GetStates() => States;
+        internal List<ConnectionView> GetConnections() => Connections;
+        internal List<BlackboardVariable> GetBlackboardVariables() => BlackboardVariables;
 
         internal void NotifySidePanelChanged()
         {
-            MarkChanged();
-            Repaint();
-        }
-
-        internal void OnSaveCommand()
-        {
-            if (_controller != null)
-            {
-                SaveToController();
-                _controller.Save();
-                MarkSaved();
-            }
+            MarkChangedInternal();
             Repaint();
         }
 
@@ -2235,445 +836,17 @@ namespace CleanStateMachine
             base.SaveChanges();
             if (_controller != null)
             {
-                SaveToController();
+                GraphSerializer.SaveToController();
                 _controller.Save();
-                MarkSaved();
+                MarkSavedInternal();
             }
         }
 
-        public void LoadController(StateMachineController controller)
-        {
-            if (controller == null) return;
-            if (controller == _controller) return;
-
-            if (_hasUnsavedChanges && _controller != null)
-            {
-                int option = EditorUtility.DisplayDialogComplex(
-                    "Unsaved Changes",
-                    $"Save changes to {_controller.name} before switching?",
-                    "Save", "Cancel", "Discard");
-
-                if (option == 1) return;
-
-                if (option == 0)
-                {
-                    SaveToController();
-                    _controller.Save();
-                }
-            }
-
-            _controller = controller;
-            LoadFromController();
-            StartSmoothFocusOnContent();
-        }
-
-        private void LoadFromController()
-        {
-            _currentData = _controller != null ? _controller.Data : new SerializableData();
-            LoadFromCurrentData();
-        }
-
-        private void LoadFromCurrentData()
-        {
-            _isLoading = true;
-
-            _editingState = null;
-            _selectionController.Clear();
-            _states.Clear();
-            _connections.Clear();
-            _groups.Clear();
-            _blackboardVariables.Clear();
-            _undoRedoSystem = new UndoRedoSystem();
-            _activeStateIndex = -1;
-            _trackedComponent = null;
-            _pendingExpandStack = null;
-            _lastTransitionFromIndex = -1;
-            _lastTransitionToIndex = -1;
-            _lastTransitionConnectionIndex = -1;
-            _expandedSubStateStack.Clear();
-            if (_expandedModeBar != null)
-                _expandedModeBar.style.display = DisplayStyle.None;
-
-            if (_currentData != null)
-            {
-                var data = _currentData;
-
-                var stateLookup = new List<StateView>();
-                for (int i = 0; i < data.States.Count; i++)
-                {
-                    var sd = data.States[i];
-                    var state = new StateView(sd.Position, sd.Name, sd.IsEntry, sd.IsSubEntry)
-                    {
-                        Size = sd.Size,
-                        BehaviourScript = ScriptReferenceUtility.FindScriptByTypeName(sd.BehaviourType),
-                        BehaviourInstance = sd.Behaviour,
-                        ChildIndices = new List<int>(sd.ChildIndices),
-                        IsSubStateMachine = sd.IsSubStateMachine,
-                        DataIndex = i
-                    };
-                    _states.Add(state);
-                    stateLookup.Add(state);
-                }
-
-                for (int i = 0; i < data.Connections.Count; i++)
-                {
-                    var cd = data.Connections[i];
-                    if (cd.FromIndex >= 0 && cd.FromIndex < stateLookup.Count &&
-                        cd.ToIndex >= 0 && cd.ToIndex < stateLookup.Count)
-                    {
-                        var conn = new ConnectionView(
-                            stateLookup[cd.FromIndex], stateLookup[cd.ToIndex])
-                        {
-                            DataIndex = i
-                        };
-                        if (cd.Conditions != null)
-                        {
-                            for (int j = 0; j < cd.Conditions.Count; j++)
-                            {
-                                var ce = cd.Conditions[j];
-                                conn.ConditionEntries.Add(new ConditionEntryView
-                                {
-                                    Script = ScriptReferenceUtility.FindScriptByTypeName(ce.TypeName),
-                                    Instance = ce.Instance
-                                });
-                            }
-                        }
-                        _connections.Add(conn);
-                    }
-                }
-
-                for (int i = 0; i < data.Groups.Count; i++)
-                {
-                    var gd = data.Groups[i];
-                    var members = new List<StateView>();
-                    foreach (int mi in gd.MemberIndices)
-                    {
-                        if (mi >= 0 && mi < stateLookup.Count && !stateLookup[mi].IsEntry)
-                            members.Add(stateLookup[mi]);
-                    }
-                    var group = new CommentGroupView(members, gd.Label);
-                    group.GroupColor = gd.Color;
-                    _groups.Add(group);
-                }
-
-                for (int i = 0; i < data.BlackboardVariables.Count; i++)
-                    _blackboardVariables.Add(data.BlackboardVariables[i].Clone());
-
-                _panOffset = data.PanOffset;
-                _zoom = data.Zoom;
-                _showSidePanel = data.ShowSidePanel;
-                _sidePanelWidth = data.SidePanelWidth;
-                _detailsHeightRatio = data.DetailsHeightRatio;
-            }
-
-            EnsureEntryStateExists();
-            SyncGroupElements();
-            SyncStatesWithSubMachines();
-            _isLoading = false;
-            MarkSaved();
-            UpdateTitle();
-
-            if (_sidePanelElement != null)
-            {
-                _sidePanelElement.SyncFromWindow();
-                _sidePanelElement.UpdateVisibility();
-                _sidePanelElement.UpdateSelection();
-                _sidePanelElement.UpdateBlackboard();
-            }
-
-            Repaint();
-        }
-
-        private void SaveToController()
-        {
-            if (_controller == null) return;
-            SaveCurrentData();
-            _controller.Data = _controller.Data;
-        }
-
-        private void SaveAs()
-        {
-            string path = EditorUtility.SaveFilePanelInProject(
-                "Save State Machine Controller",
-                "NewStateMachineController",
-                "asset",
-                "Save state machine controller as...");
-
-            if (string.IsNullOrEmpty(path)) return;
-
-            var controller = CreateInstance<StateMachineController>();
-            AssetDatabase.CreateAsset(controller, path);
-
-            _controller = controller;
-            SaveToController();
-            _controller.Save();
-            MarkSaved();
-            Repaint();
-
-            EditorGUIUtility.PingObject(controller);
-        }
-
-        private void NewFile()
-        {
-            if (_hasUnsavedChanges)
-            {
-                int option = EditorUtility.DisplayDialogComplex(
-                    "Unsaved Changes",
-                    "You have unsaved changes. What do you want to do?",
-                    "Save", "Cancel", "Discard");
-
-                if (option == 1) return;
-
-                if (option == 0)
-                {
-                    if (_controller != null)
-                    {
-                        SaveToController();
-                        _controller.Save();
-                    }
-                    else
-                    {
-                        SaveAs();
-                        return;
-                    }
-                }
-            }
-
-            _controller = null;
-            _currentData = new SerializableData();
-            _editingState = null;
-            _selectionController.Clear();
-            _states.Clear();
-            _connections.Clear();
-            _groups.Clear();
-            _blackboardVariables.Clear();
-            _undoRedoSystem = new UndoRedoSystem();
-            _activeStateIndex = -1;
-            _panOffset = Vector2.zero;
-            _zoom = 1f;
-            _showSidePanel = true;
-            _sidePanelWidth = 220f;
-            _detailsHeightRatio = 0.5f;
-            _expandedSubStateStack.Clear();
-            _pendingExpandStack = null;
-            _lastTransitionFromIndex = -1;
-            _lastTransitionToIndex = -1;
-            _lastTransitionConnectionIndex = -1;
-            if (_expandedModeBar != null)
-                _expandedModeBar.style.display = DisplayStyle.None;
-
-            EnsureEntryStateExists();
-            SyncGroupElements();
-
-            MarkSaved();
-
-            if (_sidePanelElement != null)
-            {
-                _sidePanelElement.UpdateVisibility();
-                _sidePanelElement.UpdateSelection();
-                _sidePanelElement.UpdateBlackboard();
-            }
-
-            Repaint();
-        }
+        // ─── Play Mode Update ─────────────────────────────────────────
 
         private void OnEditorUpdate()
         {
-            if (!Application.isPlaying)
-            {
-                if (_wasPlaying)
-                {
-                    _wasPlaying = false;
-                    _activeStateIndex = -1;
-                    _expandedSubStateStack.Clear();
-                    _pendingExpandStack = null;
-                    _lastTransitionFromIndex = -1;
-                    _lastTransitionToIndex = -1;
-                    _lastTransitionConnectionIndex = -1;
-                    for (int i = 0; i < _states.Count; i++)
-                        _states[i].IsActive = false;
-                    for (int i = 0; i < _connections.Count; i++)
-                        _connections[i].IsActive = false;
-                    UpdateExpandedModeBar();
-                    Repaint();
-                }
-                return;
-            }
-
-            _wasPlaying = true;
-
-            UpdateTrackedComponent();
-
-            if (_trackedComponent != null)
-            {
-                int newActiveIndex = _trackedComponent.CurrentStateIndex;
-
-                if (newActiveIndex != _activeStateIndex)
-                {
-                    _activeStateIndex = newActiveIndex;
-
-                    for (int i = 0; i < _states.Count; i++)
-                        _states[i].IsActive = (_states[i].DataIndex == _activeStateIndex);
-
-                    _isAutoNavigating = true;
-                    var activeState = GetStateByIndex(_activeStateIndex);
-                    if (activeState != null)
-                    {
-                        var newStack = new List<int>();
-                        FindActiveStateHierarchy(_activeStateIndex, newStack);
-
-                        if (!AreListsEqual(_expandedSubStateStack, newStack))
-                        {
-                            if (newStack.Count > _expandedSubStateStack.Count &&
-                                _pendingExpandStack == null)
-                            {
-                                _pendingExpandStack = new List<int>(newStack);
-                                _pendingExpandTime = Time.realtimeSinceStartup;
-                            }
-                            else
-                            {
-                                _pendingExpandStack = null;
-                                _expandedSubStateStack.Clear();
-                                _expandedSubStateStack.AddRange(newStack);
-                                UpdateExpandedModeBar();
-                                if (!_isAnimatingView)
-                                    StartSmoothFocusOnContent();
-                            }
-                        }
-                    }
-                    _isAutoNavigating = false;
-
-                    Repaint();
-                }
-
-                if (_pendingExpandStack != null)
-                {
-                    var checkStack = new List<int>();
-                    FindActiveStateHierarchy(_activeStateIndex, checkStack);
-                    if (!AreListsEqual(checkStack, _pendingExpandStack))
-                    {
-                        _pendingExpandStack = null;
-                    }
-                    else if (Time.realtimeSinceStartup - _pendingExpandTime >= AutoExpandDelay)
-                    {
-                        _expandedSubStateStack.Clear();
-                        _expandedSubStateStack.AddRange(_pendingExpandStack);
-                        _pendingExpandStack = null;
-                        UpdateExpandedModeBar();
-                        if (!_isAnimatingView)
-                            StartSmoothFocusOnContent();
-
-                        PlayDeferredTransitionEffects();
-
-                        Repaint();
-                    }
-                }
-
-                var transitions = _trackedComponent.RecentTransitions;
-                if (transitions.Count > 0)
-                {
-                    for (int t = 0; t < transitions.Count; t++)
-                    {
-                        var record = transitions[t];
-                        _lastTransitionFromIndex = record.FromIndex;
-                        _lastTransitionToIndex = record.ToIndex;
-                        _lastTransitionConnectionIndex = record.ConnectionIndex;
-                        for (int c = 0; c < _connections.Count; c++)
-                        {
-                            if (record.ConnectionIndex >= 0)
-                            {
-                                if (_connections[c].DataIndex == record.ConnectionIndex)
-                                {
-                                    _connections[c].IsActive = true;
-                                    _connections[c].ActivationTime = Time.realtimeSinceStartup;
-                                }
-                            }
-                            else
-                            {
-                                if (_connections[c].From.DataIndex == record.FromIndex &&
-                                    _connections[c].To.DataIndex == record.ToIndex)
-                                {
-                                    _connections[c].IsActive = true;
-                                    _connections[c].ActivationTime = Time.realtimeSinceStartup;
-                                }
-                            }
-                        }
-                    }
-                    transitions.Clear();
-                    Repaint();
-                }
-
-                Repaint();
-            }
-            else if (_activeStateIndex >= 0)
-            {
-                _activeStateIndex = -1;
-                _pendingExpandStack = null;
-                _lastTransitionFromIndex = -1;
-                _lastTransitionToIndex = -1;
-                _lastTransitionConnectionIndex = -1;
-                for (int i = 0; i < _states.Count; i++)
-                    _states[i].IsActive = false;
-                for (int i = 0; i < _connections.Count; i++)
-                    _connections[i].IsActive = false;
-                Repaint();
-            }
-        }
-
-        private void PlayDeferredTransitionEffects()
-        {
-            if (_activeStateIndex < 0) return;
-
-            for (int c = 0; c < _connections.Count; c++)
-            {
-                if (_connections[c].To.DataIndex == _activeStateIndex)
-                {
-                    _connections[c].IsActive = true;
-                    _connections[c].ActivationTime = Time.realtimeSinceStartup;
-                    break;
-                }
-            }
-
-            for (int i = 0; i < _states.Count; i++)
-            {
-                if (_states[i].DataIndex == _activeStateIndex)
-                {
-                    _states[i].ReactivateFlash();
-                    break;
-                }
-            }
-        }
-
-        private void UpdateTrackedComponent()
-        {
-            if (!Application.isPlaying)
-            {
-                _trackedComponent = null;
-                return;
-            }
-
-            if (_controller == null)
-            {
-                _trackedComponent = null;
-                return;
-            }
-
-            GameObject selected = Selection.activeGameObject;
-            if (selected == null)
-            {
-                _trackedComponent = null;
-                return;
-            }
-
-            var component = selected.GetComponent<StateMachineComponent>();
-            if (component != null && component.Controller == _controller)
-            {
-                _trackedComponent = component;
-            }
-            else
-            {
-                _trackedComponent = null;
-            }
+            PlayModeTracker.OnEditorUpdate();
         }
     }
 }
