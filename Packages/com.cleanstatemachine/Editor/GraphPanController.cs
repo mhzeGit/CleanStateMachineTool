@@ -5,10 +5,16 @@ namespace CleanStateMachine
     public class GraphPanController
     {
         public bool IsPanning { get; private set; }
+        public bool UserInteractedThisFrame { get; private set; }
 
         private Vector2 _panStartMouse;
         private Vector2 _panStartOffset;
         private bool _hasDragged;
+
+        public void ResetFrameState()
+        {
+            UserInteractedThisFrame = false;
+        }
 
         private const float ZoomMin = 0.1f;
         private const float ZoomMax = 5f;
@@ -27,6 +33,7 @@ namespace CleanStateMachine
             {
                 case EventType.MouseDrag when e.button == 1 && rect.Contains(e.mousePosition) && !IsPanning:
                     IsPanning = true;
+                    UserInteractedThisFrame = true;
                     _panStartMouse = e.mousePosition;
                     _panStartOffset = panOffset;
                     _hasDragged = true;
@@ -45,6 +52,7 @@ namespace CleanStateMachine
                     break;
 
                 case EventType.ScrollWheel when rect.Contains(e.mousePosition):
+                    UserInteractedThisFrame = true;
                     HandleScrollWheel(e, ref panOffset, ref zoom);
                     e.Use();
                     break;

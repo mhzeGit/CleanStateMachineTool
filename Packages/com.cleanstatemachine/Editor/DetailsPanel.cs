@@ -118,17 +118,28 @@ namespace CleanStateMachine
                 AddSectionTitle("Sub State Machine");
                 AddInfoRow("Child States", state.ChildIndices.Count.ToString());
 
-                var clearBtn = new Button(() =>
+                if (_window.IsCurrentExpandedSubState(state))
                 {
-                    state.IsSubStateMachine = false;
-                    state.ChildIndices.Clear();
-                    _window.NotifySidePanelChanged();
-                    UpdateSelection(_selected, _states, _connections, _blackboardVariables);
-                });
-                clearBtn.text = "Remove Sub Machine";
-                clearBtn.AddToClassList("enter-sub-button");
-                clearBtn.style.backgroundColor = new StyleColor(new Color(0.4f, 0.2f, 0.2f));
-                _scrollView.Add(clearBtn);
+                    var closeBtn = new Button(() =>
+                    {
+                        _window.ExitExpandedSubState();
+                    });
+                    closeBtn.text = "Close Sub State";
+                    closeBtn.AddToClassList("enter-sub-button");
+                    closeBtn.style.backgroundColor = new StyleColor(new Color(0.2f, 0.3f, 0.6f));
+                    _scrollView.Add(closeBtn);
+                }
+                else
+                {
+                    var openBtn = new Button(() =>
+                    {
+                        _window.EnterExpandSubState(state);
+                    });
+                    openBtn.text = "Open Sub State";
+                    openBtn.AddToClassList("enter-sub-button");
+                    openBtn.style.backgroundColor = new StyleColor(new Color(0.2f, 0.3f, 0.6f));
+                    _scrollView.Add(openBtn);
+                }
             }
             else
             {

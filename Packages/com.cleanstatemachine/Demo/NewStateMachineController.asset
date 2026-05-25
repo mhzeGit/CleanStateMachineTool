@@ -624,26 +624,8 @@ MonoBehaviour:
       ChildIndices: 
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -5088050094878318290}
-    - Name: State02
-      Position: {x: 1022.471, y: 522.07904}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      ChildIndices: 
-      BehaviourType: DebugLog_StateBehaviour
-      Behaviour: {fileID: 5987374819319054559}
-    - Name: Sub State Machine
-      Position: {x: 549.8565, y: 445.86313}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 1
-      ChildIndices: 070000000600000009000000
-      BehaviourType: 
-      Behaviour: {fileID: 0}
     - Name: State01
-      Position: {x: 784.96234, y: 440.65076}
+      Position: {x: 771.90625, y: 431.61185}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -651,6 +633,33 @@ MonoBehaviour:
       ChildIndices: 
       BehaviourType: DebugLog_StateBehaviour
       Behaviour: {fileID: -1624701279358024294}
+    - Name: State02
+      Position: {x: 1014.43634, y: 511.0315}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      ChildIndices: 
+      BehaviourType: DebugLog_StateBehaviour
+      Behaviour: {fileID: 5987374819319054559}
+    - Name: State
+      Position: {x: 970.0536, y: 679.8416}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      ChildIndices: 
+      BehaviourType: 
+      Behaviour: {fileID: 0}
+    - Name: Sub State Machine
+      Position: {x: 549.8565, y: 445.86313}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 1
+      ChildIndices: 08000000060000000700000009000000
+      BehaviourType: 
+      Behaviour: {fileID: 0}
     Connections:
     - FromIndex: 0
       ToIndex: 5
@@ -696,35 +705,35 @@ MonoBehaviour:
       - TypeName: CompareNumbers_ConditionBehaviours
         Instance: {fileID: -5493788498881703493}
     - FromIndex: 5
-      ToIndex: 8
+      ToIndex: 10
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -2069322823213849383}
-    - FromIndex: 8
+    - FromIndex: 10
       ToIndex: 5
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: -4457444995765923352}
-    - FromIndex: 8
-      ToIndex: 9
-      Conditions: []
-    - FromIndex: 9
+    - FromIndex: 10
       ToIndex: 7
+      Conditions: []
+    - FromIndex: 7
+      ToIndex: 8
       Conditions:
       - TypeName: Timer_ConditionBehaviours
         Instance: {fileID: -3547766199571372246}
-    - FromIndex: 7
+    - FromIndex: 8
       ToIndex: 6
       Conditions:
       - TypeName: Timer_ConditionBehaviours
         Instance: {fileID: -5792897123396371162}
     - FromIndex: 6
-      ToIndex: 9
+      ToIndex: 7
       Conditions:
       - TypeName: Timer_ConditionBehaviours
         Instance: {fileID: 1600089491654748903}
-    - FromIndex: 9
-      ToIndex: 8
+    - FromIndex: 7
+      ToIndex: 10
       Conditions:
       - TypeName: SimpleBool_ConditionBehaviours
         Instance: {fileID: 7543197076490117392}
@@ -745,8 +754,8 @@ MonoBehaviour:
     - Name: EnterSubState
       Type: 0
       StringValue: False
-    PanOffset: {x: -135.87512, y: 224.30127}
-    Zoom: 0.6348858
+    PanOffset: {x: -201.08704, y: 275.4997}
+    Zoom: 0.5464513
     ShowSidePanel: 1
     SidePanelWidth: 299
     DetailsHeightRatio: 0.5841584

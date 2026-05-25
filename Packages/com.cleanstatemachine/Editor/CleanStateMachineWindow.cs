@@ -105,6 +105,14 @@ namespace CleanStateMachine
         private int _activeStateIndex = -1;
         private bool _isAutoNavigating;
 
+        private bool _isAnimatingView;
+        private Vector2 _animFromPan;
+        private Vector2 _animToPan;
+        private float _animFromZoom;
+        private float _animToZoom;
+        private double _animStartTime;
+        private const float AnimDuration = 0.35f;
+
         private static readonly Vector2 EntryStatePosition = new Vector2(50f, 200f);
         private const float CollapsedPanelWidth = 35f;
         private const float ResizeHandleScreenSize = 8f;
@@ -295,11 +303,36 @@ namespace CleanStateMachine
 
             var e = Event.current;
 
+            _panController.ResetFrameState();
+
             float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
             const float barH = 24f;
             Rect graphRect = new Rect(0f, barH, position.width - sideW, position.height - barH);
 
             _panController.HandleInput(graphRect, ref _panOffset, ref _zoom);
+
+            if (_isAnimatingView)
+            {
+                if (_panController.UserInteractedThisFrame || _panController.IsPanning)
+                    _isAnimatingView = false;
+                else
+                {
+                    float t = (float)(EditorApplication.timeSinceStartup - _animStartTime) / AnimDuration;
+                    if (t >= 1f)
+                    {
+                        _panOffset = _animToPan;
+                        _zoom = _animToZoom;
+                        _isAnimatingView = false;
+                    }
+                    else
+                    {
+                        float smoothT = t * t * (3f - 2f * t);
+                        _panOffset = Vector2.Lerp(_animFromPan, _animToPan, smoothT);
+                        _zoom = Mathf.Lerp(_animFromZoom, _animToZoom, smoothT);
+                    }
+                    Repaint();
+                }
+            }
 
             UpdateConnectionOffsets();
 
@@ -1224,6 +1257,8 @@ namespace CleanStateMachine
 
             MarkChanged();
             SyncStatesWithGroups();
+            SyncStatesWithSubMachines();
+            AddToExpandedContainer(container);
             Repaint();
         }
 
@@ -1682,19 +1717,93 @@ namespace CleanStateMachine
             return null;
         }
 
-        private void EnterExpandSubState(StateView subStateView)
+        internal void EnterExpandSubState(StateView subStateView)
         {
             if (subStateView == null || !subStateView.IsSubStateMachine) return;
+            if (_expandedSubStateStack.Contains(subStateView.DataIndex)) return;
 
             _expandedSubStateStack.Add(subStateView.DataIndex);
             UpdateExpandedModeBar();
+            StartSmoothFocusOnContent();
         }
 
-        private void ExitExpandedSubState()
+        internal bool IsCurrentExpandedSubState(StateView state)
+        {
+            return _expandedSubStateStack.Count > 0 && _expandedSubStateStack[^1] == state.DataIndex;
+        }
+
+        internal void ExitExpandedSubState()
         {
             if (_expandedSubStateStack.Count > 0)
                 _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
             UpdateExpandedModeBar();
+            StartSmoothFocusOnContent();
+        }
+
+        private Rect ComputeVisibleContentBounds()
+        {
+            bool first = true;
+            float minX = 0f, minY = 0f, maxX = 0f, maxY = 0f;
+
+            for (int i = 0; i < _states.Count; i++)
+            {
+                if (!IsStateVisible(_states[i])) continue;
+
+                Rect bounds = _states[i].GetGraphBounds();
+                if (first)
+                {
+                    minX = bounds.xMin;
+                    minY = bounds.yMin;
+                    maxX = bounds.xMax;
+                    maxY = bounds.yMax;
+                    first = false;
+                }
+                else
+                {
+                    if (bounds.xMin < minX) minX = bounds.xMin;
+                    if (bounds.yMin < minY) minY = bounds.yMin;
+                    if (bounds.xMax > maxX) maxX = bounds.xMax;
+                    if (bounds.yMax > maxY) maxY = bounds.yMax;
+                }
+            }
+
+            if (first)
+                return new Rect(0f, 0f, 0f, 0f);
+
+            return Rect.MinMaxRect(minX, minY, maxX, maxY);
+        }
+
+        private void StartSmoothFocusOnContent()
+        {
+            Rect contentBounds = ComputeVisibleContentBounds();
+            if (contentBounds.width < 0.001f || contentBounds.height < 0.001f)
+                return;
+
+            float sideW = _showSidePanel ? _sidePanelWidth : CollapsedPanelWidth;
+            const float barH = 24f;
+            Rect graphRect = new Rect(0f, barH, position.width - sideW, position.height - barH);
+            if (graphRect.width < 1f || graphRect.height < 1f)
+                return;
+
+            const float padding = 0.12f;
+            float availableWidth = graphRect.width * (1f - 2f * padding);
+            float availableHeight = graphRect.height * (1f - 2f * padding);
+
+            float zoomX = availableWidth / contentBounds.width;
+            float zoomY = availableHeight / contentBounds.height;
+            float targetZoom = Mathf.Min(zoomX, zoomY);
+            targetZoom = Mathf.Clamp(targetZoom, 0.1f, 5f);
+
+            Vector2 contentCenter = contentBounds.center;
+            Vector2 viewportCenter = graphRect.center;
+            Vector2 targetPan = viewportCenter - contentCenter * targetZoom;
+
+            _animFromPan = _panOffset;
+            _animToPan = targetPan;
+            _animFromZoom = _zoom;
+            _animToZoom = targetZoom;
+            _animStartTime = EditorApplication.timeSinceStartup;
+            _isAnimatingView = true;
         }
 
         private void UpdateExpandedModeBar()
@@ -1727,6 +1836,7 @@ namespace CleanStateMachine
                         while (_expandedSubStateStack.Count > capturedLevel + 1)
                             _expandedSubStateStack.RemoveAt(_expandedSubStateStack.Count - 1);
                         UpdateExpandedModeBar();
+                        StartSmoothFocusOnContent();
                         Repaint();
                     });
                     crumb.text = name;
@@ -2264,6 +2374,8 @@ namespace CleanStateMachine
                             _expandedSubStateStack.Clear();
                             _expandedSubStateStack.AddRange(newStack);
                             UpdateExpandedModeBar();
+                            if (!_isAnimatingView)
+                                StartSmoothFocusOnContent();
                         }
                     }
                     _isAutoNavigating = false;
