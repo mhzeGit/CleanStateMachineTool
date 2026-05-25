@@ -88,6 +88,23 @@ namespace CleanStateMachine
                 }
             }
 
+            if (e.keyCode == KeyCode.B && !e.control)
+            {
+                for (int i = 0; i < _window.SelectionController.Count; i++)
+                {
+                    if (_window.SelectionController.Selected[i] is StateView s)
+                    {
+                        bool hasBp = _window.BreakpointStateIndices.Contains(s.DataIndex);
+                        var cmd = new ToggleBreakpointCommand(_window, s.DataIndex, !hasBp);
+                        _window.UndoRedoSystem.Execute(cmd);
+                    }
+                }
+                _window.MarkChangedInternal();
+                e.Use();
+                _window.Repaint();
+                return true;
+            }
+
             if (e.keyCode == KeyCode.V && e.control)
             {
                 _operations.PasteStates();
