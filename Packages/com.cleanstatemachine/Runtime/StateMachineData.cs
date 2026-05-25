@@ -95,9 +95,6 @@ namespace CleanStateMachine
         public List<BlackboardVariable> BlackboardVariables = new List<BlackboardVariable>();
         public Vector2 PanOffset;
         public float Zoom = 1f;
-        public bool ShowSidePanel = true;
-        public float SidePanelWidth = 220f;
-        public float DetailsHeightRatio = 0.5f;
         public List<int> ExpandedSubStateIndices = new List<int>();
     }
 }

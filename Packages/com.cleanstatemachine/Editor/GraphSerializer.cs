@@ -125,12 +125,19 @@ namespace CleanStateMachine
 
             _window.CurrentData.PanOffset = _window.PanOffset;
             _window.CurrentData.Zoom = _window.Zoom;
-            _window.CurrentData.ShowSidePanel = _window.ShowSidePanel;
-            _window.CurrentData.SidePanelWidth = _window.SidePanelWidth;
-            _window.CurrentData.DetailsHeightRatio = _window.DetailsHeightRatio;
 
             _window.CurrentData.ExpandedSubStateIndices.Clear();
-            _window.CurrentData.ExpandedSubStateIndices.AddRange(_window.ExpandedSubStateStack);
+            foreach (int dataIdx in _window.ExpandedSubStateStack)
+            {
+                for (int si = 0; si < _window.States.Count; si++)
+                {
+                    if (_window.States[si].DataIndex == dataIdx)
+                    {
+                        _window.CurrentData.ExpandedSubStateIndices.Add(si);
+                        break;
+                    }
+                }
+            }
         }
 
         public void LoadFromController()
@@ -238,9 +245,6 @@ namespace CleanStateMachine
 
                 _window.PanOffset = data.PanOffset;
                 _window.Zoom = data.Zoom;
-                _window.ShowSidePanel = data.ShowSidePanel;
-                _window.SidePanelWidth = data.SidePanelWidth;
-                _window.DetailsHeightRatio = data.DetailsHeightRatio;
 
                 _window.ExpandedSubStateStack.Clear();
                 if (data.ExpandedSubStateIndices != null && data.ExpandedSubStateIndices.Count > 0)
@@ -248,7 +252,7 @@ namespace CleanStateMachine
                     for (int i = 0; i < data.ExpandedSubStateIndices.Count; i++)
                     {
                         int idx = data.ExpandedSubStateIndices[i];
-                        if (idx >= 0 && idx < _window.States.Count)
+                        if (idx >= 0 && idx < _window.States.Count && _window.States[idx].IsSubStateMachine)
                             _window.ExpandedSubStateStack.Add(idx);
                     }
                 }
@@ -342,9 +346,6 @@ namespace CleanStateMachine
             _window.ActiveStateIndex = -1;
             _window.PanOffset = Vector2.zero;
             _window.Zoom = 1f;
-            _window.ShowSidePanel = true;
-            _window.SidePanelWidth = 220f;
-            _window.DetailsHeightRatio = 0.5f;
             _window.ExpandedSubStateStack.Clear();
             _window.PendingExpandStack = null;
             _window.LastTransitionFromIndex = -1;

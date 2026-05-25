@@ -58,10 +58,10 @@ namespace CleanStateMachine
 
         [SerializeField] private Vector2 _panOffset;
         [SerializeField] private float _zoom = 1f;
-        [SerializeField] private bool _showSidePanel = true;
-        [SerializeField] private float _sidePanelWidth = 220f;
         [SerializeField] private StateMachineController _controller;
-        [SerializeField] private float _detailsHeightRatio = 0.5f;
+        private bool _showSidePanel = true;
+        private float _sidePanelWidth = 220f;
+        private float _detailsHeightRatio = 0.5f;
 
         internal Vector2 PanOffset { get => _panOffset; set => _panOffset = value; }
         internal float Zoom { get => _zoom; set => _zoom = value; }
@@ -182,9 +182,31 @@ namespace CleanStateMachine
 
         // ─── Window Lifecycle ────────────────────────────────────────
 
+        private static class LayoutPrefs
+        {
+            public const string ShowSidePanel = "CleanStateMachine.ShowSidePanel";
+            public const string SidePanelWidth = "CleanStateMachine.SidePanelWidth";
+            public const string DetailsHeightRatio = "CleanStateMachine.DetailsHeightRatio";
+
+            public static void Load(CleanStateMachineWindow w)
+            {
+                w._showSidePanel = EditorPrefs.GetBool(ShowSidePanel, true);
+                w._sidePanelWidth = EditorPrefs.GetFloat(SidePanelWidth, 220f);
+                w._detailsHeightRatio = EditorPrefs.GetFloat(DetailsHeightRatio, 0.5f);
+            }
+
+            public static void Save(CleanStateMachineWindow w)
+            {
+                EditorPrefs.SetBool(ShowSidePanel, w._showSidePanel);
+                EditorPrefs.SetFloat(SidePanelWidth, w._sidePanelWidth);
+                EditorPrefs.SetFloat(DetailsHeightRatio, w._detailsHeightRatio);
+            }
+        }
+
         private void OnEnable()
         {
             wantsMouseMove = true;
+            LayoutPrefs.Load(this);
             UndoRedoSystem = new UndoRedoSystem();
             PanController = new GraphPanController();
             ContextMenu = new GraphContextMenu();
@@ -228,6 +250,7 @@ namespace CleanStateMachine
 
         private void OnDisable()
         {
+            LayoutPrefs.Save(this);
             ContextMenu.CreateStateRequested -= OnCreateStateRequested;
             ContextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
             ContextMenu.CreateExternalReferenceRequested -= OnCreateExternalReferenceRequested;
@@ -244,7 +267,17 @@ namespace CleanStateMachine
             if (CurrentData != null)
             {
                 CurrentData.ExpandedSubStateIndices.Clear();
-                CurrentData.ExpandedSubStateIndices.AddRange(ExpandedSubStateStack);
+                foreach (int dataIdx in ExpandedSubStateStack)
+                {
+                    for (int si = 0; si < States.Count; si++)
+                    {
+                        if (States[si].DataIndex == dataIdx)
+                        {
+                            CurrentData.ExpandedSubStateIndices.Add(si);
+                            break;
+                        }
+                    }
+                }
             }
 
             if (_controller != null && !_isLoading)
@@ -260,6 +293,19 @@ namespace CleanStateMachine
         private void OnPlayModeStateChanged(PlayModeStateChange change)
         {
             PlayModeTracker.OnPlayModeStateChanged(change);
+        }
+
+        private void OnSelectionChange()
+        {
+            var active = Selection.activeGameObject;
+            if (active == null) return;
+
+            var component = active.GetComponent<StateMachineComponent>();
+            if (component == null || component.Controller == null) return;
+            if (component.Controller == _controller) return;
+
+            if (GraphSerializer != null)
+                GraphSerializer.LoadController(component.Controller);
         }
 
         private void CreateGUI()
@@ -866,15 +912,24 @@ namespace CleanStateMachine
         internal void SetShowSidePanel(bool value)
         {
             _showSidePanel = value;
+            EditorPrefs.SetBool(LayoutPrefs.ShowSidePanel, value);
             if (SidePanelElement != null)
                 SidePanelElement.SetExpanded(value);
         }
 
         internal float GetSidePanelWidth() => _sidePanelWidth;
-        internal void SetSidePanelWidth(float value) { _sidePanelWidth = value; }
+        internal void SetSidePanelWidth(float value)
+        {
+            _sidePanelWidth = value;
+            EditorPrefs.SetFloat(LayoutPrefs.SidePanelWidth, value);
+        }
 
         internal float GetDetailsHeightRatio() => _detailsHeightRatio;
-        internal void SetDetailsHeightRatio(float value) { _detailsHeightRatio = value; }
+        internal void SetDetailsHeightRatio(float value)
+        {
+            _detailsHeightRatio = value;
+            EditorPrefs.SetFloat(LayoutPrefs.DetailsHeightRatio, value);
+        }
 
         internal IReadOnlyList<ISelectable> GetSelection() => SelectionController.Selected;
         internal List<StateView> GetStates() => States;
@@ -890,6 +945,7 @@ namespace CleanStateMachine
         internal void SaveSidePanelLayout(float detailsHeightRatio)
         {
             _detailsHeightRatio = detailsHeightRatio;
+            EditorPrefs.SetFloat(LayoutPrefs.DetailsHeightRatio, detailsHeightRatio);
         }
 
         public override void SaveChanges()
