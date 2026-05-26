@@ -12,6 +12,7 @@ namespace CleanStateMachine
         public double ActivationTime { get; set; }
         public float PerpendicularOffset { get; set; }
         public int DataIndex { get; set; } = -1;
+        public float MinStateTime { get; set; }
         public List<ConditionEntry> ConditionEntries { get; set; } = new List<ConditionEntry>();
 
         private const float HitTestThreshold = 10f;

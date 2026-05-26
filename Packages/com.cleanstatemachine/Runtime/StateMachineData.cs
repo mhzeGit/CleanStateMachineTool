@@ -80,6 +80,7 @@ namespace CleanStateMachine
     {
         public int FromIndex;
         public int ToIndex;
+        public float MinStateTime;
         public List<ConditionEntry> Conditions = new List<ConditionEntry>();
     }
 

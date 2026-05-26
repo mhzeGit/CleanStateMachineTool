@@ -106,6 +106,7 @@ namespace CleanStateMachine
 
             _window.MarkChangedInternal();
             SyncStatesWithGroups();
+            AddToExpandedContainer(state);
             _window.Repaint();
         }
 

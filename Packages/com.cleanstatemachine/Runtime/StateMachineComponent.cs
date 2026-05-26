@@ -336,10 +336,39 @@ namespace CleanStateMachine
                 if (connection.ToIndex == leafIndex)
                     continue;
 
-                if (EvaluateConditions(connection))
+                if (!CanTransition(connection))
+                    continue;
+
+                // Prevent transition to a direct child of the current state
+                if (IsDirectChildOf(connection.ToIndex, leafIndex))
+                    continue;
+
+                _isTransitioning = true;
+                try
                 {
-                    // Prevent transition to a direct child of the current state
-                    if (IsDirectChildOf(connection.ToIndex, leafIndex))
+                    TransitionToState(c);
+                }
+                finally
+                {
+                    _isTransitioning = false;
+                }
+                return;
+            }
+
+            for (int depth = _activeStatePath.Count - 1; depth >= 0; depth--)
+            {
+                int fromIndex = _activeStatePath[depth];
+                bool isLeaf = depth == _activeStatePath.Count - 1;
+
+                for (int c = 0; c < Data.Connections.Count; c++)
+                {
+                    var connection = Data.Connections[c];
+                    if (connection.FromIndex != fromIndex) continue;
+
+                    if (!CanTransition(connection))
+                        continue;
+
+                    if (!isLeaf && IsDirectChildOf(connection.ToIndex, fromIndex))
                         continue;
 
                     _isTransitioning = true;
@@ -354,35 +383,13 @@ namespace CleanStateMachine
                     return;
                 }
             }
+        }
 
-            for (int depth = _activeStatePath.Count - 1; depth >= 0; depth--)
-            {
-                int fromIndex = _activeStatePath[depth];
-                bool isLeaf = depth == _activeStatePath.Count - 1;
-
-                for (int c = 0; c < Data.Connections.Count; c++)
-                {
-                    var connection = Data.Connections[c];
-                    if (connection.FromIndex != fromIndex) continue;
-
-                    if (EvaluateConditions(connection))
-                    {
-                        if (!isLeaf && IsDirectChildOf(connection.ToIndex, fromIndex))
-                            continue;
-
-                        _isTransitioning = true;
-                        try
-                        {
-                            TransitionToState(c);
-                        }
-                        finally
-                        {
-                            _isTransitioning = false;
-                        }
-                        return;
-                    }
-                }
-            }
+        private bool CanTransition(ConnectionData connection)
+        {
+            if (connection.MinStateTime <= 0f)
+                return true;
+            return Time.time - _stateEnterTime >= connection.MinStateTime;
         }
 
         private bool IsDirectChildOf(int childIndex, int parentIndex)

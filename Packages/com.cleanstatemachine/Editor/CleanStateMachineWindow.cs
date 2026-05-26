@@ -156,6 +156,7 @@ namespace CleanStateMachine
         // ─── Helper Modules ───────────────────────────────────────────
 
         internal GraphOperations GraphOperations;
+        internal GraphValidation GraphValidation;
         internal GraphInputHandler InputHandler;
         internal ShortcutGuide ShortcutGuide;
         internal ExpandedViewManager ExpandedView;
@@ -229,6 +230,7 @@ namespace CleanStateMachine
             ConnectionController = new ConnectionController();
 
             GraphOperations = new GraphOperations(this);
+            GraphValidation = new GraphValidation(this);
             InputHandler = new GraphInputHandler(this, GraphOperations);
             ShortcutGuide = new ShortcutGuide(this);
             ExpandedView = new ExpandedViewManager(this);
@@ -571,6 +573,7 @@ namespace CleanStateMachine
                 }
             }
 
+            GraphValidation.RunAndUpdate();
             GridBackground.UpdateView(_panOffset, _zoom);
             ConnectionArrowsLayer.UpdateView(_zoom, _panOffset);
             SyncStateHierarchy();
@@ -885,6 +888,7 @@ namespace CleanStateMachine
         internal void MarkChangedInternal()
         {
             if (_isLoading) return;
+            GraphValidation?.MarkDirty();
             _hasUnsavedChanges = true;
             hasUnsavedChanges = true;
             UpdateTitleInternal();

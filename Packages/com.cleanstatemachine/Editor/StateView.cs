@@ -149,6 +149,23 @@ namespace CleanStateMachine
         private VisualElement _breakpointIcon;
         private bool _glowScheduled;
 
+        private StateValidationStatus _validationStatus;
+        internal StateValidationStatus ValidationStatus => _validationStatus;
+
+        internal void SetValidationStatus(StateValidationStatus status)
+        {
+            if (_validationStatus == status) return;
+            _validationStatus = status;
+            UpdateValidationVisual();
+        }
+
+        private void UpdateValidationVisual()
+        {
+            if (_fill == null) return;
+            _fill.EnableInClassList("state-view__fill--orphaned", _validationStatus == StateValidationStatus.Orphaned);
+            _fill.EnableInClassList("state-view__fill--dead-end", _validationStatus == StateValidationStatus.DeadEnd);
+        }
+
         public const float DefaultWidth = 160f;
         public const float DefaultHeight = 40f;
         private const int BaseCornerRadius = 8;

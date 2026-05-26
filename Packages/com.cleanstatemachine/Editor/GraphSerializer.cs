@@ -90,6 +90,7 @@ namespace CleanStateMachine
                 {
                     FromIndex = stateToIndex[conn.From],
                     ToIndex = stateToIndex[conn.To],
+                    MinStateTime = conn.MinStateTime,
                     Conditions = conn.ConditionEntries
                 };
                 _window.CurrentData.Connections.Add(cd);
@@ -194,7 +195,8 @@ namespace CleanStateMachine
                         var conn = new ConnectionView(
                             stateLookup[cd.FromIndex], stateLookup[cd.ToIndex])
                         {
-                            DataIndex = i
+                            DataIndex = i,
+                            MinStateTime = cd.MinStateTime
                         };
                         if (cd.Conditions != null)
                         {
@@ -255,6 +257,11 @@ namespace CleanStateMachine
             _window.GraphOperations.SyncGroupElements();
             _window.GraphOperations.SyncStatesWithSubMachines();
             _window.IsLoading = false;
+            if (_window.GraphValidation != null)
+            {
+                _window.GraphValidation.MarkDirty();
+                _window.GraphValidation.RunAndUpdate();
+            }
             _window.MarkSavedInternal();
             _window.UpdateTitleInternal();
 
@@ -348,6 +355,11 @@ namespace CleanStateMachine
             _window.EnsureEntryStateExistsInternal();
             _window.GraphOperations.SyncGroupElements();
 
+            if (_window.GraphValidation != null)
+            {
+                _window.GraphValidation.MarkDirty();
+                _window.GraphValidation.RunAndUpdate();
+            }
             _window.MarkSavedInternal();
 
             if (_window.SidePanelElement != null)

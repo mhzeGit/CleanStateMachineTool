@@ -109,6 +109,8 @@ namespace CleanStateMachine
 
         private void BuildStateContent(StateView state)
         {
+            BuildValidationMessages(state);
+
             AddSectionTitle("State Information");
 
             var nameRow = new VisualElement();
@@ -420,6 +422,7 @@ namespace CleanStateMachine
         private void BuildConnectionContent(ConnectionView conn)
         {
             _activeConnection = conn;
+            BuildConnectionValidationMessages(conn);
             AddSectionTitle("Connection");
 
             var statesRow = new VisualElement();
@@ -458,6 +461,24 @@ namespace CleanStateMachine
             }
 
             _scrollView.Add(statesRow);
+
+            var minTimeRow = new VisualElement();
+            minTimeRow.AddToClassList("info-row");
+
+            var minTimeLabel = new Label("Min State Time");
+            minTimeLabel.AddToClassList("info-row-label");
+            minTimeRow.Add(minTimeLabel);
+
+            var minTimeField = new FloatField();
+            minTimeField.value = conn.MinStateTime;
+            minTimeField.AddToClassList("info-row-value");
+            minTimeField.RegisterValueChangedCallback(evt =>
+            {
+                conn.MinStateTime = evt.newValue >= 0f ? evt.newValue : 0f;
+                _window.NotifySidePanelChanged();
+            });
+            minTimeRow.Add(minTimeField);
+            _scrollView.Add(minTimeRow);
 
             AddDivider();
             AddSectionTitle("Transition Conditions");
@@ -1665,6 +1686,133 @@ namespace CleanStateMachine
         }
 
         // ─── VALIDATION ────────────────────────────────────────────────
+
+        private void BuildValidationMessages(StateView state)
+        {
+            var messages = GraphValidation.GetStateMessages(state, _connections);
+
+            for (int i = 0; i < state.BehaviourEntries.Count; i++)
+            {
+                var entry = state.BehaviourEntries[i];
+                if (entry.Instance != null)
+                    messages.AddRange(GetBbVarValidationMessages(entry.Instance));
+            }
+
+            if (messages.Count == 0) return;
+
+            AddDivider();
+
+            for (int i = 0; i < messages.Count; i++)
+            {
+                _scrollView.Add(BuildValidationMessageRow(messages[i]));
+            }
+        }
+
+        private void BuildConnectionValidationMessages(ConnectionView conn)
+        {
+            var messages = GraphValidation.GetConnectionMessages(conn);
+
+            for (int i = 0; i < conn.ConditionEntries.Count; i++)
+            {
+                var entry = conn.ConditionEntries[i];
+                if (entry.Instance != null)
+                    messages.AddRange(GetBbVarValidationMessages(entry.Instance));
+            }
+
+            if (messages.Count == 0) return;
+
+            AddDivider();
+
+            for (int i = 0; i < messages.Count; i++)
+            {
+                _scrollView.Add(BuildValidationMessageRow(messages[i]));
+            }
+        }
+
+        private List<ValidationMessage> GetBbVarValidationMessages(ScriptableObject instance)
+        {
+            var messages = new List<ValidationMessage>();
+            if (instance == null || _blackboardVariables == null) return messages;
+
+            var so = new SerializedObject(instance);
+            var prop = so.GetIterator();
+            bool enterChildren = true;
+            while (prop.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (prop.type == "BlackboardVariableReference")
+                {
+                    var varNameProp = prop.FindPropertyRelative("BlackboardVariableName");
+                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue))
+                    {
+                        bool exists = false;
+                        for (int i = 0; i < _blackboardVariables.Count; i++)
+                        {
+                            if (_blackboardVariables[i].Name == varNameProp.stringValue)
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists)
+                            messages.Add(new ValidationMessage(ValidationMessageType.Error,
+                                $"Blackboard variable \"{varNameProp.stringValue}\" not found"));
+                    }
+                }
+                else if (prop.type == "BlackboardVariableSelector")
+                {
+                    var varNameProp = prop.FindPropertyRelative("VariableName");
+                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue))
+                    {
+                        bool exists = false;
+                        for (int i = 0; i < _blackboardVariables.Count; i++)
+                        {
+                            if (_blackboardVariables[i].Name == varNameProp.stringValue)
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists)
+                            messages.Add(new ValidationMessage(ValidationMessageType.Error,
+                                $"Blackboard variable \"{varNameProp.stringValue}\" not found in blackboard"));
+                    }
+                }
+            }
+
+            return messages;
+        }
+
+        private static VisualElement BuildValidationMessageRow(ValidationMessage msg)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("validation-row");
+
+            string className = msg.Type switch
+            {
+                ValidationMessageType.Error => "validation-row--error",
+                ValidationMessageType.Warning => "validation-row--warning",
+                _ => "validation-row--info"
+            };
+            row.AddToClassList(className);
+
+            string icon = msg.Type switch
+            {
+                ValidationMessageType.Error => "\u2716",
+                ValidationMessageType.Warning => "\u26A0",
+                _ => "\u2139"
+            };
+
+            var iconLabel = new Label(icon);
+            iconLabel.AddToClassList("validation-icon");
+            row.Add(iconLabel);
+
+            var textLabel = new Label(msg.Text);
+            textLabel.AddToClassList("validation-text");
+            row.Add(textLabel);
+
+            return row;
+        }
 
         private static bool IsValidStateBehaviour(MonoScript script)
         {
