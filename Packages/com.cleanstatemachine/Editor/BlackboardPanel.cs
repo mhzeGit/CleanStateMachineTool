@@ -146,6 +146,8 @@ namespace CleanStateMachine
 
             if (variable.Type == BlackboardVariableType.Trigger)
             {
+                var toggleContainer = new VisualElement();
+                toggleContainer.AddToClassList("variable-value-toggle");
                 var triggerToggle = new TriggerToggle(variable.BoolValue);
                 triggerToggle.RegisterCallback<ClickEvent>(_ =>
                 {
@@ -155,7 +157,8 @@ namespace CleanStateMachine
                     _window.UndoRedoSystem.Execute(cmd);
                     _window.NotifySidePanelChanged();
                 });
-                rightGroup.Add(triggerToggle);
+                toggleContainer.Add(triggerToggle);
+                rightGroup.Add(toggleContainer);
             }
             else if (variable.Type == BlackboardVariableType.Bool)
             {
@@ -314,7 +317,9 @@ namespace CleanStateMachine
             string newName = nameInput.value;
             if (!string.IsNullOrEmpty(newName) && newName != _variables[index].Name)
             {
-                _variables[index].Name = newName;
+                string oldName = _variables[index].Name;
+                var cmd = new RenameBlackboardVariableCommand(_variables[index], oldName, newName);
+                _window.UndoRedoSystem.Execute(cmd);
                 _window.NotifySidePanelChanged();
             }
 

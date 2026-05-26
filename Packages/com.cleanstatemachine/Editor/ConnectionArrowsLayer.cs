@@ -50,14 +50,54 @@ namespace CleanStateMachine
             MarkDirtyRepaint();
         }
 
+        private const int CircleSegments = 12;
+        private const int WaveCircleCount = 5;
+
         private void OnGenerateVisualContent(MeshGenerationContext mgc)
         {
             DrawAllConnections(mgc);
             DrawPendingConnection(mgc);
         }
 
+        private static int CountCircleVertices() => 1 + CircleSegments * 2;
+        private static int CountCircleIndices() => CircleSegments * 3 + CircleSegments * 6;
+
         private void DrawAllConnections(MeshGenerationContext mgc)
         {
+            int totalVerts = 0;
+            int totalIndices = 0;
+
+            for (int i = 0; i < _connections.Count; i++)
+            {
+                var conn = _connections[i];
+                if (IsConnectionHidden != null && IsConnectionHidden(conn))
+                    continue;
+
+                totalVerts += 8;
+                totalIndices += 18;
+
+                totalVerts += 6;
+                totalIndices += 21;
+
+                if (conn.IsActive)
+                {
+                    double elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
+                    float fade = Mathf.Clamp01(1f - (float)(elapsed / 3.0));
+                    if (fade > 0.01f)
+                    {
+                        int cv = CountCircleVertices();
+                        int ci = CountCircleIndices();
+                        totalVerts += cv * WaveCircleCount;
+                        totalIndices += ci * WaveCircleCount;
+                    }
+                }
+            }
+
+            if (totalVerts == 0) return;
+
+            var mesh = mgc.Allocate(totalVerts, totalIndices);
+            int vertexOffset = 0;
+
             for (int i = 0; i < _connections.Count; i++)
             {
                 var conn = _connections[i];
@@ -92,11 +132,11 @@ namespace CleanStateMachine
                 Color color = conn.IsSelected ? SelectedColor : Color.Lerp(ConnectionColor, ActiveConnectionColor, fade);
                 float width = Mathf.Max(1f, (conn.IsSelected ? SelectedBaseWidth : BaseWidth) * _zoom * widthMultiplier);
 
-                DrawLine(mgc, startPos, endPos, color, width);
-                DrawMidArrowhead(mgc, startPos, endPos, color, _zoom);
+                WriteLine(mesh, ref vertexOffset, startPos, endPos, color, width);
+                WriteMidArrowhead(mesh, ref vertexOffset, startPos, endPos, color, _zoom);
 
                 if (fade > 0.01f)
-                    DrawActiveWave(mgc, startPos, endPos, _zoom, fade, color, elapsed);
+                    WriteActiveWave(mesh, ref vertexOffset, startPos, endPos, _zoom, fade, color, elapsed);
             }
         }
 
@@ -108,10 +148,13 @@ namespace CleanStateMachine
             Vector3 endPos = _connectionController.CurrentMouseGraphPos * _zoom + _panOffset;
 
             float width = Mathf.Max(1f, 1f * _zoom);
-            DrawLine(mgc, startPos, endPos, PendingColor, width);
+
+            var mesh = mgc.Allocate(14, 39);
+            int vo = 0;
+            WriteLine(mesh, ref vo, startPos, endPos, PendingColor, width);
 
             if (Vector3.Distance(startPos, endPos) > 1f)
-                DrawMidArrowhead(mgc, startPos, endPos, PendingColor, _zoom);
+                WriteMidArrowhead(mesh, ref vo, startPos, endPos, PendingColor, _zoom);
         }
 
         private Vector2 GetOffsetVector(ConnectionView conn)
@@ -131,14 +174,12 @@ namespace CleanStateMachine
             to = conn.To.GetCenter() * _zoom + _panOffset + offset;
         }
 
-        private static void DrawLine(MeshGenerationContext mgc, Vector3 start, Vector3 end, Color color, float width)
+        private static void WriteLine(MeshWriteData mesh, ref int vertexOffset, Vector3 start, Vector3 end, Color color, float width)
         {
             Vector3 dir = (end - start).normalized;
             Vector3 perp = new Vector3(-dir.y, dir.x, 0f);
             float halfW = width * 0.5f;
             float feather = Mathf.Max(0.5f, FeatherPixels);
-
-            var mesh = mgc.Allocate(8, 18);
 
             Color cEdge = new Color(color.r, color.g, color.b, 0f);
 
@@ -152,6 +193,7 @@ namespace CleanStateMachine
             Vector3 eri = end - perp * halfW;
             Vector3 ero = end - perp * (halfW + feather);
 
+            ushort vo = (ushort)vertexOffset;
             mesh.SetNextVertex(new Vertex { position = slo, tint = cEdge });
             mesh.SetNextVertex(new Vertex { position = sli, tint = color });
             mesh.SetNextVertex(new Vertex { position = sri, tint = color });
@@ -162,17 +204,19 @@ namespace CleanStateMachine
             mesh.SetNextVertex(new Vertex { position = eri, tint = color });
             mesh.SetNextVertex(new Vertex { position = ero, tint = cEdge });
 
-            mesh.SetNextIndex(0); mesh.SetNextIndex(1); mesh.SetNextIndex(5);
-            mesh.SetNextIndex(0); mesh.SetNextIndex(5); mesh.SetNextIndex(4);
+            mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 5));
+            mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 5)); mesh.SetNextIndex((ushort)(vo + 4));
 
-            mesh.SetNextIndex(1); mesh.SetNextIndex(2); mesh.SetNextIndex(6);
-            mesh.SetNextIndex(1); mesh.SetNextIndex(6); mesh.SetNextIndex(5);
+            mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 6));
+            mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 6)); mesh.SetNextIndex((ushort)(vo + 5));
 
-            mesh.SetNextIndex(2); mesh.SetNextIndex(3); mesh.SetNextIndex(7);
-            mesh.SetNextIndex(2); mesh.SetNextIndex(7); mesh.SetNextIndex(6);
+            mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 3)); mesh.SetNextIndex((ushort)(vo + 7));
+            mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 7)); mesh.SetNextIndex((ushort)(vo + 6));
+
+            vertexOffset += 8;
         }
 
-        private static void DrawMidArrowhead(MeshGenerationContext mgc, Vector3 start, Vector3 end, Color color, float zoom)
+        private static void WriteMidArrowhead(MeshWriteData mesh, ref int vertexOffset, Vector3 start, Vector3 end, Color color, float zoom)
         {
             Vector3 mid = (start + end) * 0.5f;
             Vector3 dir = (end - start).normalized;
@@ -191,17 +235,11 @@ namespace CleanStateMachine
 
             Color cEdge = new Color(color.r, color.g, color.b, 0f);
 
-            float offsetScale = feather / Mathf.Max(0.1f,
-                Vector3.Distance(centroid, tip) +
-                Vector3.Distance(centroid, left) +
-                Vector3.Distance(centroid, right) / 3f);
-
             Vector3 tipO = tip + (tip - centroid).normalized * feather;
             Vector3 leftO = left + (left - centroid).normalized * feather;
             Vector3 rightO = right + (right - centroid).normalized * feather;
 
-            var mesh = mgc.Allocate(6, 21);
-
+            ushort vo = (ushort)vertexOffset;
             mesh.SetNextVertex(new Vertex { position = tip, tint = color });
             mesh.SetNextVertex(new Vertex { position = left, tint = color });
             mesh.SetNextVertex(new Vertex { position = right, tint = color });
@@ -209,19 +247,21 @@ namespace CleanStateMachine
             mesh.SetNextVertex(new Vertex { position = leftO, tint = cEdge });
             mesh.SetNextVertex(new Vertex { position = rightO, tint = cEdge });
 
-            mesh.SetNextIndex(0); mesh.SetNextIndex(1); mesh.SetNextIndex(2);
+            mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 2));
 
-            mesh.SetNextIndex(0); mesh.SetNextIndex(1); mesh.SetNextIndex(4);
-            mesh.SetNextIndex(0); mesh.SetNextIndex(4); mesh.SetNextIndex(3);
+            mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 4));
+            mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 4)); mesh.SetNextIndex((ushort)(vo + 3));
 
-            mesh.SetNextIndex(1); mesh.SetNextIndex(2); mesh.SetNextIndex(5);
-            mesh.SetNextIndex(1); mesh.SetNextIndex(5); mesh.SetNextIndex(4);
+            mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 5));
+            mesh.SetNextIndex((ushort)(vo + 1)); mesh.SetNextIndex((ushort)(vo + 5)); mesh.SetNextIndex((ushort)(vo + 4));
 
-            mesh.SetNextIndex(2); mesh.SetNextIndex(0); mesh.SetNextIndex(3);
-            mesh.SetNextIndex(2); mesh.SetNextIndex(3); mesh.SetNextIndex(5);
+            mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 0)); mesh.SetNextIndex((ushort)(vo + 3));
+            mesh.SetNextIndex((ushort)(vo + 2)); mesh.SetNextIndex((ushort)(vo + 3)); mesh.SetNextIndex((ushort)(vo + 5));
+
+            vertexOffset += 6;
         }
 
-        private static void DrawActiveWave(MeshGenerationContext mgc, Vector3 start, Vector3 end, float zoom, float fade, Color arrowColor, double elapsed)
+        private static void WriteActiveWave(MeshWriteData mesh, ref int vertexOffset, Vector3 start, Vector3 end, float zoom, float fade, Color arrowColor, double elapsed)
         {
             Vector3 dir = (end - start).normalized;
             float totalLen = Vector3.Distance(start, end);
@@ -235,7 +275,6 @@ namespace CleanStateMachine
             }
 
             float speed = 0.8f;
-            int circleCount = 5;
             float circleRadius = Mathf.Max(2f, 4f * zoom) * (1f + (BurstCircleSizePeak - 1f) * burstAmount);
 
             Color waveColor = new Color(arrowColor.r, arrowColor.g, arrowColor.b, arrowColor.a * fade);
@@ -246,32 +285,28 @@ namespace CleanStateMachine
                 waveColor.a = arrowColor.a * fade;
             }
 
-            for (int i = 0; i < circleCount; i++)
+            for (int i = 0; i < WaveCircleCount; i++)
             {
-                float phase = (float)i / circleCount;
+                float phase = (float)i / WaveCircleCount;
                 float t = (Time.realtimeSinceStartup * speed + phase) % 1.0f;
 
                 Vector3 pos = start + dir * (t * totalLen);
 
-                DrawCircle(mgc, pos, circleRadius, waveColor);
+                WriteCircle(mesh, ref vertexOffset, pos, circleRadius, waveColor);
             }
         }
 
-        private static void DrawCircle(MeshGenerationContext mgc, Vector3 center, float radius, Color color)
+        private static void WriteCircle(MeshWriteData mesh, ref int vertexOffset, Vector3 center, float radius, Color color)
         {
-            int segments = 12;
             float feather = Mathf.Max(0.5f, FeatherPixels);
-            int vertCount = 1 + segments * 2;
-            int indexCount = segments * 3 + segments * 6;
-
-            var mesh = mgc.Allocate(vertCount, indexCount);
             Color cEdge = new Color(color.r, color.g, color.b, 0f);
 
+            ushort vo = (ushort)vertexOffset;
             mesh.SetNextVertex(new Vertex { position = new Vector3(center.x, center.y, 0f), tint = color });
 
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i < CircleSegments; i++)
             {
-                float angle = (float)i / segments * Mathf.PI * 2f;
+                float angle = (float)i / CircleSegments * Mathf.PI * 2f;
                 float cos = Mathf.Cos(angle);
                 float sin = Mathf.Sin(angle);
 
@@ -282,15 +317,15 @@ namespace CleanStateMachine
                 mesh.SetNextVertex(new Vertex { position = outerPos, tint = cEdge });
             }
 
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i < CircleSegments; i++)
             {
-                int ni = (i + 1) % segments;
-                ushort innerI = (ushort)(1 + i * 2);
-                ushort innerN = (ushort)(1 + ni * 2);
-                ushort outerI = (ushort)(1 + i * 2 + 1);
-                ushort outerN = (ushort)(1 + ni * 2 + 1);
+                int ni = (i + 1) % CircleSegments;
+                ushort innerI = (ushort)(vo + 1 + i * 2);
+                ushort innerN = (ushort)(vo + 1 + ni * 2);
+                ushort outerI = (ushort)(vo + 1 + i * 2 + 1);
+                ushort outerN = (ushort)(vo + 1 + ni * 2 + 1);
 
-                mesh.SetNextIndex(0);
+                mesh.SetNextIndex((ushort)(vo + 0));
                 mesh.SetNextIndex(innerI);
                 mesh.SetNextIndex(innerN);
 
@@ -302,6 +337,8 @@ namespace CleanStateMachine
                 mesh.SetNextIndex(outerN);
                 mesh.SetNextIndex(innerN);
             }
+
+            vertexOffset += 1 + CircleSegments * 2;
         }
     }
 }

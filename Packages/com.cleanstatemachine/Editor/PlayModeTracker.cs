@@ -211,20 +211,9 @@ namespace CleanStateMachine
             if (component.Controller != _window.Controller) return;
             if (EditorApplication.isPaused) return;
 
-            var data = component.Data;
-            if (data == null || data.Breakpoints == null || data.Breakpoints.Count == 0) return;
-
             int leafIndex = component.CurrentStateIndex;
 
-            bool hasBreakpoint = false;
-            for (int i = 0; i < data.Breakpoints.Count; i++)
-            {
-                if (data.Breakpoints[i].StateIndex == leafIndex)
-                {
-                    hasBreakpoint = true;
-                    break;
-                }
-            }
+            bool hasBreakpoint = _window.BreakpointStateIndices.Contains(leafIndex);
 
             if (!hasBreakpoint) return;
 

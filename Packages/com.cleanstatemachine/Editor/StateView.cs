@@ -110,6 +110,11 @@ namespace CleanStateMachine
                     else if (!_wasBriefActive)
                         _fill.EnableInClassList("state-view__fill--active", false);
                 }
+
+                if (value)
+                    StartGlowSchedule();
+                else if (_wasBriefActive)
+                    StartGlowSchedule();
             }
         }
 
@@ -138,6 +143,7 @@ namespace CleanStateMachine
         private VisualElement _subIcon;
         private VisualElement _externalIcon;
         private VisualElement _breakpointIcon;
+        private bool _glowScheduled;
 
         public const float DefaultWidth = 160f;
         public const float DefaultHeight = 40f;
@@ -475,52 +481,63 @@ namespace CleanStateMachine
                 _externalIcon.style.display = IsExternalReference ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        private void InitializeGlowAnimation()
+        private void StartGlowSchedule()
         {
-            schedule.Execute(() =>
-            {
-                if (_isActive)
-                {
-                    float flashElapsed = (float)(Time.realtimeSinceStartup - _activatedAtTime);
-                    float flashDuration = 0.25f;
-                    float flashBoost = 0f;
-                    if (flashElapsed < flashDuration)
-                    {
-                        float t = flashElapsed / flashDuration;
-                        flashBoost = (1f - t) * (1f - t);
-                    }
+            if (_glowScheduled) return;
+            _glowScheduled = true;
+            schedule.Execute(OnGlowUpdate).Until(() => !_glowScheduled).Every(30);
+        }
 
-                    float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
-                    float minAlpha = 0.35f;
-                    float maxAlpha = 0.85f;
-                    float baseAlpha = minAlpha + pulse * (maxAlpha - minAlpha);
-                    _glow.style.opacity = Mathf.Min(1f, baseAlpha + flashBoost * (1f - baseAlpha));
-                }
-                else if (_wasBriefActive)
+        private void OnGlowUpdate()
+        {
+            if (_isActive)
+            {
+                float flashElapsed = (float)(Time.realtimeSinceStartup - _activatedAtTime);
+                float flashDuration = 0.25f;
+                float flashBoost = 0f;
+                if (flashElapsed < flashDuration)
                 {
-                    float elapsed = (float)(Time.realtimeSinceStartup - _deactivatedAtTime);
-                    float blinkDuration = 0.25f;
-                    if (elapsed < blinkDuration)
-                    {
-                        float t = elapsed / blinkDuration;
-                        float blinkOpacity = 1f - t;
-                        _glow.style.opacity = blinkOpacity;
-                        if (_fill != null)
-                            _fill.EnableInClassList("state-view__fill--active", true);
-                    }
-                    else
-                    {
-                        _wasBriefActive = false;
-                        _glow.style.opacity = 0f;
-                        if (_fill != null)
-                            _fill.EnableInClassList("state-view__fill--active", false);
-                    }
+                    float t = flashElapsed / flashDuration;
+                    flashBoost = (1f - t) * (1f - t);
+                }
+
+                float pulse = (Mathf.Sin((float)(Time.realtimeSinceStartup * GlowPulseSpeed)) + 1f) * 0.5f;
+                float minAlpha = 0.35f;
+                float maxAlpha = 0.85f;
+                float baseAlpha = minAlpha + pulse * (maxAlpha - minAlpha);
+                _glow.style.opacity = Mathf.Min(1f, baseAlpha + flashBoost * (1f - baseAlpha));
+            }
+            else if (_wasBriefActive)
+            {
+                float elapsed = (float)(Time.realtimeSinceStartup - _deactivatedAtTime);
+                float blinkDuration = 0.25f;
+                if (elapsed < blinkDuration)
+                {
+                    float t = elapsed / blinkDuration;
+                    float blinkOpacity = 1f - t;
+                    _glow.style.opacity = blinkOpacity;
+                    if (_fill != null)
+                        _fill.EnableInClassList("state-view__fill--active", true);
                 }
                 else
                 {
+                    _wasBriefActive = false;
                     _glow.style.opacity = 0f;
+                    if (_fill != null)
+                        _fill.EnableInClassList("state-view__fill--active", false);
+                    _glowScheduled = false;
                 }
-            }).Every(30);
+            }
+            else
+            {
+                _glow.style.opacity = 0f;
+                _glowScheduled = false;
+            }
+        }
+
+        private void InitializeGlowAnimation()
+        {
+            RegisterCallback<DetachFromPanelEvent>(_ => _glowScheduled = false);
         }
 
         void ISelectable.DrawSelectionOverlay(float zoom, Vector2 panOffset)

@@ -21,6 +21,9 @@ namespace CleanStateMachine
         private readonly Dictionary<StateData, List<StateBehaviour>> _behaviourInstances = new Dictionary<StateData, List<StateBehaviour>>();
         private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
         private readonly Dictionary<ConditionEntry, ConditionScript> _conditionCache = new Dictionary<ConditionEntry, ConditionScript>();
+        private readonly List<int> _transitionOldPathBuffer = new List<int>();
+
+        private const int MaxRecentTransitions = 100;
 
         public static event System.Action<StateMachineComponent> OnStateEnteredGlobal;
 
@@ -72,6 +75,8 @@ namespace CleanStateMachine
             if (_initialized || _controller == null) return;
 
             CopyVariablesFromController();
+            PreCreateBehaviourInstances();
+            PreCreateConditionInstances();
             BuildEntryPath();
             _initialized = true;
 
@@ -230,55 +235,85 @@ namespace CleanStateMachine
 
         private List<StateBehaviour> GetOrCreateBehaviours(StateData state)
         {
-            if (state.Behaviours.Count > 0)
-            {
-                bool hasCached = false;
-                for (int i = 0; i < state.Behaviours.Count; i++)
-                {
-                    if (state.Behaviours[i].Instance != null)
-                    {
-                        hasCached = true;
-                        break;
-                    }
-                }
-                if (hasCached)
-                {
-                    var cached = new List<StateBehaviour>();
-                    for (int i = 0; i < state.Behaviours.Count; i++)
-                    {
-                        if (state.Behaviours[i].Instance != null)
-                            cached.Add(state.Behaviours[i].Instance);
-                    }
-                    if (cached.Count > 0)
-                        return cached;
-                }
-            }
-
             if (_behaviourInstances.TryGetValue(state, out var existing))
                 return existing;
 
             if (state.Behaviours.Count == 0)
                 return null;
 
-            var instances = new List<StateBehaviour>();
-            for (int i = 0; i < state.Behaviours.Count; i++)
+            return null;
+        }
+
+        private void PreCreateBehaviourInstances()
+        {
+            if (Data == null) return;
+
+            for (int s = 0; s < Data.States.Count; s++)
             {
-                var be = state.Behaviours[i];
-                if (string.IsNullOrEmpty(be.TypeName))
+                var state = Data.States[s];
+                if (state.Behaviours == null || state.Behaviours.Count == 0)
                     continue;
 
-                var type = ResolveType(be.TypeName);
-                if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
-                    continue;
+                var instances = new List<StateBehaviour>();
+                for (int i = 0; i < state.Behaviours.Count; i++)
+                {
+                    var be = state.Behaviours[i];
+                    if (be.Instance != null)
+                    {
+                        instances.Add(be.Instance);
+                        continue;
+                    }
 
-                var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                instance.name = $"{state.Name}_Behaviour_{i}";
-                instance.hideFlags = HideFlags.HideAndDontSave;
-                instances.Add(instance);
+                    if (string.IsNullOrEmpty(be.TypeName))
+                        continue;
+
+                    var type = ResolveType(be.TypeName);
+                    if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
+                        continue;
+
+                    var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                    instance.name = $"{state.Name}_Behaviour_{i}";
+                    instance.hideFlags = HideFlags.HideAndDontSave;
+                    instances.Add(instance);
+                }
+
+                if (instances.Count > 0)
+                    _behaviourInstances[state] = instances;
             }
+        }
 
-            _behaviourInstances[state] = instances;
-            return instances;
+        private void PreCreateConditionInstances()
+        {
+            if (Data == null) return;
+
+            for (int c = 0; c < Data.Connections.Count; c++)
+            {
+                var conditions = Data.Connections[c].Conditions;
+                if (conditions == null) continue;
+
+                for (int i = 0; i < conditions.Count; i++)
+                {
+                    var entry = conditions[i];
+                    if (entry.Instance != null)
+                        continue;
+
+                    if (_conditionCache.ContainsKey(entry))
+                        continue;
+
+                    if (string.IsNullOrEmpty(entry.TypeName))
+                        continue;
+
+                    var type = ResolveType(entry.TypeName);
+                    if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
+                        continue;
+
+                    var instance = (ConditionScript)ScriptableObject.CreateInstance(type);
+                    instance.name = $"{entry.TypeName}_Condition";
+                    instance.hideFlags = HideFlags.HideAndDontSave;
+                    _conditionCache[entry] = instance;
+                    _runtimeConditionInstances.Add(instance);
+                }
+            }
         }
 
         private void CheckTransitions()
@@ -336,24 +371,12 @@ namespace CleanStateMachine
             for (int i = 0; i < connection.Conditions.Count; i++)
             {
                 var entry = connection.Conditions[i];
-                if (entry.Instance == null && string.IsNullOrEmpty(entry.TypeName))
-                    continue;
 
                 ConditionScript condition = entry.Instance;
                 if (condition == null)
                 {
                     if (!_conditionCache.TryGetValue(entry, out condition))
-                    {
-                        var type = ResolveType(entry.TypeName);
-                        if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
-                            continue;
-
-                        condition = (ConditionScript)ScriptableObject.CreateInstance(type);
-                        condition.name = $"{entry.TypeName}_Condition";
-                        condition.hideFlags = HideFlags.HideAndDontSave;
-                        _conditionCache[entry] = condition;
-                        _runtimeConditionInstances.Add(condition);
-                    }
+                        continue;
                 }
 
                 if (!condition.Evaluate(this))
@@ -372,26 +395,27 @@ namespace CleanStateMachine
             int fromLeaf = CurrentStateIndex;
             string previousLeafName = CurrentStateName;
 
-            var oldPath = new List<int>(_activeStatePath);
+            _transitionOldPathBuffer.Clear();
+            _transitionOldPathBuffer.AddRange(_activeStatePath);
 
             BuildFullPath(toIndex);
 
             int commonDepth = 0;
-            while (commonDepth < oldPath.Count &&
+            while (commonDepth < _transitionOldPathBuffer.Count &&
                    commonDepth < _activeStatePath.Count &&
-                   oldPath[commonDepth] == _activeStatePath[commonDepth])
+                   _transitionOldPathBuffer[commonDepth] == _activeStatePath[commonDepth])
                 commonDepth++;
 
-            if (commonDepth == oldPath.Count && commonDepth == _activeStatePath.Count)
+            if (commonDepth == _transitionOldPathBuffer.Count && commonDepth == _activeStatePath.Count)
             {
                 if (connection.FromIndex != connection.ToIndex)
                     return;
                 commonDepth = _activeStatePath.Count - 1;
             }
 
-            for (int i = oldPath.Count - 1; i >= commonDepth; i--)
+            for (int i = _transitionOldPathBuffer.Count - 1; i >= commonDepth; i--)
             {
-                int idx = oldPath[i];
+                int idx = _transitionOldPathBuffer[i];
                 if (idx >= 0 && idx < Data.States.Count)
                 {
                     var stateData = Data.States[idx];
@@ -416,6 +440,7 @@ namespace CleanStateMachine
                 ToIndex = toIndex,
                 ConnectionIndex = connectionIndex
             });
+            TrimRecentTransitions();
 
             OnStateChanged?.Invoke(fromLeaf, newLeaf);
             OnStateEntered?.Invoke(newLeafName);
@@ -613,18 +638,19 @@ namespace CleanStateMachine
             {
                 int fromLeaf = CurrentStateIndex;
                 string previousLeafName = CurrentStateName;
-                var oldPath = new List<int>(_activeStatePath);
+                _transitionOldPathBuffer.Clear();
+                _transitionOldPathBuffer.AddRange(_activeStatePath);
                 BuildFullPath(targetIndex);
 
                 int commonDepth = 0;
-                while (commonDepth < oldPath.Count &&
+                while (commonDepth < _transitionOldPathBuffer.Count &&
                        commonDepth < _activeStatePath.Count &&
-                       oldPath[commonDepth] == _activeStatePath[commonDepth])
+                       _transitionOldPathBuffer[commonDepth] == _activeStatePath[commonDepth])
                     commonDepth++;
 
-                for (int i = oldPath.Count - 1; i >= commonDepth; i--)
+                for (int i = _transitionOldPathBuffer.Count - 1; i >= commonDepth; i--)
                 {
-                    int idx = oldPath[i];
+                    int idx = _transitionOldPathBuffer[i];
                     if (idx >= 0 && idx < Data.States.Count)
                     {
                         var stateData = Data.States[idx];
@@ -743,6 +769,12 @@ namespace CleanStateMachine
             _running = false;
             _recentTransitions.Clear();
             Initialize();
+        }
+
+        private void TrimRecentTransitions()
+        {
+            if (_recentTransitions.Count > MaxRecentTransitions)
+                _recentTransitions.RemoveRange(0, _recentTransitions.Count - MaxRecentTransitions);
         }
 
         [System.Serializable]

@@ -59,7 +59,10 @@ MonoBehaviour:
     - Name: Patrolling
       Type: 0
       StringValue: False
+    - Name: TriggerExample
+      Type: 4
+      StringValue: False
     Breakpoints: []
-    PanOffset: {x: 16.942108, y: 264.80945}
+    PanOffset: {x: 39.94211, y: 210.80942}
     Zoom: 1.022758
     ExpandedSubStateIndices: 
