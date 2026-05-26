@@ -939,7 +939,7 @@ namespace CleanStateMachine
             foreach (var kvp in groups)
             {
                 var list = kvp.Value;
-                list.Sort((a, b) => a.GetHashCode().CompareTo(b.GetHashCode()));
+                list.Sort((a, b) => a.DataIndex.CompareTo(b.DataIndex));
                 int count = list.Count;
                 for (int i = 0; i < count; i++)
                 {
