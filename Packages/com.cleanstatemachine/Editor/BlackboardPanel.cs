@@ -144,7 +144,20 @@ namespace CleanStateMachine
             var rightGroup = new VisualElement();
             rightGroup.AddToClassList("variable-right");
 
-            if (variable.Type == BlackboardVariableType.Bool || variable.Type == BlackboardVariableType.Trigger)
+            if (variable.Type == BlackboardVariableType.Trigger)
+            {
+                var triggerToggle = new TriggerToggle(variable.BoolValue);
+                triggerToggle.RegisterCallback<ClickEvent>(_ =>
+                {
+                    string oldStr = variable.StringValue;
+                    variable.BoolValue = triggerToggle.Value;
+                    var cmd = new ModifyBlackboardVariableCommand(variable, oldStr, variable.StringValue);
+                    _window.UndoRedoSystem.Execute(cmd);
+                    _window.NotifySidePanelChanged();
+                });
+                rightGroup.Add(triggerToggle);
+            }
+            else if (variable.Type == BlackboardVariableType.Bool)
             {
                 var toggleContainer = new VisualElement();
                 toggleContainer.AddToClassList("variable-value-toggle");

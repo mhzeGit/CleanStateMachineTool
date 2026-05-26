@@ -308,15 +308,13 @@ namespace CleanStateMachine
                 }
                 case BlackboardVariableType.Trigger:
                 {
-                    var toggle = new Toggle();
-                    toggle.value = variable.BoolValue;
-                    toggle.AddToClassList("variable-field");
-                    toggle.RegisterValueChangedCallback(e =>
+                    var triggerToggle = new TriggerToggle(variable.BoolValue);
+                    triggerToggle.OnValueChanged += newValue =>
                     {
-                        variable.BoolValue = e.newValue;
+                        variable.BoolValue = newValue;
                         MarkDirty();
-                    });
-                    valueContainer.Add(toggle);
+                    };
+                    valueContainer.Add(triggerToggle);
                     break;
                 }
             }
@@ -363,7 +361,7 @@ namespace CleanStateMachine
                             tf.SetValueWithoutNotify(variable.StringValue);
                         break;
                     case BlackboardVariableType.Trigger:
-                        if (field is Toggle tt && tt.value != variable.BoolValue)
+                        if (field is TriggerToggle tt && tt.Value != variable.BoolValue)
                             tt.SetValueWithoutNotify(variable.BoolValue);
                         break;
                 }

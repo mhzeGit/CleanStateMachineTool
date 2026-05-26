@@ -1477,15 +1477,15 @@ namespace CleanStateMachine
                         }
                         case BlackboardVariableType.Trigger:
                         {
-                            var toggle = new Toggle();
-                            toggle.value = bool.TryParse(defaultValueProp.stringValue, out var tv) && tv;
-                            toggle.RegisterValueChangedCallback(e =>
+                            var triggerToggle = new TriggerToggle(
+                                bool.TryParse(defaultValueProp.stringValue, out var tv) && tv);
+                            triggerToggle.OnValueChanged += newValue =>
                             {
-                                defaultValueProp.stringValue = e.newValue.ToString();
+                                defaultValueProp.stringValue = newValue.ToString();
                                 so.ApplyModifiedProperties();
                                 EditorUtility.SetDirty(so.targetObject);
-                            });
-                            valueArea.Add(toggle);
+                            };
+                            valueArea.Add(triggerToggle);
                             break;
                         }
                     }
@@ -1784,14 +1784,14 @@ namespace CleanStateMachine
                 }
                 case BlackboardVariableType.Trigger:
                 {
-                    var toggle = new Toggle();
-                    toggle.value = bool.TryParse(currentValue, out var tv) && tv;
-                    toggle.RegisterValueChangedCallback(evt =>
+                    var triggerToggle = new TriggerToggle(
+                        bool.TryParse(currentValue, out var tv) && tv);
+                    triggerToggle.OnValueChanged += newValue =>
                     {
-                        state.ExternalBlackboardParmValue = evt.newValue.ToString();
+                        state.ExternalBlackboardParmValue = newValue.ToString();
                         _window.NotifySidePanelChanged();
-                    });
-                    return MakeFlexField(toggle);
+                    };
+                    return triggerToggle;
                 }
                 default:
                 {
