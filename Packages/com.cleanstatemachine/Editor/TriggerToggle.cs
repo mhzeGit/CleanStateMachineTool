@@ -26,26 +26,26 @@ namespace CleanStateMachine
         {
             _value = initialValue;
 
-            style.width = 20;
-            style.height = 20;
-            style.borderTopLeftRadius = 10;
-            style.borderTopRightRadius = 10;
-            style.borderBottomLeftRadius = 10;
-            style.borderBottomRightRadius = 10;
-            style.borderLeftWidth = 2;
-            style.borderRightWidth = 2;
-            style.borderTopWidth = 2;
-            style.borderBottomWidth = 2;
+            style.width = 16;
+            style.height = 16;
+            style.borderTopLeftRadius = 8;
+            style.borderTopRightRadius = 8;
+            style.borderBottomLeftRadius = 8;
+            style.borderBottomRightRadius = 8;
+            style.borderLeftWidth = 1.5f;
+            style.borderRightWidth = 1.5f;
+            style.borderTopWidth = 1.5f;
+            style.borderBottomWidth = 1.5f;
             style.flexShrink = 0;
             style.alignItems = Align.Center;
             style.justifyContent = Justify.Center;
             _innerCircle = new VisualElement();
-            _innerCircle.style.width = 10;
-            _innerCircle.style.height = 10;
-            _innerCircle.style.borderTopLeftRadius = 5;
-            _innerCircle.style.borderTopRightRadius = 5;
-            _innerCircle.style.borderBottomLeftRadius = 5;
-            _innerCircle.style.borderBottomRightRadius = 5;
+            _innerCircle.style.width = 8;
+            _innerCircle.style.height = 8;
+            _innerCircle.style.borderTopLeftRadius = 4;
+            _innerCircle.style.borderTopRightRadius = 4;
+            _innerCircle.style.borderBottomLeftRadius = 4;
+            _innerCircle.style.borderBottomRightRadius = 4;
             Add(_innerCircle);
 
             RegisterCallback<ClickEvent>(_ =>
@@ -67,20 +67,20 @@ namespace CleanStateMachine
         {
             if (_value)
             {
-                style.borderLeftColor = new Color(0.7f, 0.7f, 0.7f);
-                style.borderRightColor = new Color(0.7f, 0.7f, 0.7f);
-                style.borderTopColor = new Color(0.7f, 0.7f, 0.7f);
-                style.borderBottomColor = new Color(0.7f, 0.7f, 0.7f);
-                style.backgroundColor = new Color(0.7f, 0.7f, 0.7f, 0.4f);
+                style.borderLeftColor = new Color(0.55f, 0.55f, 0.55f);
+                style.borderRightColor = new Color(0.55f, 0.55f, 0.55f);
+                style.borderTopColor = new Color(0.55f, 0.55f, 0.55f);
+                style.borderBottomColor = new Color(0.55f, 0.55f, 0.55f);
+                style.backgroundColor = new Color(0.55f, 0.55f, 0.55f, 0.35f);
                 _innerCircle.style.display = DisplayStyle.Flex;
                 _innerCircle.style.backgroundColor = Color.white;
             }
             else
             {
-                style.borderLeftColor = new Color(0.45f, 0.45f, 0.45f);
-                style.borderRightColor = new Color(0.45f, 0.45f, 0.45f);
-                style.borderTopColor = new Color(0.45f, 0.45f, 0.45f);
-                style.borderBottomColor = new Color(0.45f, 0.45f, 0.45f);
+                style.borderLeftColor = new Color(0.3f, 0.3f, 0.3f);
+                style.borderRightColor = new Color(0.3f, 0.3f, 0.3f);
+                style.borderTopColor = new Color(0.3f, 0.3f, 0.3f);
+                style.borderBottomColor = new Color(0.3f, 0.3f, 0.3f);
                 style.backgroundColor = Color.clear;
                 _innerCircle.style.display = DisplayStyle.None;
             }
