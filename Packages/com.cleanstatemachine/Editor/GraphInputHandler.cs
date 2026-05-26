@@ -675,7 +675,7 @@ namespace CleanStateMachine
 
             for (int i = selected.Count - 1; i >= 0; i--)
             {
-                if (selected[i] is StateView s && (groupMembers.Contains(s) || subChildren.Contains(s)))
+                if (selected[i] is StateView s && (s.IsEntry || groupMembers.Contains(s) || subChildren.Contains(s)))
                     selected.RemoveAt(i);
             }
 

@@ -152,9 +152,9 @@ namespace CleanStateMachine
 
         // ─── Arrow Key Nudge ──────────────────────────────────────────
 
-        internal const float NudgeDistance = 1f;
-        internal const float NudgeRepeatDelay = 0.35f;
-        internal const float NudgeRepeatRate = 0.08f;
+        internal const float NudgeDistance = 10f;
+        internal const float NudgeRepeatDelay = 0.30f;
+        internal const float NudgeRepeatRate = 0.03f;
         private bool _nudgeLeft;
         private bool _nudgeRight;
         private bool _nudgeUp;
