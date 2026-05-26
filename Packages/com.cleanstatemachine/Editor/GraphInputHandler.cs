@@ -226,6 +226,54 @@ namespace CleanStateMachine
                 _window.Repaint();
             }
 
+            if (e.keyCode == KeyCode.H && !e.control && !e.shift && !e.alt)
+            {
+                var selectedStates = new List<StateView>();
+                for (int i = 0; i < _window.SelectionController.Count; i++)
+                {
+                    if (_window.SelectionController.Selected[i] is StateView sv)
+                        selectedStates.Add(sv);
+                }
+
+                if (selectedStates.Count > 0)
+                {
+                    var layout = GraphLayout.ComputeLayout(_window.States, _window.Connections, _window.SelectionController);
+                    if (layout != null && layout.Count > 0)
+                    {
+                        Vector2 currentCenter = Vector2.zero;
+                        foreach (var kvp in layout)
+                            currentCenter += kvp.Key.Position;
+                        currentCenter /= layout.Count;
+
+                        Vector2 newCenter = Vector2.zero;
+                        foreach (var kvp in layout)
+                            newCenter += kvp.Value;
+                        newCenter /= layout.Count;
+
+                        Vector2 offset = currentCenter - newCenter;
+
+                        var items = new List<ISelectable>(layout.Count);
+                        var startPositions = new List<Vector2>(layout.Count);
+                        var endPositions = new List<Vector2>(layout.Count);
+
+                        foreach (var kvp in layout)
+                        {
+                            items.Add(kvp.Key);
+                            startPositions.Add(kvp.Key.Position);
+                            endPositions.Add(kvp.Value + offset);
+                        }
+
+                        var cmd = new MoveStatesCommand(items, startPositions, endPositions);
+                        _window.UndoRedoSystem.Execute(cmd);
+                        _window.MarkChangedInternal();
+                        _window.Repaint();
+                    }
+                }
+
+                e.Use();
+                return true;
+            }
+
             return false;
         }
 
