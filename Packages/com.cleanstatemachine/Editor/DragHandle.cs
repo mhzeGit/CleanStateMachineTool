@@ -8,11 +8,11 @@ namespace CleanStateMachine
         {
             AddToClassList("drag-handle");
 
-            for (int row = 0; row < 5; row++)
+            for (int row = 0; row < 4; row++)
             {
                 var dotRow = new VisualElement();
                 dotRow.AddToClassList("drag-handle-row");
-                for (int col = 0; col < 4; col++)
+                for (int col = 0; col < 3; col++)
                 {
                     var dot = new VisualElement();
                     dot.AddToClassList("drag-handle-dot");

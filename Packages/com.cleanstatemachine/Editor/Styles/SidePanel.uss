@@ -858,13 +858,6 @@
     flex-shrink: 0;
 }
 
-.reorder-entry-drag {
-    background-color: rgba(255, 255, 255, 0.08);
-    border-left-color: rgba(130, 200, 255, 0.7);
-    border-left-width: 3px;
-    padding-left: 1px;
-}
-
 /* --- Multi-Condition UI --- */
 .condition-entry {
     flex-direction: column;
@@ -1110,4 +1103,13 @@
     flex: 1;
     white-space: normal;
     padding-left: 4px;
+}
+
+/* --- Reorder Entry Drag (applied to the dragged entry only) --- */
+.reorder-entry-drag {
+    background-color: hsla(0, 0%, 100%, 0.02);
+    opacity: 0.85;
+    border-left-color: rgba(188, 188, 188, 0.7);
+    border-left-width: 3px;
+    padding-left: 1px;
 }
