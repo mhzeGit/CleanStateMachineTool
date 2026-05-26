@@ -17,6 +17,9 @@ namespace CleanStateMachine
     {
         public string TypeName;
         public StateBehaviour Instance;
+#if UNITY_EDITOR
+        [NonSerialized] public UnityEditor.MonoScript Script;
+#endif
     }
 
     [Serializable]
@@ -29,6 +32,7 @@ namespace CleanStateMachine
         public bool IsSubEntry;
         public bool IsSubStateMachine;
         public bool IsExternalReference;
+        public bool IsAnyState;
         public bool AutoRun = true;
         public List<int> ChildIndices = new List<int>();
         public List<BehaviourEntry> Behaviours = new List<BehaviourEntry>();

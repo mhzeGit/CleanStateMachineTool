@@ -1,17 +1,10 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace CleanStateMachine
 {
-    public class BehaviourEntryView
-    {
-        public MonoScript Script;
-        public StateBehaviour Instance;
-    }
-
     public class StateView : VisualElement, ISelectable
     {
         public Vector2 Position { get; set; }
@@ -72,10 +65,20 @@ namespace CleanStateMachine
                 UpdateSubStateMachineVisual();
             }
         }
+        private bool _isAnyState;
+        public bool IsAnyState
+        {
+            get => _isAnyState;
+            set
+            {
+                _isAnyState = value;
+                UpdateSubStateMachineVisual();
+            }
+        }
         public bool AutoRun { get; set; } = true;
         public bool IsEditing { get; private set; }
         public string EditingBuffer { get; private set; }
-        public List<BehaviourEntryView> BehaviourEntries { get; set; } = new List<BehaviourEntryView>();
+        public List<BehaviourEntry> BehaviourEntries { get; set; } = new List<BehaviourEntry>();
         public List<int> ChildIndices { get; set; } = new List<int>();
         public GameObject ExternalStateMachine { get; set; }
         public ExternalStateMachineAction ExternalAction { get; set; }
@@ -142,6 +145,7 @@ namespace CleanStateMachine
         private VisualElement _editFieldInput;
         private VisualElement _subIcon;
         private VisualElement _externalIcon;
+        private VisualElement _anyStateIcon;
         private VisualElement _breakpointIcon;
         private bool _glowScheduled;
 
@@ -153,13 +157,14 @@ namespace CleanStateMachine
         private const float GlowPulseSpeed = 2.5f;
         private const int GlowBlurKernel = 4;
 
-        public StateView(Vector2 position, string name = "State", bool isEntry = false, bool isSubEntry = false)
+        public StateView(Vector2 position, string name = "State", bool isEntry = false, bool isSubEntry = false, bool isAnyState = false)
         {
             Position = position;
             Size = new Vector2(DefaultWidth, DefaultHeight);
             _name = name;
             IsEntry = isEntry;
             _isSubEntry = isSubEntry;
+            _isAnyState = isAnyState;
 
             pickingMode = PickingMode.Ignore;
             style.position = UnityEngine.UIElements.Position.Absolute;
@@ -190,7 +195,9 @@ namespace CleanStateMachine
             _fill.style.top = 0f;
             _fill.style.right = 0f;
             _fill.style.bottom = 0f;
-            if (IsSubEntry)
+            if (IsAnyState)
+                _fill.AddToClassList("state-view__fill--any-state");
+            else if (IsSubEntry)
                 _fill.AddToClassList("state-view__fill--sub-entry");
             else if (IsEntry)
                 _fill.AddToClassList("state-view__fill--entry");
@@ -235,6 +242,13 @@ namespace CleanStateMachine
             _externalIcon.style.position = UnityEngine.UIElements.Position.Absolute;
             _externalIcon.style.display = DisplayStyle.None;
             Add(_externalIcon);
+
+            _anyStateIcon = new Label("\u221E");
+            _anyStateIcon.AddToClassList("state-view__any-state-icon");
+            _anyStateIcon.pickingMode = PickingMode.Ignore;
+            _anyStateIcon.style.position = UnityEngine.UIElements.Position.Absolute;
+            _anyStateIcon.style.display = DisplayStyle.None;
+            Add(_anyStateIcon);
 
             _breakpointIcon = new VisualElement();
             _breakpointIcon.AddToClassList("state-view__breakpoint");
@@ -363,6 +377,15 @@ namespace CleanStateMachine
                 _externalIcon.style.fontSize = iconSize;
             }
 
+            _anyStateIcon.style.display = IsAnyState ? DisplayStyle.Flex : DisplayStyle.None;
+            if (IsAnyState)
+            {
+                int iconSize = Mathf.RoundToInt(14 * zoom);
+                _anyStateIcon.style.right = Mathf.RoundToInt(4 * zoom);
+                _anyStateIcon.style.top = Mathf.RoundToInt(2 * zoom);
+                _anyStateIcon.style.fontSize = iconSize;
+            }
+
             if (HasBreakpoint)
             {
                 int dotSize = Mathf.RoundToInt(16 * zoom);
@@ -474,11 +497,14 @@ namespace CleanStateMachine
                 _fill.EnableInClassList("state-view__fill--sub-entry", IsSubEntry);
                 _fill.EnableInClassList("state-view__fill--entry", IsEntry && !IsSubEntry);
                 _fill.EnableInClassList("state-view__fill--external", IsExternalReference);
+                _fill.EnableInClassList("state-view__fill--any-state", IsAnyState);
             }
             if (_subIcon != null)
                 _subIcon.style.display = IsSubStateMachine ? DisplayStyle.Flex : DisplayStyle.None;
             if (_externalIcon != null)
                 _externalIcon.style.display = IsExternalReference ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_anyStateIcon != null)
+                _anyStateIcon.style.display = IsAnyState ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void StartGlowSchedule()

@@ -31,18 +31,20 @@ namespace CleanStateMachine
 
             switch (e.type)
             {
-                case EventType.MouseDrag when e.button == 1 && rect.Contains(e.mousePosition) && !IsPanning:
-                    IsPanning = true;
-                    UserInteractedThisFrame = true;
+                case EventType.MouseDown when e.button == 1 && rect.Contains(e.mousePosition):
                     _panStartMouse = e.mousePosition;
                     _panStartOffset = panOffset;
-                    _hasDragged = true;
-                    e.Use();
                     break;
 
-                case EventType.MouseDrag when IsPanning:
+                case EventType.MouseDrag when e.button == 1 && rect.Contains(e.mousePosition):
+                    if (!IsPanning)
+                    {
+                        IsPanning = true;
+                        _hasDragged = false;
+                    }
                     panOffset = _panStartOffset + e.mousePosition - _panStartMouse;
                     _hasDragged = true;
+                    UserInteractedThisFrame = true;
                     e.Use();
                     break;
 

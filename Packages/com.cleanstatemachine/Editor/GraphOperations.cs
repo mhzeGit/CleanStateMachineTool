@@ -94,6 +94,21 @@ namespace CleanStateMachine
             _window.Repaint();
         }
 
+        public void CreateAnyState(Vector2 graphMousePosition)
+        {
+            var state = new StateView(graphMousePosition, "Any State", isAnyState: true)
+            {
+                DataIndex = _window.States.Count
+            };
+
+            var cmd = new CreateStateCommand(_window.States, state);
+            _window.UndoRedoSystem.Execute(cmd);
+
+            _window.MarkChangedInternal();
+            SyncStatesWithGroups();
+            _window.Repaint();
+        }
+
         public void ConnectRequested(StateView source)
         {
             _window.ConnectionController.StartConnection(source);
@@ -144,13 +159,13 @@ namespace CleanStateMachine
             {
                 if (!indexToState.TryGetValue(dataIdx, out var s)) continue;
 
-                var copiedEntries = new List<BehaviourEntryView>();
+                var copiedEntries = new List<BehaviourEntry>();
                 for (int j = 0; j < s.BehaviourEntries.Count; j++)
                 {
                     var entry = s.BehaviourEntries[j];
-                    copiedEntries.Add(new BehaviourEntryView
+                    copiedEntries.Add(new BehaviourEntry
                     {
-                        Script = entry.Script,
+                        TypeName = entry.TypeName,
                         Instance = entry.Instance
                     });
                 }
@@ -165,6 +180,7 @@ namespace CleanStateMachine
                     childIndices = new List<int>(s.ChildIndices),
                     isSubStateMachine = s.IsSubStateMachine,
                     isExternalReference = s.IsExternalReference,
+                    isAnyState = s.IsAnyState,
                     externalAction = s.ExternalAction,
                     externalStateMachine = s.ExternalStateMachine,
                     externalTargetStateName = s.ExternalTargetStateName,
@@ -180,13 +196,13 @@ namespace CleanStateMachine
                 if (conn.From == null || conn.To == null) continue;
                 if (toCopy.Contains(conn.From.DataIndex) && toCopy.Contains(conn.To.DataIndex))
                 {
-                    var copiedConditions = new List<ConditionEntryView>();
+                    var copiedConditions = new List<ConditionEntry>();
                     for (int j = 0; j < conn.ConditionEntries.Count; j++)
                     {
                         var ce = conn.ConditionEntries[j];
-                        copiedConditions.Add(new ConditionEntryView
+                        copiedConditions.Add(new ConditionEntry
                         {
-                            Script = ce.Script,
+                            TypeName = ce.TypeName,
                             Instance = ce.Instance
                         });
                     }
@@ -249,7 +265,7 @@ namespace CleanStateMachine
                 int newIndex = _window.States.Count;
                 oldToNewIndex[data.sourceDataIndex] = newIndex;
 
-                var state = new StateView(data.position + offset, data.name)
+                var state = new StateView(data.position + offset, data.name, isAnyState: data.isAnyState)
                 {
                     Size = data.size,
                     DataIndex = newIndex,
@@ -270,12 +286,13 @@ namespace CleanStateMachine
                     for (int j = 0; j < data.behaviourEntries.Count; j++)
                     {
                         var src = data.behaviourEntries[j];
-                        if (src.Script == null) continue;
-                        var type = src.Script.GetClass();
+                        var script = src.GetScript();
+                        if (script == null) continue;
+                        var type = script.GetClass();
                         if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
                             continue;
 
-                        var clone = new BehaviourEntryView { Script = src.Script };
+                        var clone = new BehaviourEntry { TypeName = src.TypeName };
                         if (src.Instance != null)
                         {
                             var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
@@ -308,10 +325,11 @@ namespace CleanStateMachine
                     for (int j = 0; j < cd.conditionEntries.Count; j++)
                     {
                         var src = cd.conditionEntries[j];
-                        var clonedCe = new ConditionEntryView { Script = src.Script };
+                        var clonedCe = new ConditionEntry { TypeName = src.TypeName };
                         if (src.Instance != null)
                         {
-                            var type = src.Script?.GetClass();
+                            var script = src.GetScript();
+                            var type = script?.GetClass();
                             if (type != null && type.IsSubclassOf(typeof(ConditionScript)))
                             {
                                 var instance = (ConditionScript)ScriptableObject.CreateInstance(type);
@@ -526,7 +544,7 @@ namespace CleanStateMachine
             var selectedStates = new List<StateView>();
             for (int i = 0; i < _window.SelectionController.Count; i++)
             {
-                if (_window.SelectionController.Selected[i] is StateView s && !s.IsEntry)
+                if (_window.SelectionController.Selected[i] is StateView s && !s.IsEntry && !s.IsAnyState)
                     selectedStates.Add(s);
             }
 
@@ -571,7 +589,7 @@ namespace CleanStateMachine
             for (int j = 0; j < _window.States.Count; j++)
             {
                 var state = _window.States[j];
-                if (state.IsEntry) continue;
+                if (state.IsEntry || state.IsAnyState) continue;
 
                 var bounds = state.GetGraphBounds();
                 int minCX = (int)Math.Floor(bounds.xMin / cellSize);

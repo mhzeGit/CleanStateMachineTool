@@ -34,7 +34,7 @@ namespace CleanStateMachine
             for (int i = allStates.Count - 1; i >= 0; i--)
             {
                 StateView target = allStates[i];
-                if (target != SourceNode && !target.IsEntry && target.ContainsPoint(graphMousePos))
+                if (target != SourceNode && !target.IsEntry && !target.IsAnyState && target.ContainsPoint(graphMousePos))
                 {
                     ConnectionCompleted?.Invoke(SourceNode, target);
                     Cancel();

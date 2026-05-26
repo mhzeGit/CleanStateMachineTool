@@ -42,7 +42,7 @@ namespace CleanStateMachine
 
         public void AddMember(StateView state)
         {
-            if (!_members.Contains(state) && !state.IsEntry)
+            if (!_members.Contains(state) && !state.IsEntry && !state.IsAnyState)
                 _members.Add(state);
         }
 
@@ -179,7 +179,7 @@ namespace CleanStateMachine
         {
             foreach (var state in allStates)
             {
-                if (state.IsEntry) continue;
+                if (state.IsEntry || state.IsAnyState) continue;
 
                 Rect stateRect = state.GetGraphBounds();
                 bool contained = stateRect.xMin >= _rect.xMin - 0.001f &&

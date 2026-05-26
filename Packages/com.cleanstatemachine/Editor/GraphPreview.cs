@@ -61,6 +61,7 @@ namespace CleanStateMachine
         private static readonly Color SubStateMachineColor = new Color(0.7f, 0.45f, 0.2f, 1f);
         private static readonly Color SubEntryStateColor = new Color(0.85f, 0.6f, 0.2f, 1f);
         private static readonly Color ExternalReferenceColor = new Color(0.25f, 0.25f, 0.55f, 1f);
+        private static readonly Color AnyStateColor = new Color(0.55f, 0.25f, 0.55f, 1f);
         private static readonly Color ConnectionColor = new Color(0.35f, 0.35f, 0.35f, 1f);
 
         public Vector2 DragOffset => _dragOffset;
@@ -372,6 +373,8 @@ namespace CleanStateMachine
                     color = EntryStateColor;
                 else if (state.IsExternalReference)
                     color = ExternalReferenceColor;
+                else if (state.IsAnyState)
+                    color = AnyStateColor;
                 else
                     color = DefaultStateColor;
 

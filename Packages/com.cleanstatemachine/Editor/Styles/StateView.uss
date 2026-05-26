@@ -107,6 +107,25 @@
     -unity-text-align: upper-right;
 }
 
+.state-view__fill--any-state {
+    background-color: rgb(120, 60, 120);
+    border-color: rgb(200, 120, 200);
+}
+
+.state-view__fill--any-state.state-view__fill--selected {
+    border-color: rgb(137, 180, 250);
+}
+
+.state-view__fill--any-state.state-view__fill--active {
+    background-color: rgb(140, 80, 140);
+}
+
+.state-view__any-state-icon {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    -unity-text-align: upper-right;
+}
+
 .breadcrumb-bar {
     flex-direction: row;
     align-items: center;

@@ -20,7 +20,7 @@ namespace CleanStateMachine
         private ScriptableObject _currentSO;
         private readonly Label _emptyLabel;
 
-        private static ConditionEntryView _conditionClipboard;
+        private static ConditionEntry _conditionClipboard;
 
         private int _hoveredConditionIndex = -1;
         private bool _hoveringAddButton;
@@ -190,6 +190,22 @@ namespace CleanStateMachine
                 return;
             }
 
+            if (state.IsAnyState)
+            {
+                AddDivider();
+                AddSectionTitle("Any State");
+
+                var infoRow = new VisualElement();
+                infoRow.AddToClassList("info-row");
+                var infoLabel = new Label("Transitions from this node are\nevaluated from any active state.");
+                infoLabel.AddToClassList("info-row-value");
+                infoLabel.style.whiteSpace = WhiteSpace.Normal;
+                infoRow.Add(infoLabel);
+                _scrollView.Add(infoRow);
+
+                return;
+            }
+
             if (state.IsSubStateMachine)
             {
                 AddDivider();
@@ -233,12 +249,12 @@ namespace CleanStateMachine
                     BuildBehaviourEntry(state, i);
                 }
 
-                var addBtn = new Button(() =>
-                {
-                    state.BehaviourEntries.Add(new BehaviourEntryView());
-                    _window.NotifySidePanelChanged();
-                    UpdateSelection(_selected, _states, _connections, _blackboardVariables);
-                });
+                    var addBtn = new Button(() =>
+                    {
+                        state.BehaviourEntries.Add(new BehaviourEntry());
+                        _window.NotifySidePanelChanged();
+                        UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+                    });
                 addBtn.text = "+ Add Behaviour";
                 addBtn.AddToClassList("add-behaviour-button");
                 _scrollView.Add(addBtn);
@@ -255,7 +271,7 @@ namespace CleanStateMachine
             var header = new VisualElement();
             header.AddToClassList("behaviour-entry-header");
 
-            var headerLabel = new Label(entry.Script != null ? GetBehaviourDisplayName(entry.Script) : $"Behaviour {index + 1}");
+            var headerLabel = new Label(entry.GetScript() != null ? GetBehaviourDisplayName(entry.GetScript()) : $"Behaviour {index + 1}");
             headerLabel.AddToClassList("behaviour-entry-label");
             header.Add(headerLabel);
 
@@ -281,7 +297,7 @@ namespace CleanStateMachine
 
             var pickerBtn = new Button();
             pickerBtn.AddToClassList("script-picker-button");
-            pickerBtn.text = entry.Script != null ? GetBehaviourDisplayName(entry.Script) : "None (Select...)";
+            pickerBtn.text = entry.GetScript() != null ? GetBehaviourDisplayName(entry.GetScript()) : "None (Select...)";
             pickerBtn.clicked += () =>
             {
                 var filtered = MonoScriptCache.GetScriptsByBaseType<StateBehaviour>();
@@ -302,9 +318,9 @@ namespace CleanStateMachine
             };
             scriptRow.Add(pickerBtn);
 
-            if (entry.Script != null)
+            if (entry.GetScript() != null)
             {
-                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.Script));
+                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.GetScript()));
                 openBtn.text = "Open";
                 openBtn.AddToClassList("script-field-open-button");
                 scriptRow.Add(openBtn);
@@ -312,9 +328,9 @@ namespace CleanStateMachine
 
             container.Add(scriptRow);
 
-            if (entry.Script != null)
+            if (entry.GetScript() != null)
             {
-                var typeLabel = new Label(GetBehaviourDisplayName(entry.Script));
+                var typeLabel = new Label(GetBehaviourDisplayName(entry.GetScript()));
                 typeLabel.AddToClassList("script-type-name");
                 container.Add(typeLabel);
 
@@ -378,13 +394,13 @@ namespace CleanStateMachine
         private void OnBehaviourEntryScriptChanged(StateView state, int index, MonoScript next)
         {
             var entry = state.BehaviourEntries[index];
-            if (next == entry.Script) return;
+            if (next == entry.GetScript()) return;
             if (entry.Instance != null)
             {
                 Object.DestroyImmediate(entry.Instance, true);
                 entry.Instance = null;
             }
-            entry.Script = next;
+            entry.SetScript(next);
             if (next != null)
             {
                 var type = next.GetClass();
@@ -453,7 +469,7 @@ namespace CleanStateMachine
 
             var addBtn = new Button(() =>
             {
-                conn.ConditionEntries.Add(new ConditionEntryView());
+                conn.ConditionEntries.Add(new ConditionEntry());
                 _window.NotifySidePanelChanged();
                 UpdateSelection(_selected, _states, _connections, _blackboardVariables);
             });
@@ -470,7 +486,7 @@ namespace CleanStateMachine
 
             addBtn.RegisterCallback<ContextClickEvent>(evt =>
             {
-                if (_conditionClipboard?.Script == null || _conditionClipboard.Instance == null) return;
+                if (_conditionClipboard?.GetScript() == null || _conditionClipboard.Instance == null) return;
                 var pos = _window.rootVisualElement.WorldToLocal(
                     new Vector2(evt.mousePosition.x, evt.mousePosition.y));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
@@ -481,7 +497,7 @@ namespace CleanStateMachine
 
             addBtn.RegisterCallback<KeyDownEvent>(evt =>
             {
-                if (evt.ctrlKey && evt.keyCode == KeyCode.V && _conditionClipboard?.Script != null)
+                if (evt.ctrlKey && evt.keyCode == KeyCode.V && _conditionClipboard?.GetScript() != null)
                 {
                     AppendConditionFromClipboard(conn);
                     evt.StopPropagation();
@@ -501,7 +517,7 @@ namespace CleanStateMachine
             var header = new VisualElement();
             header.AddToClassList("condition-entry-header");
 
-            string condName = entry.Script != null ? GetConditionDisplayName(entry.Script) : $"Condition {index + 1}";
+            string condName = entry.GetScript() != null ? GetConditionDisplayName(entry.GetScript()) : $"Condition {index + 1}";
             var headerLabel = new Label(condName);
             headerLabel.AddToClassList("condition-entry-label");
             header.Add(headerLabel);
@@ -540,12 +556,12 @@ namespace CleanStateMachine
                     new Vector2(evt.mousePosition.x, evt.mousePosition.y));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
                 {
-                    if (entry.Script != null)
+                    if (entry.GetScript() != null)
                         menu.AddItem("Copy Condition", () => CopyCondition(entry));
                     else
                         menu.AddDisabledItem("Copy Condition");
 
-                    if (_conditionClipboard != null && _conditionClipboard.Script != null)
+                    if (_conditionClipboard != null && _conditionClipboard.GetScript() != null)
                         menu.AddItem("Paste Condition", () => PasteCondition(conn, capturedIndex));
                     else
                         menu.AddDisabledItem("Paste Condition");
@@ -559,7 +575,7 @@ namespace CleanStateMachine
 
             var pickerBtn = new Button();
             pickerBtn.AddToClassList("script-picker-button");
-            pickerBtn.text = entry.Script != null ? GetConditionDisplayName(entry.Script) : "None (Select...)";
+            pickerBtn.text = entry.GetScript() != null ? GetConditionDisplayName(entry.GetScript()) : "None (Select...)";
             pickerBtn.clicked += () =>
             {
                 var filtered = MonoScriptCache.GetScriptsByBaseType<ConditionScript>();
@@ -580,9 +596,9 @@ namespace CleanStateMachine
             };
             scriptRow.Add(pickerBtn);
 
-            if (entry.Script != null)
+            if (entry.GetScript() != null)
             {
-                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.Script));
+                var openBtn = new Button(() => AssetDatabase.OpenAsset(entry.GetScript()));
                 openBtn.text = "Open";
                 openBtn.AddToClassList("script-field-open-button");
                 scriptRow.Add(openBtn);
@@ -590,9 +606,9 @@ namespace CleanStateMachine
 
             container.Add(scriptRow);
 
-            if (entry.Script != null)
+            if (entry.GetScript() != null)
             {
-                string displayName = GetConditionDisplayName(entry.Script);
+                string displayName = GetConditionDisplayName(entry.GetScript());
                 var typeLabel = new Label(displayName);
                 typeLabel.AddToClassList("script-type-name");
                 container.Add(typeLabel);
@@ -670,16 +686,17 @@ namespace CleanStateMachine
             _scrollView.Add(container);
         }
 
-        private void CopyCondition(ConditionEntryView entry)
+        private void CopyCondition(ConditionEntry entry)
         {
-            if (entry.Script == null || entry.Instance == null) return;
+            var script = entry.GetScript();
+            if (script == null || entry.Instance == null) return;
 
-            var type = entry.Script.GetClass();
+            var type = script.GetClass();
             if (type == null) return;
 
-            _conditionClipboard = new ConditionEntryView
+            _conditionClipboard = new ConditionEntry
             {
-                Script = entry.Script,
+                TypeName = entry.TypeName,
                 Instance = null
             };
 
@@ -692,18 +709,18 @@ namespace CleanStateMachine
 
         private void PasteCondition(ConnectionView conn, int afterIndex)
         {
-            if (_conditionClipboard?.Script == null || _conditionClipboard.Instance == null) return;
+            if (_conditionClipboard?.GetScript() == null || _conditionClipboard.Instance == null) return;
 
-            var type = _conditionClipboard.Script.GetClass();
+            var type = _conditionClipboard.GetScript().GetClass();
             if (type == null) return;
 
             var instance = (ConditionScript)ScriptableObject.CreateInstance(type);
             EditorUtility.CopySerialized(_conditionClipboard.Instance, instance);
             instance.hideFlags = HideFlags.HideInHierarchy;
 
-            conn.ConditionEntries.Insert(afterIndex + 1, new ConditionEntryView
+            conn.ConditionEntries.Insert(afterIndex + 1, new ConditionEntry
             {
-                Script = _conditionClipboard.Script,
+                TypeName = _conditionClipboard.TypeName,
                 Instance = instance
             });
 
@@ -713,15 +730,15 @@ namespace CleanStateMachine
 
         private void AppendConditionFromClipboard(ConnectionView conn)
         {
-            if (_conditionClipboard?.Script == null || _conditionClipboard.Instance == null) return;
-            var type = _conditionClipboard.Script.GetClass();
+            if (_conditionClipboard?.GetScript() == null || _conditionClipboard.Instance == null) return;
+            var type = _conditionClipboard.GetScript().GetClass();
             if (type == null) return;
             var instance = (ConditionScript)ScriptableObject.CreateInstance(type);
             EditorUtility.CopySerialized(_conditionClipboard.Instance, instance);
             instance.hideFlags = HideFlags.HideInHierarchy;
-            conn.ConditionEntries.Add(new ConditionEntryView
+            conn.ConditionEntries.Add(new ConditionEntry
             {
-                Script = _conditionClipboard.Script,
+                TypeName = _conditionClipboard.TypeName,
                 Instance = instance
             });
             _window.NotifySidePanelChanged();
@@ -738,14 +755,14 @@ namespace CleanStateMachine
                 if (_hoveredConditionIndex < entries.Count)
                 {
                     var entry = entries[_hoveredConditionIndex];
-                    if (entry.Script != null && entry.Instance != null)
+                    if (entry.GetScript() != null && entry.Instance != null)
                         CopyCondition(entry);
                     evt.StopPropagation();
                 }
                 return;
             }
 
-            if (evt.keyCode == KeyCode.V && _conditionClipboard?.Script != null)
+            if (evt.keyCode == KeyCode.V && _conditionClipboard?.GetScript() != null)
             {
                 if (_hoveredConditionIndex >= 0 && _activeConnection != null)
                 {
@@ -763,13 +780,13 @@ namespace CleanStateMachine
         private void OnConditionEntryScriptChanged(ConnectionView conn, int index, MonoScript next)
         {
             var entry = conn.ConditionEntries[index];
-            if (next == entry.Script) return;
+            if (next == entry.GetScript()) return;
             if (entry.Instance != null)
             {
                 Object.DestroyImmediate(entry.Instance, true);
                 entry.Instance = null;
             }
-            entry.Script = next;
+            entry.SetScript(next);
             if (next != null)
             {
                 var type = next.GetClass();
@@ -888,8 +905,8 @@ namespace CleanStateMachine
                     for (int j = 0; j < conn.ConditionEntries.Count; j++)
                     {
                         var ce = conn.ConditionEntries[j];
-                        if (ce.Script != null)
-                            parts.Add(GetConditionDisplayName(ce.Script));
+                        if (ce.GetScript() != null)
+                            parts.Add(GetConditionDisplayName(ce.GetScript()));
                         else
                             parts.Add("?");
                     }

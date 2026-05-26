@@ -58,6 +58,7 @@ namespace CleanStateMachine
                     IsSubEntry = state.IsSubEntry,
                     IsSubStateMachine = state.IsSubStateMachine,
                     IsExternalReference = state.IsExternalReference,
+                    IsAnyState = state.IsAnyState,
                     AutoRun = state.AutoRun,
                     ChildIndices = childIndices,
                     ExternalAction = state.ExternalAction,
@@ -65,18 +66,9 @@ namespace CleanStateMachine
                     ExternalTargetStateName = state.ExternalTargetStateName,
                     ExternalBlackboardParmName = state.ExternalBlackboardParmName,
                     ExternalBlackboardParmType = state.ExternalBlackboardParmType,
-                    ExternalBlackboardParmValue = state.ExternalBlackboardParmValue
+                    ExternalBlackboardParmValue = state.ExternalBlackboardParmValue,
+                    Behaviours = state.BehaviourEntries
                 };
-
-                for (int j = 0; j < state.BehaviourEntries.Count; j++)
-                {
-                    var entry = state.BehaviourEntries[j];
-                    sd.Behaviours.Add(new BehaviourEntry
-                    {
-                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
-                        Instance = entry.Instance
-                    });
-                }
 
                 _window.CurrentData.States.Add(sd);
             }
@@ -97,17 +89,9 @@ namespace CleanStateMachine
                 var cd = new ConnectionData
                 {
                     FromIndex = stateToIndex[conn.From],
-                    ToIndex = stateToIndex[conn.To]
+                    ToIndex = stateToIndex[conn.To],
+                    Conditions = conn.ConditionEntries
                 };
-                for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                {
-                    var entry = conn.ConditionEntries[j];
-                    cd.Conditions.Add(new ConditionEntry
-                    {
-                        TypeName = ScriptReferenceUtility.GetTypeName(entry.Script),
-                        Instance = entry.Instance
-                    });
-                }
                 _window.CurrentData.Connections.Add(cd);
             }
 
@@ -176,7 +160,7 @@ namespace CleanStateMachine
                 for (int i = 0; i < data.States.Count; i++)
                 {
                     var sd = data.States[i];
-                    var state = new StateView(sd.Position, sd.Name, sd.IsEntry, sd.IsSubEntry)
+                    var state = new StateView(sd.Position, sd.Name, sd.IsEntry, sd.IsSubEntry, sd.IsAnyState)
                     {
                         Size = sd.Size,
                         AutoRun = sd.AutoRun,
@@ -195,11 +179,7 @@ namespace CleanStateMachine
                     for (int j = 0; j < sd.Behaviours.Count; j++)
                     {
                         var be = sd.Behaviours[j];
-                        state.BehaviourEntries.Add(new BehaviourEntryView
-                        {
-                            Script = ScriptReferenceUtility.FindScriptByTypeName(be.TypeName),
-                            Instance = be.Instance
-                        });
+                        state.BehaviourEntries.Add(be);
                     }
                     _window.States.Add(state);
                     stateLookup.Add(state);
@@ -218,15 +198,7 @@ namespace CleanStateMachine
                         };
                         if (cd.Conditions != null)
                         {
-                            for (int j = 0; j < cd.Conditions.Count; j++)
-                            {
-                                var ce = cd.Conditions[j];
-                                conn.ConditionEntries.Add(new ConditionEntryView
-                                {
-                                    Script = ScriptReferenceUtility.FindScriptByTypeName(ce.TypeName),
-                                    Instance = ce.Instance
-                                });
-                            }
+                            conn.ConditionEntries = cd.Conditions;
                         }
                         _window.Connections.Add(conn);
                     }
@@ -238,7 +210,7 @@ namespace CleanStateMachine
                     var members = new List<StateView>();
                     foreach (int mi in gd.MemberIndices)
                     {
-                        if (mi >= 0 && mi < stateLookup.Count && !stateLookup[mi].IsEntry)
+                        if (mi >= 0 && mi < stateLookup.Count && !stateLookup[mi].IsEntry && !stateLookup[mi].IsAnyState)
                             members.Add(stateLookup[mi]);
                     }
                     var group = new CommentGroupView(members, gd.Label);

@@ -218,7 +218,7 @@ namespace CleanStateMachine
 
                     if (target != null)
                     {
-                        bool targetIsBlockedEntry = target.IsEntry && !target.IsSubEntry;
+                        bool targetIsBlockedEntry = (target.IsEntry && !target.IsSubEntry) || target.IsAnyState;
                         if (target == source || targetIsBlockedEntry)
                         {
                             _window.ConnectionController.Cancel();

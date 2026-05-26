@@ -1,15 +1,8 @@
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 namespace CleanStateMachine
 {
-    public class ConditionEntryView
-    {
-        public MonoScript Script;
-        public ConditionScript Instance;
-    }
-
     public class ConnectionView : ISelectable
     {
         public StateView From { get; }
@@ -19,7 +12,7 @@ namespace CleanStateMachine
         public double ActivationTime { get; set; }
         public float PerpendicularOffset { get; set; }
         public int DataIndex { get; set; } = -1;
-        public List<ConditionEntryView> ConditionEntries { get; set; } = new List<ConditionEntryView>();
+        public List<ConditionEntry> ConditionEntries { get; set; } = new List<ConditionEntry>();
 
         private const float HitTestThreshold = 10f;
         private const float ArrowGraphSize = 10f;

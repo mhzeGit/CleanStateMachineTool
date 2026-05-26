@@ -24,10 +24,11 @@ namespace CleanStateMachine
         public Vector2 position;
         public string name;
         public Vector2 size;
-        public List<BehaviourEntryView> behaviourEntries;
+        public List<BehaviourEntry> behaviourEntries;
         public List<int> childIndices;
         public bool isSubStateMachine;
         public bool isExternalReference;
+        public bool isAnyState;
         public ExternalStateMachineAction externalAction;
         public GameObject externalStateMachine;
         public string externalTargetStateName;
@@ -40,7 +41,7 @@ namespace CleanStateMachine
     {
         public int fromSourceIndex;
         public int toSourceIndex;
-        public List<ConditionEntryView> conditionEntries;
+        public List<ConditionEntry> conditionEntries;
     }
 
     public class CleanStateMachineWindow : EditorWindow
@@ -254,6 +255,7 @@ namespace CleanStateMachine
             ContextMenu.CreateStateRequested += OnCreateStateRequested;
             ContextMenu.CreateSubStateMachineRequested += OnCreateSubStateMachineRequested;
             ContextMenu.CreateExternalReferenceRequested += OnCreateExternalReferenceRequested;
+            ContextMenu.CreateAnyStateRequested += OnCreateAnyStateRequested;
             ContextMenu.ConnectRequested += OnConnectRequested;
             ContextMenu.UngroupRequested += OnUngroupRequested;
             ContextMenu.CopyRequested += CopySelectedStates;
@@ -269,6 +271,7 @@ namespace CleanStateMachine
             ContextMenu.CreateStateRequested -= OnCreateStateRequested;
             ContextMenu.CreateSubStateMachineRequested -= OnCreateSubStateMachineRequested;
             ContextMenu.CreateExternalReferenceRequested -= OnCreateExternalReferenceRequested;
+            ContextMenu.CreateAnyStateRequested -= OnCreateAnyStateRequested;
             ContextMenu.ConnectRequested -= OnConnectRequested;
             ContextMenu.UngroupRequested -= OnUngroupRequested;
             ContextMenu.CopyRequested -= CopySelectedStates;
@@ -643,6 +646,7 @@ namespace CleanStateMachine
         private void OnCreateStateRequested(Vector2 pos) => GraphOperations.CreateState(pos);
         private void OnCreateSubStateMachineRequested(Vector2 pos) => GraphOperations.CreateSubStateMachine(pos);
         private void OnCreateExternalReferenceRequested(Vector2 pos) => GraphOperations.CreateExternalReferenceState(pos);
+        private void OnCreateAnyStateRequested(Vector2 pos) => GraphOperations.CreateAnyState(pos);
         private void OnConnectRequested(StateView source) => GraphOperations.ConnectRequested(source);
         private void OnUngroupRequested(CommentGroupView group) => GraphOperations.UngroupRequested(group);
         private void CopySelectedStates() => GraphOperations.CopySelectedStates();

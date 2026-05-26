@@ -321,6 +321,40 @@ namespace CleanStateMachine
             if (_isTransitioning) return;
             if (Data == null || _activeStatePath.Count == 0) return;
 
+            int leafIndex = _activeStatePath[^1];
+
+            // Check Any State transitions first (global transitions)
+            for (int c = 0; c < Data.Connections.Count; c++)
+            {
+                var connection = Data.Connections[c];
+                if (connection.FromIndex < 0 || connection.FromIndex >= Data.States.Count)
+                    continue;
+                if (!Data.States[connection.FromIndex].IsAnyState)
+                    continue;
+
+                // Skip transition to self
+                if (connection.ToIndex == leafIndex)
+                    continue;
+
+                if (EvaluateConditions(connection))
+                {
+                    // Prevent transition to a direct child of the current state
+                    if (IsDirectChildOf(connection.ToIndex, leafIndex))
+                        continue;
+
+                    _isTransitioning = true;
+                    try
+                    {
+                        TransitionToState(c);
+                    }
+                    finally
+                    {
+                        _isTransitioning = false;
+                    }
+                    return;
+                }
+            }
+
             for (int depth = _activeStatePath.Count - 1; depth >= 0; depth--)
             {
                 int fromIndex = _activeStatePath[depth];
@@ -500,19 +534,39 @@ namespace CleanStateMachine
             }
         }
 
+        private static readonly Dictionary<string, Type> _resolvedTypeCache = new Dictionary<string, Type>();
+
         private static Type ResolveType(string typeName)
         {
             if (string.IsNullOrEmpty(typeName)) return null;
 
+            if (_resolvedTypeCache.TryGetValue(typeName, out var cached))
+                return cached;
+
             var type = Type.GetType(typeName);
-            if (type != null) return type;
+            if (type != null)
+            {
+                _resolvedTypeCache[typeName] = type;
+                return type;
+            }
+
+            if (typeName.IndexOf(',') >= 0)
+            {
+                _resolvedTypeCache[typeName] = null;
+                return null;
+            }
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 type = assembly.GetType(typeName);
-                if (type != null) return type;
+                if (type != null)
+                {
+                    _resolvedTypeCache[typeName] = type;
+                    return type;
+                }
             }
 
+            _resolvedTypeCache[typeName] = null;
             return null;
         }
 
@@ -528,55 +582,63 @@ namespace CleanStateMachine
                 if (list == null) continue;
                 for (int i = 0; i < list.Count; i++)
                 {
-                    var instance = list[i];
-                    if (instance != null && instance.hideFlags == HideFlags.HideAndDontSave)
-                        Destroy(instance);
+                    DestroyRuntimeObject(list[i]);
                 }
             }
             _behaviourInstances.Clear();
 
             foreach (var instance in _runtimeConditionInstances)
             {
-                if (instance != null)
-                    Destroy(instance);
+                DestroyRuntimeObject(instance);
             }
             _runtimeConditionInstances.Clear();
             _conditionCache.Clear();
         }
 
+        private static void DestroyRuntimeObject(UnityEngine.Object obj)
+        {
+            if (obj != null)
+                Destroy(obj);
+        }
+
+        private bool TryGetVariable(string name, BlackboardVariableType expectedType, out BlackboardVariable variable)
+        {
+            return _runtimeVariableLookup.TryGetValue(name, out variable) && variable.Type == expectedType;
+        }
+
         public void SetBoolParameter(string name, bool value)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Bool)
+            if (TryGetVariable(name, BlackboardVariableType.Bool, out var v))
                 v.BoolValue = value;
         }
 
         public void SetIntParameter(string name, int value)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Int)
+            if (TryGetVariable(name, BlackboardVariableType.Int, out var v))
                 v.IntValue = value;
         }
 
         public void SetFloatParameter(string name, float value)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Float)
+            if (TryGetVariable(name, BlackboardVariableType.Float, out var v))
                 v.FloatValue = value;
         }
 
         public void SetStringParameter(string name, string value)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.String)
+            if (TryGetVariable(name, BlackboardVariableType.String, out var v))
                 v.StringValue = value;
         }
 
         public void SetTriggerParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Trigger)
+            if (TryGetVariable(name, BlackboardVariableType.Trigger, out var v))
                 v.BoolValue = true;
         }
 
         public bool GetTriggerParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Trigger)
+            if (TryGetVariable(name, BlackboardVariableType.Trigger, out var v))
             {
                 bool value = v.BoolValue;
                 if (value)
@@ -588,28 +650,28 @@ namespace CleanStateMachine
 
         public bool GetBoolParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Bool)
+            if (TryGetVariable(name, BlackboardVariableType.Bool, out var v))
                 return v.BoolValue;
             return false;
         }
 
         public int GetIntParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Int)
+            if (TryGetVariable(name, BlackboardVariableType.Int, out var v))
                 return v.IntValue;
             return 0;
         }
 
         public float GetFloatParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Float)
+            if (TryGetVariable(name, BlackboardVariableType.Float, out var v))
                 return v.FloatValue;
             return 0f;
         }
 
         public string GetStringParameter(string name)
         {
-            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.String)
+            if (TryGetVariable(name, BlackboardVariableType.String, out var v))
                 return v.StringValue;
             return "";
         }
@@ -695,11 +757,21 @@ namespace CleanStateMachine
 
         private void ExecuteExternalAction(StateData state)
         {
-            if (!state.IsExternalReference || state.ExternalStateMachine == null)
+            if (!state.IsExternalReference)
                 return;
 
+            if (state.ExternalStateMachine == null)
+            {
+                Debug.LogWarning($"[CleanStateMachine] State '{state.Name}' has an External Reference action but no target GameObject assigned.", this);
+                return;
+            }
+
             var externalSm = state.ExternalStateMachine.GetComponent<StateMachineComponent>();
-            if (externalSm == null) return;
+            if (externalSm == null)
+            {
+                Debug.LogWarning($"[CleanStateMachine] State '{state.Name}' external reference target '{state.ExternalStateMachine.name}' has no StateMachineComponent.", this);
+                return;
+            }
 
             switch (state.ExternalAction)
             {
@@ -707,12 +779,20 @@ namespace CleanStateMachine
                     externalSm.ResetStateMachine();
                     break;
                 case ExternalStateMachineAction.SetStateByName:
-                    if (!string.IsNullOrEmpty(state.ExternalTargetStateName))
-                        externalSm.SetState(state.ExternalTargetStateName);
+                    if (string.IsNullOrEmpty(state.ExternalTargetStateName))
+                    {
+                        Debug.LogWarning($"[CleanStateMachine] State '{state.Name}' external action is 'Set State By Name' but no target state name is configured.", this);
+                        return;
+                    }
+                    externalSm.SetState(state.ExternalTargetStateName);
                     break;
                 case ExternalStateMachineAction.SetBlackboardParameter:
-                    if (!string.IsNullOrEmpty(state.ExternalBlackboardParmName))
-                        SetExternalBlackboardParm(externalSm, state);
+                    if (string.IsNullOrEmpty(state.ExternalBlackboardParmName))
+                    {
+                        Debug.LogWarning($"[CleanStateMachine] State '{state.Name}' external action is 'Set Blackboard Parameter' but no parameter name is configured.", this);
+                        return;
+                    }
+                    SetExternalBlackboardParm(externalSm, state);
                     break;
             }
         }
