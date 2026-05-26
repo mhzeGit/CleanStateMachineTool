@@ -336,7 +336,7 @@ namespace CleanStateMachine
                 if (connection.ToIndex == leafIndex)
                     continue;
 
-                if (!CanTransition(connection))
+                if (!CanTransition(connection) || !EvaluateConditions(connection))
                     continue;
 
                 // Prevent transition to a direct child of the current state
@@ -365,7 +365,7 @@ namespace CleanStateMachine
                     var connection = Data.Connections[c];
                     if (connection.FromIndex != fromIndex) continue;
 
-                    if (!CanTransition(connection))
+                    if (!CanTransition(connection) || !EvaluateConditions(connection))
                         continue;
 
                     if (!isLeaf && IsDirectChildOf(connection.ToIndex, fromIndex))
@@ -417,7 +417,7 @@ namespace CleanStateMachine
                 if (condition == null)
                 {
                     if (!_conditionCache.TryGetValue(entry, out condition))
-                        continue;
+                        return false;
                 }
 
                 if (!condition.Evaluate(this))
