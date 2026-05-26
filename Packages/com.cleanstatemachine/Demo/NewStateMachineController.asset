@@ -826,7 +826,7 @@ MonoBehaviour:
   _data:
     States:
     - Name: Entry
-      Position: {x: 50, y: 200}
+      Position: {x: 59.191025, y: 183.91573}
       Size: {x: 160, y: 40}
       IsEntry: 1
       IsSubEntry: 0
@@ -1211,9 +1211,9 @@ MonoBehaviour:
       Type: 0
       StringValue: False
     Breakpoints: []
-    PanOffset: {x: -300.76, y: 135.45573}
-    Zoom: 0.7089328
-    ExpandedSubStateIndices: 0b000000
+    PanOffset: {x: 253.5592, y: 589.2262}
+    Zoom: 0.87041533
+    ExpandedSubStateIndices: 
 --- !u!114 &1243014222252080705
 MonoBehaviour:
   m_ObjectHideFlags: 1

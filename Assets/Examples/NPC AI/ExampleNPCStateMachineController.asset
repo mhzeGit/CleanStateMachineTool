@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c8ac4c5ebd661479707db0a7e39504, type: 3}
+  m_Name: ExampleNPCStateMachineController
+  m_EditorClassIdentifier: 
+  _data:
+    States:
+    - Name: Entry
+      Position: {x: 50, y: 200}
+      Size: {x: 160, y: 40}
+      IsEntry: 1
+      IsSubEntry: 0
+      IsSubStateMachine: 0
+      IsExternalReference: 0
+      AutoRun: 1
+      ChildIndices: 
+      Behaviours: []
+      ExternalAction: 0
+      ExternalStateMachine: {fileID: 0}
+      ExternalTargetStateName: 
+      ExternalBlackboardParmName: 
+      ExternalBlackboardParmType: 0
+      ExternalBlackboardParmValue: 
+      _legacyBehaviourType: 
+      _legacyBehaviour: {fileID: 0}
+    - Name: Patrolling Sub State
+      Position: {x: 390.70944, y: 188.45607}
+      Size: {x: 160, y: 40}
+      IsEntry: 0
+      IsSubEntry: 0
+      IsSubStateMachine: 1
+      IsExternalReference: 0
+      AutoRun: 1
+      ChildIndices: 
+      Behaviours: []
+      ExternalAction: 0
+      ExternalStateMachine: {fileID: 0}
+      ExternalTargetStateName: 
+      ExternalBlackboardParmName: 
+      ExternalBlackboardParmType: 0
+      ExternalBlackboardParmValue: 
+      _legacyBehaviourType: 
+      _legacyBehaviour: {fileID: 0}
+    Connections:
+    - FromIndex: 0
+      ToIndex: 1
+      Conditions: []
+    Groups: []
+    BlackboardVariables: []
+    Breakpoints: []
+    PanOffset: {x: 9.161224, y: 212.89471}
+    Zoom: 1.0901334
+    ExpandedSubStateIndices: 
