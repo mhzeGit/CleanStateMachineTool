@@ -103,8 +103,6 @@ namespace CleanStateMachine
                     Hide();
             });
 
-            _overlay.RegisterCallback<KeyDownEvent>(OnOverlayKeyDown);
-
             _panel = new VisualElement();
             _panel.AddToClassList("search-panel");
             _panel.style.position = Position.Absolute;
@@ -167,6 +165,7 @@ namespace CleanStateMachine
             _searchField.style.borderBottomWidth = 0;
             _searchField.RegisterValueChangedCallback(OnSearchTextChanged);
             _searchField.RegisterValueChangedCallback(_ => UpdatePlaceholderVisibility());
+            _searchField.RegisterCallback<KeyDownEvent>(OnSearchFieldKeyDown, TrickleDown.TrickleDown);
 
             var searchInput = _searchField.Q(className: "unity-base-text-field__input");
             if (searchInput != null)
@@ -239,7 +238,7 @@ namespace CleanStateMachine
             _window.rootVisualElement.Add(_overlay);
         }
 
-        private void OnOverlayKeyDown(KeyDownEvent e)
+        private void OnSearchFieldKeyDown(KeyDownEvent e)
         {
             if (e.keyCode == KeyCode.Escape)
             {
