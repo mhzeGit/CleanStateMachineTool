@@ -797,6 +797,60 @@
     padding-left: 4px;
 }
 
+.state-conn-top {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.state-conn-time-badge {
+    font-size: 9px;
+    color: #888888;
+    background-color: #222222;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.state-conn-conditions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding-top: 2px;
+}
+
+.state-conn-condition-badge {
+    font-size: 9px;
+    color: #b0b0b0;
+    background-color: #2a2a2a;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.state-conn-condition-badge:hover {
+    background-color: #3a3a3a;
+}
+
+.state-conn-condition-badge--empty {
+    color: #666666;
+    background-color: #1e1e1e;
+}
+
+.sub-section-title {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: #aaaaaa;
+    padding-left: 8px;
+    padding-top: 6px;
+    padding-bottom: 2px;
+}
+
 .state-conn-row-label {
     font-size: 11px;
     -unity-font-style: bold;

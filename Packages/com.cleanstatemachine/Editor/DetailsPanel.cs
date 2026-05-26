@@ -1163,94 +1163,133 @@ namespace CleanStateMachine
         {
             if (_connections == null) return;
 
-            var stateConnections = new List<ConnectionView>();
+            var outgoing = new List<ConnectionView>();
+            var incoming = new List<ConnectionView>();
             for (int i = 0; i < _connections.Count; i++)
             {
-                if (_connections[i].From == state || _connections[i].To == state)
-                    stateConnections.Add(_connections[i]);
+                if (_connections[i].From == state)
+                    outgoing.Add(_connections[i]);
+                else if (_connections[i].To == state)
+                    incoming.Add(_connections[i]);
             }
 
-            if (stateConnections.Count == 0) return;
+            if (outgoing.Count == 0 && incoming.Count == 0) return;
 
             AddDivider();
-            AddSectionTitle(stateConnections.Count == 1 ? "Connection" : $"Connections ({stateConnections.Count})");
+            AddSectionTitle("Connections");
 
-            var connList = new VisualElement();
-            connList.AddToClassList("reorderable-list");
-            _connectionListContainer = connList;
-            _connectionEntryElements.Clear();
-            _scrollView.Add(connList);
-
-            for (int i = 0; i < stateConnections.Count; i++)
+            if (outgoing.Count > 0)
             {
-                var conn = stateConnections[i];
-                bool isFrom = conn.From == state;
-                int globalIndex = _connections.IndexOf(conn);
+                var subTitle = new Label($"Outputs ({outgoing.Count})");
+                subTitle.AddToClassList("sub-section-title");
+                _scrollView.Add(subTitle);
 
-                var connRow = new VisualElement();
-                connRow.AddToClassList("state-conn-row");
-                connRow.userData = conn;
+                var connList = new VisualElement();
+                connList.AddToClassList("reorderable-list");
+                _connectionListContainer = connList;
+                _connectionEntryElements.Clear();
+                _scrollView.Add(connList);
 
-                bool isSelected = conn.IsSelected;
-                if (isSelected)
-                    connRow.AddToClassList("state-conn-row-selected");
+                for (int i = 0; i < outgoing.Count; i++)
+                {
+                    var row = BuildStateConnectionRow(state, outgoing[i], true);
+                    _connectionEntryElements.Add(row);
+                    connList.Add(row);
+                }
+            }
 
+            if (incoming.Count > 0)
+            {
+                var subTitle = new Label($"Inputs ({incoming.Count})");
+                subTitle.AddToClassList("sub-section-title");
+                _scrollView.Add(subTitle);
+
+                for (int i = 0; i < incoming.Count; i++)
+                {
+                    var row = BuildStateConnectionRow(state, incoming[i], false);
+                    _scrollView.Add(row);
+                }
+            }
+        }
+
+        private VisualElement BuildStateConnectionRow(StateView state, ConnectionView conn, bool isOutgoing)
+        {
+            var connRow = new VisualElement();
+            connRow.AddToClassList("state-conn-row");
+            connRow.userData = conn;
+
+            bool isSelected = conn.IsSelected;
+            if (isSelected)
+                connRow.AddToClassList("state-conn-row-selected");
+
+            if (isOutgoing)
+            {
                 var dragHandle = new DragHandle();
                 dragHandle.RegisterCallback<MouseDownEvent>(OnStateConnectionReorderHandleDown);
                 connRow.Add(dragHandle);
-
-                connRow.RegisterCallback<MouseDownEvent>(evt =>
-                {
-                    var row = evt.currentTarget as VisualElement;
-                    if (_isReordering) return;
-                    conn.TriggerSearchHighlight();
-                    Rect bounds = conn.GetGraphBounds();
-                    bounds = new Rect(
-                        bounds.x - 60f,
-                        bounds.y - 60f,
-                        bounds.width + 120f,
-                        bounds.height + 120f
-                    );
-                    _window.ViewAnimator.StartSmoothFocusOnContent(bounds);
-                });
-
-                string dir = isFrom ? "\u2192" : "\u2190";
-                string otherName = isFrom ? (conn.To?.Name ?? "?") : (conn.From?.Name ?? "?");
-
-                var contentArea = new VisualElement();
-                contentArea.AddToClassList("state-conn-content");
-
-                var connLabel = new Label($"{dir}  {otherName}");
-                connLabel.AddToClassList("state-conn-row-label");
-                contentArea.Add(connLabel);
-
-                if (conn.ConditionEntries.Count > 0)
-                {
-                    var parts = new List<string>();
-                    for (int j = 0; j < conn.ConditionEntries.Count; j++)
-                    {
-                        var ce = conn.ConditionEntries[j];
-                        if (ce.GetScript() != null)
-                            parts.Add(GetConditionDisplayName(ce.GetScript()));
-                        else
-                            parts.Add("?");
-                    }
-                    var condLabel = new Label(string.Join(", ", parts));
-                    condLabel.AddToClassList("state-conn-row-conditions");
-                    contentArea.Add(condLabel);
-                }
-                else
-                {
-                    var noCondLabel = new Label("no conditions");
-                    noCondLabel.AddToClassList("state-conn-row-conditions");
-                    noCondLabel.AddToClassList("state-conn-row-conditions--empty");
-                    contentArea.Add(noCondLabel);
-                }
-
-                connRow.Add(contentArea);
-                _connectionEntryElements.Add(connRow);
-                connList.Add(connRow);
             }
+
+            connRow.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (_isReordering) return;
+                conn.TriggerSearchHighlight();
+                Rect bounds = conn.GetGraphBounds();
+                bounds = new Rect(
+                    bounds.x - 60f,
+                    bounds.y - 60f,
+                    bounds.width + 120f,
+                    bounds.height + 120f
+                );
+                _window.ViewAnimator.StartSmoothFocusOnContent(bounds);
+            });
+
+            string arrow = isOutgoing ? "\u2192" : "\u2190";
+            string otherName = isOutgoing ? (conn.To?.Name ?? "?") : (conn.From?.Name ?? "?");
+
+            var contentArea = new VisualElement();
+            contentArea.AddToClassList("state-conn-content");
+
+            var topRow = new VisualElement();
+            topRow.AddToClassList("state-conn-top");
+
+            var connLabel = new Label($"{arrow}  {otherName}");
+            connLabel.AddToClassList("state-conn-row-label");
+            topRow.Add(connLabel);
+
+            if (conn.MinStateTime > 0f)
+            {
+                var timeBadge = new Label($"t\u2265{conn.MinStateTime:F1}s");
+                timeBadge.AddToClassList("state-conn-time-badge");
+                topRow.Add(timeBadge);
+            }
+
+            contentArea.Add(topRow);
+
+            if (conn.ConditionEntries.Count > 0)
+            {
+                var condContainer = new VisualElement();
+                condContainer.AddToClassList("state-conn-conditions");
+                for (int j = 0; j < conn.ConditionEntries.Count; j++)
+                {
+                    var ce = conn.ConditionEntries[j];
+                    var badge = new Label(ce.GetScript() != null ? GetConditionDisplayName(ce.GetScript()) : "?");
+                    badge.AddToClassList("state-conn-condition-badge");
+                    if (ce.GetScript() == null)
+                        badge.AddToClassList("state-conn-condition-badge--empty");
+                    condContainer.Add(badge);
+                }
+                contentArea.Add(condContainer);
+            }
+            else
+            {
+                var noCondLabel = new Label("no conditions");
+                noCondLabel.AddToClassList("state-conn-row-conditions");
+                noCondLabel.AddToClassList("state-conn-row-conditions--empty");
+                contentArea.Add(noCondLabel);
+            }
+
+            connRow.Add(contentArea);
+            return connRow;
         }
 
         // ─── EXTERNAL REFERENCE CONTENT ────────────────────────────────
