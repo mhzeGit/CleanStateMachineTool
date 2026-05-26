@@ -33,7 +33,7 @@ MonoBehaviour:
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
     - Name: Patrolling Sub State
-      Position: {x: 390.70944, y: 188.45607}
+      Position: {x: 454.0044, y: 171.02701}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -55,8 +55,11 @@ MonoBehaviour:
       ToIndex: 1
       Conditions: []
     Groups: []
-    BlackboardVariables: []
+    BlackboardVariables:
+    - Name: Patrolling
+      Type: 0
+      StringValue: False
     Breakpoints: []
-    PanOffset: {x: 9.161224, y: 212.89471}
-    Zoom: 1.0901334
+    PanOffset: {x: 16.942108, y: 264.80945}
+    Zoom: 1.022758
     ExpandedSubStateIndices: 

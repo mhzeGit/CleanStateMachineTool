@@ -9,7 +9,8 @@ namespace CleanStateMachine
     {
         [SerializeField] private StateMachineController _controller;
 
-        private List<BlackboardVariable> _runtimeVariables = new List<BlackboardVariable>();
+        private Dictionary<string, BlackboardVariable> _runtimeVariableLookup = new Dictionary<string, BlackboardVariable>();
+        private List<BlackboardVariable> _runtimeVariableList = new List<BlackboardVariable>();
         private float _stateEnterTime;
         private bool _initialized = false;
         private readonly List<int> _activeStatePath = new List<int>();
@@ -19,6 +20,7 @@ namespace CleanStateMachine
 
         private readonly Dictionary<StateData, List<StateBehaviour>> _behaviourInstances = new Dictionary<StateData, List<StateBehaviour>>();
         private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
+        private readonly Dictionary<ConditionEntry, ConditionScript> _conditionCache = new Dictionary<ConditionEntry, ConditionScript>();
 
         public static event System.Action<StateMachineComponent> OnStateEnteredGlobal;
 
@@ -53,7 +55,7 @@ namespace CleanStateMachine
         public IReadOnlyList<int> CurrentStatePath => _activeStatePath;
 
         public float StateEnterTime => _stateEnterTime;
-        public List<BlackboardVariable> RuntimeVariables => _runtimeVariables;
+        public List<BlackboardVariable> RuntimeVariables => _runtimeVariableList;
         public List<TransitionRecord> RecentTransitions => _recentTransitions;
 
         public event Action<int, int> OnStateChanged;
@@ -105,12 +107,15 @@ namespace CleanStateMachine
 
         private void CopyVariablesFromController()
         {
-            _runtimeVariables.Clear();
+            _runtimeVariableLookup.Clear();
+            _runtimeVariableList.Clear();
             if (Data != null)
             {
                 for (int i = 0; i < Data.BlackboardVariables.Count; i++)
                 {
-                    _runtimeVariables.Add(Data.BlackboardVariables[i].Clone());
+                    var clone = Data.BlackboardVariables[i].Clone();
+                    _runtimeVariableLookup[clone.Name] = clone;
+                    _runtimeVariableList.Add(clone);
                 }
             }
         }
@@ -337,14 +342,18 @@ namespace CleanStateMachine
                 ConditionScript condition = entry.Instance;
                 if (condition == null)
                 {
-                    var type = ResolveType(entry.TypeName);
-                    if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
-                        continue;
+                    if (!_conditionCache.TryGetValue(entry, out condition))
+                    {
+                        var type = ResolveType(entry.TypeName);
+                        if (type == null || !type.IsSubclassOf(typeof(ConditionScript)))
+                            continue;
 
-                    condition = (ConditionScript)ScriptableObject.CreateInstance(type);
-                    condition.name = $"{entry.TypeName}_Condition";
-                    condition.hideFlags = HideFlags.HideAndDontSave;
-                    _runtimeConditionInstances.Add(condition);
+                        condition = (ConditionScript)ScriptableObject.CreateInstance(type);
+                        condition.name = $"{entry.TypeName}_Condition";
+                        condition.hideFlags = HideFlags.HideAndDontSave;
+                        _conditionCache[entry] = condition;
+                        _runtimeConditionInstances.Add(condition);
+                    }
                 }
 
                 if (!condition.Evaluate(this))
@@ -507,150 +516,77 @@ namespace CleanStateMachine
                     Destroy(instance);
             }
             _runtimeConditionInstances.Clear();
+            _conditionCache.Clear();
         }
 
         public void SetBoolParameter(string name, bool value)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Bool)
-                {
-                    v.BoolValue = value;
-                    return;
-                }
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Bool)
+                v.BoolValue = value;
         }
 
         public void SetIntParameter(string name, int value)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Int)
-                {
-                    v.IntValue = value;
-                    return;
-                }
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Int)
+                v.IntValue = value;
         }
 
         public void SetFloatParameter(string name, float value)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Float)
-                {
-                    v.FloatValue = value;
-                    return;
-                }
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Float)
+                v.FloatValue = value;
         }
 
         public void SetStringParameter(string name, string value)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.String)
-                {
-                    v.StringValue = value;
-                    return;
-                }
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.String)
+                v.StringValue = value;
         }
 
-        public void SetVector2Parameter(string name, Vector2 value)
+        public void SetTriggerParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Vector2)
-                {
-                    v.Vector2Value = value;
-                    return;
-                }
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Trigger)
+                v.BoolValue = true;
         }
 
-        public void SetVector3Parameter(string name, Vector3 value)
+        public bool GetTriggerParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Trigger)
             {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Vector3)
-                {
-                    v.Vector3Value = value;
-                    return;
-                }
+                bool value = v.BoolValue;
+                if (value)
+                    v.BoolValue = false;
+                return value;
             }
+            return false;
         }
 
         public bool GetBoolParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Bool)
-                    return v.BoolValue;
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Bool)
+                return v.BoolValue;
             return false;
         }
 
         public int GetIntParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Int)
-                    return v.IntValue;
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Int)
+                return v.IntValue;
             return 0;
         }
 
         public float GetFloatParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Float)
-                    return v.FloatValue;
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.Float)
+                return v.FloatValue;
             return 0f;
         }
 
         public string GetStringParameter(string name)
         {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.String)
-                    return v.StringValue;
-            }
+            if (_runtimeVariableLookup.TryGetValue(name, out var v) && v.Type == BlackboardVariableType.String)
+                return v.StringValue;
             return "";
-        }
-
-        public Vector2 GetVector2Parameter(string name)
-        {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Vector2)
-                    return v.Vector2Value;
-            }
-            return Vector2.zero;
-        }
-
-        public Vector3 GetVector3Parameter(string name)
-        {
-            for (int i = 0; i < _runtimeVariables.Count; i++)
-            {
-                var v = _runtimeVariables[i];
-                if (v.Name == name && v.Type == BlackboardVariableType.Vector3)
-                    return v.Vector3Value;
-            }
-            return Vector3.zero;
         }
 
         public void SetState(string stateName)
@@ -777,13 +713,9 @@ namespace CleanStateMachine
                     sm.SetStringParameter(state.ExternalBlackboardParmName,
                         state.ExternalBlackboardParmValue);
                     break;
-                case BlackboardVariableType.Vector2:
-                    sm.SetVector2Parameter(state.ExternalBlackboardParmName,
-                        ParseVector2Value(state.ExternalBlackboardParmValue));
-                    break;
-                case BlackboardVariableType.Vector3:
-                    sm.SetVector3Parameter(state.ExternalBlackboardParmName,
-                        ParseVector3Value(state.ExternalBlackboardParmValue));
+                case BlackboardVariableType.Trigger:
+                    if (bool.TryParse(state.ExternalBlackboardParmValue, out var tr) && tr)
+                        sm.SetTriggerParameter(state.ExternalBlackboardParmName);
                     break;
             }
         }
