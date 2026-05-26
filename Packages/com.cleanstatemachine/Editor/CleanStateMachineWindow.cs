@@ -150,6 +150,20 @@ namespace CleanStateMachine
 
         internal Vector2 LastMouseGraphPos;
 
+        // ─── Arrow Key Nudge ──────────────────────────────────────────
+
+        internal const float NudgeDistance = 1f;
+        internal const float NudgeRepeatDelay = 0.35f;
+        internal const float NudgeRepeatRate = 0.08f;
+        private bool _nudgeLeft;
+        private bool _nudgeRight;
+        private bool _nudgeUp;
+        private bool _nudgeDown;
+        private double _nudgePressTime;
+        private double _nudgeLastRepeatTime;
+        private Vector2 _nudgeTotalDelta;
+        private Dictionary<ISelectable, Vector2> _nudgeStartPositions;
+
         // ─── Controllers ──────────────────────────────────────────────
 
         internal SelectionController SelectionController;
@@ -576,6 +590,33 @@ namespace CleanStateMachine
 
             if (!ConnectionController.IsConnecting && EditingState == null && EditingGroup == null)
                 InputHandler.HandleKeyboardShortcuts(e);
+
+            // ─── Arrow Key Nudge ─────────────────────────────────────
+            if (!ConnectionController.IsConnecting && EditingState == null && EditingGroup == null)
+            {
+                if (e.type == EventType.KeyDown)
+                {
+                    bool handled = true;
+                    if (e.keyCode == KeyCode.UpArrow) { if (!_nudgeUp) { _nudgeUp = true; _nudgePressTime = EditorApplication.timeSinceStartup; _nudgeLastRepeatTime = 0; CaptureNudgeStart(); ApplyNudge(); } }
+                    else if (e.keyCode == KeyCode.DownArrow) { if (!_nudgeDown) { _nudgeDown = true; _nudgePressTime = EditorApplication.timeSinceStartup; _nudgeLastRepeatTime = 0; CaptureNudgeStart(); ApplyNudge(); } }
+                    else if (e.keyCode == KeyCode.LeftArrow) { if (!_nudgeLeft) { _nudgeLeft = true; _nudgePressTime = EditorApplication.timeSinceStartup; _nudgeLastRepeatTime = 0; CaptureNudgeStart(); ApplyNudge(); } }
+                    else if (e.keyCode == KeyCode.RightArrow) { if (!_nudgeRight) { _nudgeRight = true; _nudgePressTime = EditorApplication.timeSinceStartup; _nudgeLastRepeatTime = 0; CaptureNudgeStart(); ApplyNudge(); } }
+                    else handled = false;
+
+                    if (handled) { e.Use(); Repaint(); }
+                }
+                else if (e.type == EventType.KeyUp)
+                {
+                    bool handled = true;
+                    if (e.keyCode == KeyCode.UpArrow) { _nudgeUp = false; if (!IsAnyNudgeKeyPressed()) CommitNudge(); }
+                    else if (e.keyCode == KeyCode.DownArrow) { _nudgeDown = false; if (!IsAnyNudgeKeyPressed()) CommitNudge(); }
+                    else if (e.keyCode == KeyCode.LeftArrow) { _nudgeLeft = false; if (!IsAnyNudgeKeyPressed()) CommitNudge(); }
+                    else if (e.keyCode == KeyCode.RightArrow) { _nudgeRight = false; if (!IsAnyNudgeKeyPressed()) CommitNudge(); }
+                    else handled = false;
+
+                    if (handled) { e.Use(); Repaint(); }
+                }
+            }
 
             if (e.type == EventType.ContextClick && graphRect.Contains(e.mousePosition))
             {
@@ -1109,6 +1150,87 @@ namespace CleanStateMachine
             ResizeStartRect = group.GetGraphBounds();
         }
 
+        // ─── Arrow Key Nudge Helpers ──────────────────────────────────
+
+        private bool IsAnyNudgeKeyPressed()
+        {
+            return _nudgeUp || _nudgeDown || _nudgeLeft || _nudgeRight;
+        }
+
+        private Vector2 GetNudgeDirection()
+        {
+            Vector2 dir = Vector2.zero;
+            if (_nudgeUp) dir.y -= 1f;
+            if (_nudgeDown) dir.y += 1f;
+            if (_nudgeLeft) dir.x -= 1f;
+            if (_nudgeRight) dir.x += 1f;
+            return dir;
+        }
+
+        private void CaptureNudgeStart()
+        {
+            if (SelectionController.Count == 0) return;
+
+            var items = InputHandler.GetDragItems();
+            _nudgeStartPositions = new Dictionary<ISelectable, Vector2>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+                _nudgeStartPositions[items[i]] = items[i].Position;
+            _nudgeTotalDelta = Vector2.zero;
+        }
+
+        private void ApplyNudge()
+        {
+            if (_nudgeStartPositions == null || _nudgeStartPositions.Count == 0)
+                return;
+
+            _nudgeTotalDelta += GetNudgeDirection() * NudgeDistance;
+
+            foreach (var kvp in _nudgeStartPositions)
+                kvp.Key.Position = kvp.Value + _nudgeTotalDelta;
+
+            MarkChangedInternal();
+        }
+
+        private void CommitNudge()
+        {
+            if (_nudgeStartPositions == null || _nudgeStartPositions.Count == 0)
+            {
+                ClearNudgeState();
+                return;
+            }
+
+            bool moved = false;
+            var items = new List<ISelectable>(_nudgeStartPositions.Count);
+            var startPositions = new List<Vector2>(_nudgeStartPositions.Count);
+            var endPositions = new List<Vector2>(_nudgeStartPositions.Count);
+
+            foreach (var kvp in _nudgeStartPositions)
+            {
+                Vector2 currentPos = kvp.Key.Position;
+                if ((currentPos - kvp.Value).sqrMagnitude > 0.0001f)
+                    moved = true;
+                items.Add(kvp.Key);
+                startPositions.Add(kvp.Value);
+                endPositions.Add(currentPos);
+            }
+
+            if (moved)
+            {
+                var cmd = new MoveStatesCommand(items, startPositions, endPositions);
+                UndoRedoSystem.Execute(cmd);
+            }
+
+            ClearNudgeState();
+        }
+
+        private void ClearNudgeState()
+        {
+            _nudgeStartPositions = null;
+            _nudgeTotalDelta = Vector2.zero;
+            _nudgeUp = _nudgeDown = _nudgeLeft = _nudgeRight = false;
+            _nudgeLastRepeatTime = 0;
+        }
+
         internal void UndoRedoSystemClear()
         {
             UndoRedoSystem = new UndoRedoSystem();
@@ -1176,6 +1298,17 @@ namespace CleanStateMachine
 
         private void OnEditorUpdate()
         {
+            if (_nudgeStartPositions != null && IsAnyNudgeKeyPressed())
+            {
+                double now = EditorApplication.timeSinceStartup;
+                if (now - _nudgePressTime >= NudgeRepeatDelay && now - _nudgeLastRepeatTime >= NudgeRepeatRate)
+                {
+                    _nudgeLastRepeatTime = now;
+                    ApplyNudge();
+                    Repaint();
+                }
+            }
+
             if (_controller == null && !EditorApplication.isPlaying) return;
             PlayModeTracker.OnEditorUpdate();
         }

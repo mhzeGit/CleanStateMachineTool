@@ -122,6 +122,36 @@ namespace CleanStateMachine
                 return true;
             }
 
+            if (e.keyCode == KeyCode.A && e.control)
+            {
+                _window.SelectionController.Clear();
+
+                var allStates = new List<StateView>();
+                for (int i = 0; i < _window.States.Count; i++)
+                {
+                    if (_window.IsStateVisible(_window.States[i]))
+                        allStates.Add(_window.States[i]);
+                }
+                _window.SelectionController.SelectRange(allStates);
+
+                var allConnections = new List<ConnectionView>();
+                for (int i = 0; i < _window.Connections.Count; i++)
+                {
+                    if (_window.IsConnectionVisible(_window.Connections[i]))
+                        allConnections.Add(_window.Connections[i]);
+                }
+                _window.SelectionController.SelectRange(allConnections);
+
+                var allGroups = new List<CommentGroupView>();
+                for (int i = 0; i < _window.Groups.Count; i++)
+                    allGroups.Add(_window.Groups[i]);
+                _window.SelectionController.SelectRange(allGroups);
+
+                e.Use();
+                _window.Repaint();
+                return true;
+            }
+
             if (e.keyCode == KeyCode.Home)
             {
                 _window.FocusOnAll();
@@ -616,7 +646,7 @@ namespace CleanStateMachine
             _window.SelectionController.SelectRange(boxGroups);
         }
 
-        private List<ISelectable> GetDragItems()
+        internal List<ISelectable> GetDragItems()
         {
             List<ISelectable> selected = new(_window.SelectionController.Selected);
             HashSet<StateView> groupMembers = new();

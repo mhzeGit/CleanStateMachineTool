@@ -193,6 +193,7 @@ namespace CleanStateMachine
                         new ShortcutItem { Key = "Ctrl + Z", Description = "Undo last action" },
                         new ShortcutItem { Key = "Ctrl + Y", Description = "Redo last action" },
                         new ShortcutItem { Key = "Ctrl + F", Description = "Search states, behaviours, conditions, and variables" },
+                        new ShortcutItem { Key = "Ctrl + A", Description = "Select all visible nodes" },
                         new ShortcutItem { Key = "Ctrl + / ?", Description = "Show this shortcut guide" },
                     }
                 },
@@ -224,6 +225,7 @@ namespace CleanStateMachine
                         new ShortcutItem { Key = "Right-click + Drag", Description = "Pan the graph view" },
                         new ShortcutItem { Key = "Scroll Wheel", Description = "Zoom in / out" },
                         new ShortcutItem { Key = "Left-click + Drag", Description = "Box selection / Move items" },
+                        new ShortcutItem { Key = "Arrow Keys", Description = "Nudge selected states and groups" },
                     }
                 },
             };
