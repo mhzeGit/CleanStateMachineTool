@@ -681,14 +681,15 @@ namespace CleanStateMachine
                 _searchButton.style.right = rightPadding;
             }
 
-            GraphValidation.RunAndUpdate();
-            GridBackground.UpdateView(_panOffset, _zoom);
-            ConnectionArrowsLayer.UpdateView(_zoom, _panOffset);
+            GraphValidation?.RunAndUpdate();
+            GridBackground?.UpdateView(_panOffset, _zoom);
+            ConnectionArrowsLayer?.UpdateView(_zoom, _panOffset);
+            if (GridBackground == null) return;
             SyncStateHierarchy();
             UpdateStateTransforms();
             UpdateGroupPositions();
             UpdateGraphPreview(graphRect);
-            GraphCanvas.MarkDirtyRepaint();
+            GraphCanvas?.MarkDirtyRepaint();
 
             if (PanController.IsPanning || DragController.IsActive || SelectionBox.IsActive || ConnectionController.IsConnecting)
                 Repaint();

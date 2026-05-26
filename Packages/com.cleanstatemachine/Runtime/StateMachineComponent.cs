@@ -604,8 +604,13 @@ namespace CleanStateMachine
 
         private static void DestroyRuntimeObject(UnityEngine.Object obj)
         {
-            if (obj != null)
+            if (obj != null && IsRuntimeInstance(obj))
                 Destroy(obj);
+        }
+
+        private static bool IsRuntimeInstance(UnityEngine.Object obj)
+        {
+            return (obj.hideFlags & HideFlags.DontSaveInEditor) != 0;
         }
 
         private bool TryGetVariable(string name, BlackboardVariableType expectedType, out BlackboardVariable variable)
