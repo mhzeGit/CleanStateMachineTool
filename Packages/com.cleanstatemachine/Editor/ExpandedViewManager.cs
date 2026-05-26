@@ -105,7 +105,6 @@ namespace CleanStateMachine
             if (_window.ExpandedModeBar == null) return;
             if (_window.ExpandedSubStateStack.Count > 0)
             {
-                _window.ExpandedModeBar.style.display = DisplayStyle.Flex;
                 _window.BreadcrumbContainer.Clear();
 
                 string baseName = _window.Controller != null ? _window.Controller.name : "StateMachine";
@@ -169,7 +168,6 @@ namespace CleanStateMachine
             }
             else
             {
-                _window.ExpandedModeBar.style.display = DisplayStyle.None;
             }
         }
 

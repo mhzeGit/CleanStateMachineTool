@@ -187,6 +187,14 @@ namespace CleanStateMachine
                 _window.Repaint();
             }
 
+            if (e.keyCode == KeyCode.F && e.control)
+            {
+                _window.SearchPanel.Show();
+                e.Use();
+                _window.Repaint();
+                return true;
+            }
+
             if (e.keyCode == KeyCode.S && e.control)
             {
                 _window.OnSaveCommandInternal();

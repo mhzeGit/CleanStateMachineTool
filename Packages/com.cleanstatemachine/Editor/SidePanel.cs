@@ -183,6 +183,14 @@ namespace CleanStateMachine
             _blackboardPanel.UpdateVariables(_window.GetBlackboardVariables());
         }
 
+        public void SelectBlackboardVariable(BlackboardVariable variable)
+        {
+            var variables = _window.GetBlackboardVariables();
+            int index = variables.IndexOf(variable);
+            if (index >= 0)
+                _blackboardPanel.SelectVariable(index);
+        }
+
         private void OnCollapsedClicked(ClickEvent evt)
         {
             _window.SetShowSidePanel(true);

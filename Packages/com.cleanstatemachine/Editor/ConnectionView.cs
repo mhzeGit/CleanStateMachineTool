@@ -10,6 +10,7 @@ namespace CleanStateMachine
         public bool IsSelected { get; set; }
         public bool IsActive { get; set; }
         public double ActivationTime { get; set; }
+        public double SearchHighlightStartTime { get; set; } = -1;
         public float PerpendicularOffset { get; set; }
         public int DataIndex { get; set; } = -1;
         public float MinStateTime { get; set; }
@@ -167,6 +168,11 @@ namespace CleanStateMachine
                 return true;
 
             return false;
+        }
+
+        public void TriggerSearchHighlight()
+        {
+            SearchHighlightStartTime = Time.realtimeSinceStartup;
         }
 
         public void DrawSelectionOverlay(float zoom, Vector2 panOffset)

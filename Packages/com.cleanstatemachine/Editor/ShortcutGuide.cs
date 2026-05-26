@@ -192,6 +192,7 @@ namespace CleanStateMachine
                         new ShortcutItem { Key = "Ctrl + S", Description = "Save current state machine" },
                         new ShortcutItem { Key = "Ctrl + Z", Description = "Undo last action" },
                         new ShortcutItem { Key = "Ctrl + Y", Description = "Redo last action" },
+                        new ShortcutItem { Key = "Ctrl + F", Description = "Search states, behaviours, conditions, and variables" },
                         new ShortcutItem { Key = "Ctrl + / ?", Description = "Show this shortcut guide" },
                     }
                 },

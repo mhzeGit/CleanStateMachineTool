@@ -18,6 +18,7 @@ namespace CleanStateMachine
         private static readonly Color PendingColor = new Color(0.60f, 0.80f, 1.00f, 1.00f);
         private static readonly Color ActiveConnectionColor = new Color(1.0f, 1.0f, 1.0f, 1f);
         private static readonly Color ActiveConnectionWaveColor = new Color(0.4f, 0.9f, 0.4f, 1f);
+        private static readonly Color SearchHighlightColor = new Color(0.3f, 0.85f, 1f, 1f);
 
         private const float ArrowGraphSize = 10f;
         private const float ArrowGraphWidth = 5f;
@@ -52,6 +53,35 @@ namespace CleanStateMachine
 
         private const int CircleSegments = 12;
         private const int WaveCircleCount = 5;
+
+        private struct SearchHighlightState
+        {
+            public bool IsOn;
+        }
+
+        private static SearchHighlightState GetSearchHighlightState(ConnectionView conn)
+        {
+            if (conn.SearchHighlightStartTime < 0) return default;
+
+            float elapsed = (float)(Time.realtimeSinceStartup - conn.SearchHighlightStartTime);
+            float duration = 1.5f;
+
+            if (elapsed > duration)
+            {
+                conn.SearchHighlightStartTime = -1;
+                return default;
+            }
+
+            float blinkPeriod = 0.15f;
+            int blinkCount = 4;
+            float blinkEnd = blinkCount * blinkPeriod;
+
+            bool isOn = elapsed < blinkEnd
+                ? (Mathf.FloorToInt(elapsed / blinkPeriod) % 2 == 0)
+                : true;
+
+            return new SearchHighlightState { IsOn = isOn };
+        }
 
         private void OnGenerateVisualContent(MeshGenerationContext mgc)
         {
@@ -131,6 +161,13 @@ namespace CleanStateMachine
 
                 Color color = conn.IsSelected ? SelectedColor : Color.Lerp(ConnectionColor, ActiveConnectionColor, fade);
                 float width = Mathf.Max(1f, (conn.IsSelected ? SelectedBaseWidth : BaseWidth) * _zoom * widthMultiplier);
+
+                SearchHighlightState searchHl = GetSearchHighlightState(conn);
+                if (searchHl.IsOn)
+                {
+                    color = SearchHighlightColor;
+                    width = Mathf.Max(width, 3f * _zoom);
+                }
 
                 WriteLine(mesh, ref vertexOffset, startPos, endPos, color, width);
                 WriteMidArrowhead(mesh, ref vertexOffset, startPos, endPos, color, _zoom);

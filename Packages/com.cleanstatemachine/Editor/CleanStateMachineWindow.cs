@@ -159,6 +159,7 @@ namespace CleanStateMachine
         internal GraphValidation GraphValidation;
         internal GraphInputHandler InputHandler;
         internal ShortcutGuide ShortcutGuide;
+        internal GraphSearchPanel SearchPanel;
         internal ExpandedViewManager ExpandedView;
         internal GraphSerializer GraphSerializer;
         internal PlayModeTracker PlayModeTracker;
@@ -233,6 +234,7 @@ namespace CleanStateMachine
             GraphValidation = new GraphValidation(this);
             InputHandler = new GraphInputHandler(this, GraphOperations);
             ShortcutGuide = new ShortcutGuide(this);
+            SearchPanel = new GraphSearchPanel(this);
             ExpandedView = new ExpandedViewManager(this);
             GraphSerializer = new GraphSerializer(this);
             PlayModeTracker = new PlayModeTracker(this, ExpandedView);
@@ -396,7 +398,8 @@ namespace CleanStateMachine
             ExpandedModeBar.style.paddingRight = 8f;
             ExpandedModeBar.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f);
             ExpandedModeBar.style.borderBottomWidth = 1f;
-            ExpandedModeBar.style.display = DisplayStyle.None;
+            ExpandedModeBar.style.justifyContent = Justify.SpaceBetween;
+            ExpandedModeBar.style.display = DisplayStyle.Flex;
             ExpandedModeBar.pickingMode = PickingMode.Position;
             rootVisualElement.Add(ExpandedModeBar);
 
@@ -406,6 +409,35 @@ namespace CleanStateMachine
             BreadcrumbContainer.style.flexGrow = 1f;
             BreadcrumbContainer.style.overflow = Overflow.Hidden;
             ExpandedModeBar.Add(BreadcrumbContainer);
+
+            var searchBtn = new Button(() => SearchPanel.Show());
+            searchBtn.text = "\u2315";
+            searchBtn.style.width = 24f;
+            searchBtn.style.height = 20f;
+            searchBtn.style.fontSize = 13f;
+            searchBtn.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f, 0.6f);
+            searchBtn.style.color = new Color(0.6f, 0.6f, 0.6f);
+            searchBtn.style.borderTopLeftRadius = 3f;
+            searchBtn.style.borderTopRightRadius = 3f;
+            searchBtn.style.borderBottomLeftRadius = 3f;
+            searchBtn.style.borderBottomRightRadius = 3f;
+            searchBtn.style.borderLeftColor = new Color(0.2f, 0.2f, 0.2f);
+            searchBtn.style.borderRightColor = new Color(0.2f, 0.2f, 0.2f);
+            searchBtn.style.borderTopColor = new Color(0.2f, 0.2f, 0.2f);
+            searchBtn.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f);
+            searchBtn.style.borderLeftWidth = 1f;
+            searchBtn.style.borderRightWidth = 1f;
+            searchBtn.style.borderTopWidth = 1f;
+            searchBtn.style.borderBottomWidth = 1f;
+            searchBtn.style.paddingLeft = 0f;
+            searchBtn.style.paddingRight = 0f;
+            searchBtn.style.paddingTop = 0f;
+            searchBtn.style.paddingBottom = 0f;
+            searchBtn.style.justifyContent = Justify.Center;
+            searchBtn.style.alignItems = Align.Center;
+            searchBtn.style.flexShrink = 0;
+            searchBtn.tooltip = "Search (Ctrl+F)";
+            ExpandedModeBar.Add(searchBtn);
 
             rootVisualElement.Add(SelectionBox.Element);
 
@@ -473,6 +505,15 @@ namespace CleanStateMachine
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Slash && e.control)
             {
                 ShortcutGuide.Show();
+                e.Use();
+                Repaint();
+                return;
+            }
+
+            // Show search panel (always available)
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.F && e.control)
+            {
+                SearchPanel.Show();
                 e.Use();
                 Repaint();
                 return;
@@ -551,6 +592,14 @@ namespace CleanStateMachine
 
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
             {
+                if (SearchPanel.IsVisible)
+                {
+                    SearchPanel.Hide();
+                    e.Use();
+                    Repaint();
+                    return;
+                }
+
                 if (ShortcutGuide.IsVisible)
                 {
                     ShortcutGuide.Hide();

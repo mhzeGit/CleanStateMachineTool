@@ -627,9 +627,57 @@ namespace CleanStateMachine
             }
         }
 
+        private double _searchHighlightStartTime;
+        private bool _searchHighlightActive;
+
+        public void TriggerSearchHighlight()
+        {
+            _searchHighlightStartTime = Time.realtimeSinceStartup;
+            if (!_searchHighlightActive)
+            {
+                _searchHighlightActive = true;
+                schedule.Execute(OnSearchHighlightUpdate).Until(() => !_searchHighlightActive).Every(30);
+            }
+        }
+
+        private void OnSearchHighlightUpdate()
+        {
+            float elapsed = (float)(Time.realtimeSinceStartup - _searchHighlightStartTime);
+            float duration = 1.5f;
+
+            if (elapsed > duration)
+            {
+                _searchHighlightActive = false;
+                if (_fill != null)
+                    _fill.EnableInClassList("state-view__fill--search-highlight", false);
+                return;
+            }
+
+            float blinkPeriod = 0.15f;
+            int blinkCount = 4;
+            float blinkEnd = blinkCount * blinkPeriod;
+
+            bool highlightOn;
+            if (elapsed < blinkEnd)
+            {
+                highlightOn = (Mathf.FloorToInt(elapsed / blinkPeriod) % 2) == 0;
+            }
+            else
+            {
+                highlightOn = elapsed < duration;
+            }
+
+            if (_fill != null)
+                _fill.EnableInClassList("state-view__fill--search-highlight", highlightOn);
+        }
+
         private void InitializeGlowAnimation()
         {
-            RegisterCallback<DetachFromPanelEvent>(_ => _glowScheduled = false);
+            RegisterCallback<DetachFromPanelEvent>(_ =>
+            {
+                _glowScheduled = false;
+                _searchHighlightActive = false;
+            });
         }
 
         void ISelectable.DrawSelectionOverlay(float zoom, Vector2 panOffset)

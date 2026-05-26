@@ -76,6 +76,15 @@ namespace CleanStateMachine
             Rebuild();
         }
 
+        public void SelectVariable(int index)
+        {
+            if (index < 0 || _rows == null || index >= _rows.Count) return;
+            ClearRowSelection();
+            _selectedIndex = index;
+            _rows[index].AddToClassList("variable-row-selected");
+            _scrollView.ScrollTo(_rows[index]);
+        }
+
         private void Rebuild()
         {
             _scrollView.Clear();
