@@ -281,19 +281,17 @@ namespace CleanStateMachine
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             PlayModeTracker.UnsubscribeFromGlobalEvents();
 
-            if (CurrentData != null)
+            if (CurrentData != null && ExpandedSubStateStack.Count > 0)
             {
+                var indexToView = new Dictionary<int, int>();
+                for (int i = 0; i < States.Count; i++)
+                    indexToView[States[i].DataIndex] = i;
+
                 CurrentData.ExpandedSubStateIndices.Clear();
                 foreach (int dataIdx in ExpandedSubStateStack)
                 {
-                    for (int si = 0; si < States.Count; si++)
-                    {
-                        if (States[si].DataIndex == dataIdx)
-                        {
-                            CurrentData.ExpandedSubStateIndices.Add(si);
-                            break;
-                        }
-                    }
+                    if (indexToView.TryGetValue(dataIdx, out int si))
+                        CurrentData.ExpandedSubStateIndices.Add(si);
                 }
             }
 
@@ -1012,6 +1010,7 @@ namespace CleanStateMachine
 
         private void OnEditorUpdate()
         {
+            if (_controller == null && !EditorApplication.isPlaying) return;
             PlayModeTracker.OnEditorUpdate();
         }
     }

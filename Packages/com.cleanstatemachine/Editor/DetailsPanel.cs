@@ -284,7 +284,7 @@ namespace CleanStateMachine
             pickerBtn.text = entry.Script != null ? GetBehaviourDisplayName(entry.Script) : "None (Select...)";
             pickerBtn.clicked += () =>
             {
-                var filtered = FindFilteredScripts(IsValidStateBehaviour);
+                var filtered = MonoScriptCache.GetScriptsByBaseType<StateBehaviour>();
                 var pos = _window.rootVisualElement.WorldToLocal(
                     new Vector2(pickerBtn.worldBound.x, pickerBtn.worldBound.y + pickerBtn.worldBound.height));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
@@ -562,7 +562,7 @@ namespace CleanStateMachine
             pickerBtn.text = entry.Script != null ? GetConditionDisplayName(entry.Script) : "None (Select...)";
             pickerBtn.clicked += () =>
             {
-                var filtered = FindFilteredScripts(IsValidConditionScript);
+                var filtered = MonoScriptCache.GetScriptsByBaseType<ConditionScript>();
                 var pos = _window.rootVisualElement.WorldToLocal(
                     new Vector2(pickerBtn.worldBound.x, pickerBtn.worldBound.y + pickerBtn.worldBound.height));
                 MenuDropdown.Show(_window.rootVisualElement, pos, menu =>

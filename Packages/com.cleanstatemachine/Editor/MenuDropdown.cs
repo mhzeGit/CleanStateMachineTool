@@ -7,13 +7,9 @@ namespace CleanStateMachine
 {
     public static class MenuDropdown
     {
-        private static StyleSheet _styleSheet;
-
         private static StyleSheet GetStyleSheet()
         {
-            if (_styleSheet == null)
-                _styleSheet = ScriptReferenceUtility.LoadStyleSheet("MenuDropdown");
-            return _styleSheet;
+            return ScriptReferenceUtility.LoadStyleSheet("MenuDropdown");
         }
 
         public static void Show(VisualElement root, Vector2 screenPosition, Action<IBuilder> build)

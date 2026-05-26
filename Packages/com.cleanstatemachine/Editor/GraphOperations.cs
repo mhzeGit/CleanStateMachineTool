@@ -564,6 +564,40 @@ namespace CleanStateMachine
 
         public void SyncStatesWithSubMachines()
         {
+            const float cellSize = 250f;
+
+            var grid = new Dictionary<int, Dictionary<int, List<StateView>>>();
+
+            for (int j = 0; j < _window.States.Count; j++)
+            {
+                var state = _window.States[j];
+                if (state.IsEntry) continue;
+
+                var bounds = state.GetGraphBounds();
+                int minCX = (int)Math.Floor(bounds.xMin / cellSize);
+                int maxCX = (int)Math.Floor(bounds.xMax / cellSize);
+                int minCY = (int)Math.Floor(bounds.yMin / cellSize);
+                int maxCY = (int)Math.Floor(bounds.yMax / cellSize);
+
+                for (int cx = minCX; cx <= maxCX; cx++)
+                {
+                    if (!grid.TryGetValue(cx, out var col))
+                    {
+                        col = new Dictionary<int, List<StateView>>();
+                        grid[cx] = col;
+                    }
+                    for (int cy = minCY; cy <= maxCY; cy++)
+                    {
+                        if (!col.TryGetValue(cy, out var list))
+                        {
+                            list = new List<StateView>();
+                            col[cy] = list;
+                        }
+                        list.Add(state);
+                    }
+                }
+            }
+
             for (int i = 0; i < _window.States.Count; i++)
             {
                 var container = _window.States[i];
@@ -574,35 +608,49 @@ namespace CleanStateMachine
                 float cRight = cLeft + container.Size.x;
                 float cBottom = cTop + container.Size.y;
 
-                for (int j = 0; j < _window.States.Count; j++)
+                int minCX = (int)Math.Floor(cLeft / cellSize);
+                int maxCX = (int)Math.Floor(cRight / cellSize);
+                int minCY = (int)Math.Floor(cTop / cellSize);
+                int maxCY = (int)Math.Floor(cBottom / cellSize);
+
+                var checkedStates = new HashSet<StateView>();
+
+                for (int cx = minCX; cx <= maxCX; cx++)
                 {
-                    var child = _window.States[j];
-                    if (child == container) continue;
-                    if (child.IsEntry) continue;
-
-                    bool alreadyChild = container.ChildIndices.Contains(child.DataIndex);
-
-                    Rect childRect = child.GetGraphBounds();
-                    bool inside = childRect.xMin >= cLeft - 0.001f &&
-                                  childRect.yMin >= cTop - 0.001f &&
-                                  childRect.xMax <= cRight + 0.001f &&
-                                  childRect.yMax <= cBottom + 0.001f;
-
-                    if (inside && !alreadyChild)
+                    if (!grid.TryGetValue(cx, out var col)) continue;
+                    for (int cy = minCY; cy <= maxCY; cy++)
                     {
-                        container.ChildIndices.Add(child.DataIndex);
-                        bool hasSubEntry = false;
-                        for (int k = 0; k < container.ChildIndices.Count; k++)
+                        if (!col.TryGetValue(cy, out var cellStates)) continue;
+                        foreach (var child in cellStates)
                         {
-                            int ci = container.ChildIndices[k];
-                            if (ci >= 0 && ci < _window.States.Count && _window.States[ci].IsSubEntry)
+                            if (!checkedStates.Add(child)) continue;
+                            if (child == container) continue;
+
+                            bool alreadyChild = container.ChildIndices.Contains(child.DataIndex);
+
+                            Rect childRect = child.GetGraphBounds();
+                            bool inside = childRect.xMin >= cLeft - 0.001f &&
+                                          childRect.yMin >= cTop - 0.001f &&
+                                          childRect.xMax <= cRight + 0.001f &&
+                                          childRect.yMax <= cBottom + 0.001f;
+
+                            if (inside && !alreadyChild)
                             {
-                                hasSubEntry = true;
-                                break;
+                                container.ChildIndices.Add(child.DataIndex);
+                                bool hasSubEntry = false;
+                                for (int k = 0; k < container.ChildIndices.Count; k++)
+                                {
+                                    int ci = container.ChildIndices[k];
+                                    if (ci >= 0 && ci < _window.States.Count && _window.States[ci].IsSubEntry)
+                                    {
+                                        hasSubEntry = true;
+                                        break;
+                                    }
+                                }
+                                if (!hasSubEntry)
+                                    child.IsSubEntry = true;
                             }
                         }
-                        if (!hasSubEntry)
-                            child.IsSubEntry = true;
                     }
                 }
             }

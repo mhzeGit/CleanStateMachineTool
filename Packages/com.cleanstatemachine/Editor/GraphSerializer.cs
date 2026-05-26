@@ -23,8 +23,12 @@ namespace CleanStateMachine
             _window.CurrentData.BlackboardVariables.Clear();
 
             var stateToIndex = new Dictionary<StateView, int>();
+            var indexToView = new Dictionary<int, StateView>();
             for (int i = 0; i < _window.States.Count; i++)
+            {
                 stateToIndex[_window.States[i]] = i;
+                indexToView[_window.States[i].DataIndex] = _window.States[i];
+            }
 
             foreach (var state in _window.States)
             {
@@ -40,14 +44,8 @@ namespace CleanStateMachine
                 {
                     foreach (var childDataIdx in state.ChildIndices)
                     {
-                        for (int si = 0; si < _window.States.Count; si++)
-                        {
-                            if (_window.States[si].DataIndex == childDataIdx)
-                            {
-                                childIndices.Add(stateToIndex[_window.States[si]]);
-                                break;
-                            }
-                        }
+                        if (indexToView.TryGetValue(childDataIdx, out var childView))
+                            childIndices.Add(stateToIndex[childView]);
                     }
                 }
 
@@ -130,29 +128,19 @@ namespace CleanStateMachine
             _window.CurrentData.ExpandedSubStateIndices.Clear();
             foreach (int dataIdx in _window.ExpandedSubStateStack)
             {
-                for (int si = 0; si < _window.States.Count; si++)
-                {
-                    if (_window.States[si].DataIndex == dataIdx)
-                    {
-                        _window.CurrentData.ExpandedSubStateIndices.Add(si);
-                        break;
-                    }
-                }
+                if (indexToView.TryGetValue(dataIdx, out var expandedView))
+                    _window.CurrentData.ExpandedSubStateIndices.Add(stateToIndex[expandedView]);
             }
 
             _window.CurrentData.Breakpoints.Clear();
             foreach (int bpDataIdx in _window.BreakpointStateIndices)
             {
-                for (int si = 0; si < _window.States.Count; si++)
+                if (indexToView.TryGetValue(bpDataIdx, out var bpView))
                 {
-                    if (_window.States[si].DataIndex == bpDataIdx)
+                    _window.CurrentData.Breakpoints.Add(new BreakpointData
                     {
-                        _window.CurrentData.Breakpoints.Add(new BreakpointData
-                        {
-                            StateIndex = stateToIndex[_window.States[si]]
-                        });
-                        break;
-                    }
+                        StateIndex = stateToIndex[bpView]
+                    });
                 }
             }
         }
