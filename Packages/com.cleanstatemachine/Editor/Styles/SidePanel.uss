@@ -312,7 +312,6 @@
     justify-content: center;
     flex-shrink: 0;
     padding: 1px 0;
-    cursor: grab;
     opacity: 0.7;
     border-radius: 3px;
 }
@@ -717,7 +716,6 @@
     padding-right: 8px;
     padding-top: 4px;
     padding-bottom: 4px;
-    gap: 6px;
 }
 
 .conn-state-button {
@@ -735,7 +733,8 @@
     padding-right: 8px;
     justify-content: center;
     transition: background-color 0.1s;
-    cursor: pointer;
+    margin-left: 3px;
+    margin-right: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -757,6 +756,8 @@
     -unity-text-align: middle-center;
     flex-shrink: 0;
     width: 20px;
+    margin-left: 3px;
+    margin-right: 3px;
 }
 
 /* --- State Connection Row (compressed, interactive) --- */
@@ -774,7 +775,6 @@
     margin-bottom: 1px;
     border-radius: 3px;
     background-color: #1a1a1a;
-    cursor: pointer;
     transition: background-color 0.1s;
 }
 
@@ -800,7 +800,6 @@
 .state-conn-top {
     flex-direction: row;
     align-items: center;
-    gap: 6px;
 }
 
 .state-conn-time-badge {
@@ -811,12 +810,12 @@
     padding-right: 4px;
     border-radius: 2px;
     flex-shrink: 0;
+    margin-right: 6px;
 }
 
 .state-conn-conditions {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 3px;
     padding-top: 2px;
 }
 
@@ -831,6 +830,8 @@
     border-radius: 3px;
     flex-shrink: 0;
     white-space: nowrap;
+    margin-right: 3px;
+    margin-bottom: 3px;
 }
 
 .state-conn-condition-badge:hover {
@@ -1168,7 +1169,7 @@
 
 /* --- Reorder Entry Drag (applied to the dragged entry only) --- */
 .reorder-entry-drag {
-    background-color: hsla(0, 0%, 100%, 0.02);
+    background-color: rgba(255, 255, 255, 0.02);
     opacity: 0.85;
     border-left-color: rgba(188, 188, 188, 0.7);
     border-left-width: 3px;
