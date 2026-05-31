@@ -16,11 +16,15 @@ namespace CleanStateMachine
         private Label _stateLabel;
         private Foldout _variablesFoldout;
         private ScrollView _variablesScroll;
+        private Foldout _eventsFoldout;
+        private ScrollView _eventsScroll;
         private Label _helpLabel;
         private readonly List<VisualElement> _variableRows = new();
+        private readonly List<VisualElement> _eventRows = new();
         private double _nextUpdateTime;
         private int _lastVariableCount = -1;
         private string _lastVariableHash = "";
+        private int _lastEventCount = -1;
 
         public override VisualElement CreateInspectorGUI()
         {
@@ -70,6 +74,16 @@ namespace CleanStateMachine
             _variablesFoldout.Add(_variablesScroll);
             _root.Add(_variablesFoldout);
 
+            _eventsFoldout = new Foldout();
+            _eventsFoldout.text = "Blackboard Events (0)";
+            _eventsFoldout.AddToClassList("variables-foldout");
+            _eventsFoldout.value = true;
+
+            _eventsScroll = new ScrollView();
+            _eventsScroll.AddToClassList("events-scroll");
+            _eventsFoldout.Add(_eventsScroll);
+            _root.Add(_eventsFoldout);
+
             _helpLabel = new Label("Assign a State Machine Controller to begin.");
             _helpLabel.AddToClassList("help-text");
             _root.Add(_helpLabel);
@@ -77,7 +91,10 @@ namespace CleanStateMachine
             _lastController = _component.Controller;
             SetVisibility(_lastController);
             if (_lastController != null)
+            {
                 RebuildVariables(_lastController);
+                RebuildEvents(_lastController);
+            }
             UpdateStateLabel();
 
             _root.RegisterCallback<AttachToPanelEvent>(_ =>
@@ -102,7 +119,10 @@ namespace CleanStateMachine
 
             var controller = _component.Controller;
             if (controller != null)
+            {
                 RebuildVariables(controller);
+                RebuildEvents(controller);
+            }
             UpdateStateLabel();
         }
 
@@ -132,6 +152,12 @@ namespace CleanStateMachine
                 {
                     RebuildVariables(currentController);
                 }
+
+                int currentEventCount = currentController.Data.BlackboardEvents?.Count ?? 0;
+                if (currentEventCount != _lastEventCount)
+                {
+                    RebuildEvents(currentController);
+                }
             }
         }
 
@@ -143,6 +169,7 @@ namespace CleanStateMachine
                 controller.RebuildBehaviourInstances(addSubAssets: false);
             SetVisibility(controller);
             RebuildVariables(controller);
+            RebuildEvents(controller);
             UpdateStateLabel();
         }
 
@@ -151,6 +178,7 @@ namespace CleanStateMachine
             bool hasController = controller != null;
             _stateContainer.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
             _variablesFoldout.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            _eventsFoldout.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
             _helpLabel.style.display = hasController ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
@@ -203,6 +231,71 @@ namespace CleanStateMachine
             }
 
             TrackCurrentVariables(variables);
+        }
+
+        private void RebuildEvents(StateMachineController controller)
+        {
+            _eventsScroll.Unbind();
+            _eventsScroll.Clear();
+            _eventRows.Clear();
+
+            if (controller == null) return;
+
+            // Sync event names from controller to component, preserving existing UnityEvent assignments
+            _component.SyncEventNamesFromController();
+            serializedObject.Update();
+
+            var eventsProp = serializedObject.FindProperty("_blackboardEvents");
+            int count = eventsProp?.arraySize ?? 0;
+            _eventsFoldout.text = $"Blackboard Events ({count})";
+
+            if (count == 0)
+            {
+                var empty = new Label("No blackboard events defined.");
+                empty.AddToClassList("empty-variables");
+                _eventsScroll.Add(empty);
+                return;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                var row = CreateEventRow(eventsProp.GetArrayElementAtIndex(i));
+                _eventsScroll.Add(row);
+                _eventRows.Add(row);
+            }
+
+            _eventsScroll.Bind(serializedObject);
+        }
+
+        private VisualElement CreateEventRow(SerializedProperty eventProp)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("event-row");
+
+            var nameProp = eventProp.FindPropertyRelative("Name");
+            var unityEventProp = eventProp.FindPropertyRelative("unityEvent");
+
+            var headerRow = new VisualElement();
+            headerRow.AddToClassList("event-row-header");
+
+            var badge = new Label("event");
+            badge.AddToClassList("variable-badge");
+            headerRow.Add(badge);
+
+            var nameLabel = new Label(nameProp?.stringValue ?? "Event");
+            nameLabel.AddToClassList("variable-name-label");
+            headerRow.Add(nameLabel);
+
+            row.Add(headerRow);
+
+            if (unityEventProp != null)
+            {
+                var ueField = new PropertyField(unityEventProp, "");
+                ueField.AddToClassList("event-field");
+                row.Add(ueField);
+            }
+
+            return row;
         }
 
         private void TrackCurrentVariables(List<BlackboardVariable> variables)

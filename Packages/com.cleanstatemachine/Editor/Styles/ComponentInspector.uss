@@ -31,7 +31,11 @@
 }
 
 .variables-scroll {
-    max-height: 250px;
+    max-height: 300px;
+    margin-top: 4px;
+}
+
+.events-scroll {
     margin-top: 4px;
 }
 
@@ -47,6 +51,36 @@
 
 .variable-row:hover {
     background-color: rgba(255, 255, 255, 0.03);
+}
+
+.event-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 4px;
+    border-bottom-color: #282828;
+    border-bottom-width: 1px;
+}
+
+.event-row:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.event-row-header {
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 4px;
+}
+
+.event-field {
+    padding-left: 4px;
+}
+
+.event-field .unity-base-field__label {
+    display: none;
+}
+
+.event-field .unity-property-field {
+    flex: 1;
 }
 
 .variable-badge {

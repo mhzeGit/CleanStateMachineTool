@@ -99,6 +99,7 @@ namespace CleanStateMachine
         public List<ConnectionData> Connections = new List<ConnectionData>();
         public List<GroupData> Groups = new List<GroupData>();
         public List<BlackboardVariable> BlackboardVariables = new List<BlackboardVariable>();
+        public List<BlackboardEvent> BlackboardEvents = new List<BlackboardEvent>();
         public List<BreakpointData> Breakpoints = new List<BreakpointData>();
         public Vector2 PanOffset;
         public float Zoom = 1f;

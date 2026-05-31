@@ -16,40 +16,47 @@
       },
       "hash": "b92c05a25820cfc9f59ce4094eb46aaec8632ea2"
     },
+    "com.mhze.argevent": {
+      "version": "https://github.com/mhzeGit/ArgEventSystem.git?path=Packages/com.mhze.argevent",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "d6e08cad94f9ad313d8049eb6b72b2849fb50d6b"
+    },
     "com.mhze.unity-editor-navigator": {
       "version": "https://github.com/mhzeGit/unity-editor-navigator.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "d4dac313d3df8fe6ff42cf771ec57e44c59f2036"
+      "hash": "c54387ba3c02e41d60f12418ca8c412175c660ff"
     },
     "com.mhze.unity-fast-play-button": {
       "version": "https://github.com/mhzeGit/unity-fast-play-button.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "fef68e9ecd9d80ae98811cc5592940d517f24f4a"
+      "hash": "89b4fd72f99039dce9b78158ee838f84ab340baa"
     },
     "com.mhze.unity-folder-colorizer": {
       "version": "https://github.com/mhzeGit/unity-folder-colorizer.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "738710f925776e40691d54d36c5a55171e85387d"
+      "hash": "a4e416c3236bd217f3d89dccfca6ac8445cb6c94"
     },
     "com.mhze.unity-git-integration": {
       "version": "https://github.com/mhzeGit/unity-git-integration.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "5e3b0a2b66024719081e5d74eacfcfddfba62b01"
+      "hash": "ac2e19285b335c263e74b1f2b4d3b298527c7234"
     },
     "com.mycompany.unity-editor-visual-tweaks": {
       "version": "https://github.com/mhzeGit/unity-editor-visual-tweaks.git",
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "8a4ea8107eb86a2e250760d94b00da2bc5f328e6"
+      "hash": "d403f96ecacddc0c10f5dc40276580a505303633"
     },
     "com.unity.ai.navigation": {
       "version": "2.0.12",

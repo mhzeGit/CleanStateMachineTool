@@ -103,6 +103,7 @@ namespace CleanStateMachine
         internal readonly List<ConnectionView> Connections = new();
         internal readonly List<CommentGroupView> Groups = new();
         internal List<BlackboardVariable> BlackboardVariables = new();
+        internal List<BlackboardEvent> BlackboardEvents = new();
 
         internal readonly List<int> ExpandedSubStateStack = new();
 
@@ -1270,6 +1271,7 @@ namespace CleanStateMachine
         internal List<StateView> GetStates() => States;
         internal List<ConnectionView> GetConnections() => Connections;
         internal List<BlackboardVariable> GetBlackboardVariables() => BlackboardVariables;
+        internal List<BlackboardEvent> GetBlackboardEvents() => BlackboardEvents;
 
         internal void NotifySidePanelChanged()
         {

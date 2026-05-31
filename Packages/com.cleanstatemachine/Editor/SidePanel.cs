@@ -175,12 +175,14 @@ namespace CleanStateMachine
                 _window.GetSelection(),
                 _window.GetStates(),
                 _window.GetConnections(),
-                _window.GetBlackboardVariables());
+                _window.GetBlackboardVariables(),
+                _window.GetBlackboardEvents());
         }
 
         public void UpdateBlackboard()
         {
             _blackboardPanel.UpdateVariables(_window.GetBlackboardVariables());
+            _blackboardPanel.UpdateEvents(_window.GetBlackboardEvents());
         }
 
         public void SelectBlackboardVariable(BlackboardVariable variable)

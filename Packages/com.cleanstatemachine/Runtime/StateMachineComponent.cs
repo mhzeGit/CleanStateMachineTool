@@ -18,6 +18,8 @@ namespace CleanStateMachine
         private bool _isTransitioning;
         private bool _running;
 
+        [SerializeField] private List<BlackboardEvent> _blackboardEvents = new List<BlackboardEvent>();
+
         private readonly Dictionary<StateData, List<StateBehaviour>> _behaviourInstances = new Dictionary<StateData, List<StateBehaviour>>();
         private readonly List<ConditionScript> _runtimeConditionInstances = new List<ConditionScript>();
         private readonly Dictionary<ConditionEntry, ConditionScript> _conditionCache = new Dictionary<ConditionEntry, ConditionScript>();
@@ -59,6 +61,7 @@ namespace CleanStateMachine
 
         public float StateEnterTime => _stateEnterTime;
         public List<BlackboardVariable> RuntimeVariables => _runtimeVariableList;
+        public List<BlackboardEvent> RuntimeEvents => _blackboardEvents;
         public List<TransitionRecord> RecentTransitions => _recentTransitions;
 
         public event Action<int, int> OnStateChanged;
@@ -75,6 +78,7 @@ namespace CleanStateMachine
             if (_initialized || _controller == null) return;
 
             CopyVariablesFromController();
+            SyncEventNamesFromController();
             PreCreateBehaviourInstances();
             PreCreateConditionInstances();
             BuildEntryPath();
@@ -616,6 +620,35 @@ namespace CleanStateMachine
         private bool TryGetVariable(string name, BlackboardVariableType expectedType, out BlackboardVariable variable)
         {
             return _runtimeVariableLookup.TryGetValue(name, out variable) && variable.Type == expectedType;
+        }
+
+        /// <summary>Syncs the component's event list to match the controller's event names, preserving existing UnityEvent assignments.</summary>
+        public void SyncEventNamesFromController()
+        {
+            if (Data?.BlackboardEvents == null) return;
+            var newEvents = new List<BlackboardEvent>();
+            foreach (var ce in Data.BlackboardEvents)
+            {
+                var existing = _blackboardEvents.Find(e => e.Name == ce.Name);
+                if (existing != null)
+                    newEvents.Add(existing);
+                else
+                    newEvents.Add(new BlackboardEvent { Name = ce.Name });
+            }
+            _blackboardEvents = newEvents;
+        }
+
+        public void InvokeEvent(string eventName)
+        {
+            if (string.IsNullOrEmpty(eventName)) return;
+            for (int i = 0; i < _blackboardEvents.Count; i++)
+            {
+                if (_blackboardEvents[i].Name == eventName)
+                {
+                    _blackboardEvents[i].unityEvent?.Invoke();
+                    return;
+                }
+            }
         }
 
         public void SetBoolParameter(string name, bool value)

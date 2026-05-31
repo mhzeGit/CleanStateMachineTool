@@ -21,6 +21,7 @@ namespace CleanStateMachine
             _window.CurrentData.Connections.Clear();
             _window.CurrentData.Groups.Clear();
             _window.CurrentData.BlackboardVariables.Clear();
+            _window.CurrentData.BlackboardEvents.Clear();
 
             var stateToIndex = new Dictionary<StateView, int>();
             var indexToView = new Dictionary<int, StateView>();
@@ -107,6 +108,9 @@ namespace CleanStateMachine
             foreach (var v in _window.BlackboardVariables)
                 _window.CurrentData.BlackboardVariables.Add(v.Clone());
 
+            foreach (var e in _window.BlackboardEvents)
+                _window.CurrentData.BlackboardEvents.Add(e.Clone());
+
             _window.CurrentData.PanOffset = _window.PanOffset;
             _window.CurrentData.Zoom = _window.Zoom;
 
@@ -146,6 +150,7 @@ namespace CleanStateMachine
             _window.Connections.Clear();
             _window.Groups.Clear();
             _window.BlackboardVariables.Clear();
+            _window.BlackboardEvents.Clear();
             _window.UndoRedoSystemClear();
             _window.ActiveStateIndex = -1;
             _window.TrackedComponent = null;
@@ -222,6 +227,9 @@ namespace CleanStateMachine
 
                 for (int i = 0; i < data.BlackboardVariables.Count; i++)
                     _window.BlackboardVariables.Add(data.BlackboardVariables[i].Clone());
+
+                for (int i = 0; i < data.BlackboardEvents.Count; i++)
+                    _window.BlackboardEvents.Add(data.BlackboardEvents[i].Clone());
 
                 _window.PanOffset = data.PanOffset;
                 _window.Zoom = data.Zoom;
@@ -340,6 +348,7 @@ namespace CleanStateMachine
             _window.Connections.Clear();
             _window.Groups.Clear();
             _window.BlackboardVariables.Clear();
+            _window.BlackboardEvents.Clear();
             _window.UndoRedoSystemClear();
             _window.ActiveStateIndex = -1;
             _window.PanOffset = Vector2.zero;

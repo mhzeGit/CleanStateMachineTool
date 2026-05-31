@@ -16,6 +16,7 @@ namespace CleanStateMachine
         private List<StateView> _states;
         private List<ConnectionView> _connections;
         private List<BlackboardVariable> _blackboardVariables;
+        private List<BlackboardEvent> _blackboardEvents;
 
         private ScriptableObject _currentSO;
         private readonly Label _emptyLabel;
@@ -81,12 +82,15 @@ namespace CleanStateMachine
             IReadOnlyList<ISelectable> selected,
             List<StateView> states,
             List<ConnectionView> connections,
-            List<BlackboardVariable> blackboardVariables)
+            List<BlackboardVariable> blackboardVariables,
+            List<BlackboardEvent> blackboardEvents = null)
         {
             _selected = selected;
             _states = states;
             _connections = connections;
             _blackboardVariables = blackboardVariables;
+            if (blackboardEvents != null)
+                _blackboardEvents = blackboardEvents;
             _currentSO = null;
             _hoveredConditionIndex = -1;
             _hoveringAddButton = false;
@@ -413,6 +417,10 @@ namespace CleanStateMachine
                         else if (prop.type == "BlackboardVariableSelector")
                         {
                             content = BuildBbVarSelectorField(so, prop.Copy());
+                        }
+                        else if (prop.type == "BlackboardEventSelector")
+                        {
+                            content = BuildBbEventSelectorField(so, prop.Copy());
                         }
                         else
                         {
@@ -1706,6 +1714,10 @@ namespace CleanStateMachine
                 {
                     content = BuildBbVarSelectorField(so, prop.Copy());
                 }
+                else if (prop.type == "BlackboardEventSelector")
+                {
+                    content = BuildBbEventSelectorField(so, prop.Copy());
+                }
                 else
                 {
                     var pf = new PropertyField(prop.Copy(), "");
@@ -2030,6 +2042,68 @@ namespace CleanStateMachine
             return row;
         }
 
+        private VisualElement BuildBbEventSelectorField(SerializedObject so, SerializedProperty prop)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("bb-varref-row");
+
+            var eventNameProp = prop.FindPropertyRelative("EventName");
+
+            var dropdownBtn = new Button();
+            dropdownBtn.AddToClassList("bb-dropdown-button");
+            row.Add(dropdownBtn);
+
+            Action rebuild = null;
+            rebuild = () =>
+            {
+                so.Update();
+                string currentEventName = eventNameProp.stringValue;
+                dropdownBtn.text = string.IsNullOrEmpty(currentEventName)
+                    ? "Select event..." : currentEventName;
+            };
+
+            dropdownBtn.clicked += () =>
+            {
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(dropdownBtn.worldBound.x, dropdownBtn.worldBound.y + dropdownBtn.worldBound.height));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    menu.AddItem("None", () =>
+                    {
+                        eventNameProp.stringValue = "";
+                        so.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(so.targetObject);
+                        rebuild();
+                        schedule.Execute(() => UpdateSelection(_selected, _states, _connections, _blackboardVariables, _blackboardEvents)).StartingIn(0);
+                    });
+                    menu.AddSeparator();
+                    bool hasMatch = false;
+                    if (_blackboardEvents != null)
+                    {
+                        for (int i = 0; i < _blackboardEvents.Count; i++)
+                        {
+                            hasMatch = true;
+                            var be = _blackboardEvents[i];
+                            string captured = be.Name;
+                            menu.AddItem(captured, () =>
+                            {
+                                eventNameProp.stringValue = captured;
+                                so.ApplyModifiedProperties();
+                                EditorUtility.SetDirty(so.targetObject);
+                                rebuild();
+                                schedule.Execute(() => UpdateSelection(_selected, _states, _connections, _blackboardVariables, _blackboardEvents)).StartingIn(0);
+                            });
+                        }
+                    }
+                    if (!hasMatch)
+                        menu.AddDisabledItem("No events in blackboard");
+                });
+            };
+
+            rebuild();
+            return row;
+        }
+
         // ─── VALIDATION ────────────────────────────────────────────────
 
         private void BuildValidationMessages(StateView state)
@@ -2077,7 +2151,7 @@ namespace CleanStateMachine
         private List<ValidationMessage> GetBbVarValidationMessages(ScriptableObject instance)
         {
             var messages = new List<ValidationMessage>();
-            if (instance == null || _blackboardVariables == null) return messages;
+            if (instance == null) return messages;
 
             var so = new SerializedObject(instance);
             var prop = so.GetIterator();
@@ -2088,7 +2162,7 @@ namespace CleanStateMachine
                 if (prop.type == "BlackboardVariableReference")
                 {
                     var varNameProp = prop.FindPropertyRelative("BlackboardVariableName");
-                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue))
+                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue) && _blackboardVariables != null)
                     {
                         bool exists = false;
                         for (int i = 0; i < _blackboardVariables.Count; i++)
@@ -2107,7 +2181,7 @@ namespace CleanStateMachine
                 else if (prop.type == "BlackboardVariableSelector")
                 {
                     var varNameProp = prop.FindPropertyRelative("VariableName");
-                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue))
+                    if (varNameProp != null && !string.IsNullOrEmpty(varNameProp.stringValue) && _blackboardVariables != null)
                     {
                         bool exists = false;
                         for (int i = 0; i < _blackboardVariables.Count; i++)
@@ -2121,6 +2195,25 @@ namespace CleanStateMachine
                         if (!exists)
                             messages.Add(new ValidationMessage(ValidationMessageType.Error,
                                 $"Blackboard variable \"{varNameProp.stringValue}\" not found in blackboard"));
+                    }
+                }
+                else if (prop.type == "BlackboardEventSelector")
+                {
+                    var eventNameProp = prop.FindPropertyRelative("EventName");
+                    if (eventNameProp != null && !string.IsNullOrEmpty(eventNameProp.stringValue) && _blackboardEvents != null)
+                    {
+                        bool exists = false;
+                        for (int i = 0; i < _blackboardEvents.Count; i++)
+                        {
+                            if (_blackboardEvents[i].Name == eventNameProp.stringValue)
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists)
+                            messages.Add(new ValidationMessage(ValidationMessageType.Error,
+                                $"Blackboard event \"{eventNameProp.stringValue}\" not found"));
                     }
                 }
             }
