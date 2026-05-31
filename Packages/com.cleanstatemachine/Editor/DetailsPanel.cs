@@ -22,9 +22,12 @@ namespace CleanStateMachine
         private readonly Label _emptyLabel;
 
         private static ConditionEntry _conditionClipboard;
+        private static BehaviourEntry _behaviourClipboard;
 
         private int _hoveredConditionIndex = -1;
         private bool _hoveringAddButton;
+        private int _hoveredBehaviourIndex = -1;
+        private bool _hoveringBehaviourAddButton;
         private ConnectionView _activeConnection;
         private ConnectionView _draggedStateConnection;
 
@@ -94,6 +97,8 @@ namespace CleanStateMachine
             _currentSO = null;
             _hoveredConditionIndex = -1;
             _hoveringAddButton = false;
+            _hoveredBehaviourIndex = -1;
+            _hoveringBehaviourAddButton = false;
             _activeConnection = null;
             _draggedStateConnection = null;
 
@@ -307,6 +312,35 @@ namespace CleanStateMachine
                     });
                 addBtn.text = "+ Add Behaviour";
                 addBtn.AddToClassList("add-behaviour-button");
+                addBtn.focusable = true;
+
+                addBtn.RegisterCallback<MouseEnterEvent>(_ =>
+                {
+                    _hoveringBehaviourAddButton = true;
+                    _hoveredBehaviourIndex = -1;
+                });
+                addBtn.RegisterCallback<MouseLeaveEvent>(_ => _hoveringBehaviourAddButton = false);
+
+                addBtn.RegisterCallback<ContextClickEvent>(evt =>
+                {
+                    if (_behaviourClipboard?.GetScript() == null || _behaviourClipboard.Instance == null) return;
+                    var pos = _window.rootVisualElement.WorldToLocal(
+                        new Vector2(evt.mousePosition.x, evt.mousePosition.y));
+                    MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                    {
+                        menu.AddItem("Paste Behaviour", () => AppendBehaviourFromClipboard(state));
+                    });
+                });
+
+                addBtn.RegisterCallback<KeyDownEvent>(evt =>
+                {
+                    if (evt.ctrlKey && evt.keyCode == KeyCode.V && _behaviourClipboard?.GetScript() != null)
+                    {
+                        AppendBehaviourFromClipboard(state);
+                        evt.StopPropagation();
+                    }
+                });
+
                 _scrollView.Add(addBtn);
             }
         }
@@ -446,6 +480,35 @@ namespace CleanStateMachine
                 hint.AddToClassList("script-type-name");
                 container.Add(hint);
             }
+
+            container.RegisterCallback<MouseEnterEvent>(_ =>
+            {
+                _hoveredBehaviourIndex = (int)container.userData;
+                _hoveringBehaviourAddButton = false;
+            });
+            container.RegisterCallback<MouseLeaveEvent>(_ =>
+            {
+                if (_hoveredBehaviourIndex == (int)container.userData)
+                    _hoveredBehaviourIndex = -1;
+            });
+
+            container.RegisterCallback<ContextClickEvent>(evt =>
+            {
+                var pos = _window.rootVisualElement.WorldToLocal(
+                    new Vector2(evt.mousePosition.x, evt.mousePosition.y));
+                MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
+                {
+                    if (entry.GetScript() != null)
+                        menu.AddItem("Copy Behaviour", () => CopyBehaviour(entry));
+                    else
+                        menu.AddDisabledItem("Copy Behaviour");
+
+                    if (_behaviourClipboard != null && _behaviourClipboard.GetScript() != null)
+                        menu.AddItem("Paste Behaviour", () => PasteBehaviour(state, (int)container.userData));
+                    else
+                        menu.AddDisabledItem("Paste Behaviour");
+                });
+            });
 
             _behaviourEntryElements.Add(container);
             _behaviourListContainer.Add(container);
@@ -864,6 +927,92 @@ namespace CleanStateMachine
                     evt.StopPropagation();
                 }
             }
+
+            if (evt.keyCode == KeyCode.C && _hoveredBehaviourIndex >= 0 && _activeBehaviourState != null)
+            {
+                var entries = _activeBehaviourState.BehaviourEntries;
+                if (_hoveredBehaviourIndex < entries.Count)
+                {
+                    var entry = entries[_hoveredBehaviourIndex];
+                    if (entry.GetScript() != null && entry.Instance != null)
+                        CopyBehaviour(entry);
+                    evt.StopPropagation();
+                }
+                return;
+            }
+
+            if (evt.keyCode == KeyCode.V && _behaviourClipboard?.GetScript() != null)
+            {
+                if (_hoveredBehaviourIndex >= 0 && _activeBehaviourState != null)
+                {
+                    PasteBehaviour(_activeBehaviourState, _hoveredBehaviourIndex);
+                    evt.StopPropagation();
+                }
+                else if (_hoveringBehaviourAddButton && _activeBehaviourState != null)
+                {
+                    AppendBehaviourFromClipboard(_activeBehaviourState);
+                    evt.StopPropagation();
+                }
+            }
+        }
+
+        private void CopyBehaviour(BehaviourEntry entry)
+        {
+            var script = entry.GetScript();
+            if (script == null || entry.Instance == null) return;
+
+            var type = script.GetClass();
+            if (type == null) return;
+
+            _behaviourClipboard = new BehaviourEntry
+            {
+                TypeName = entry.TypeName,
+                Instance = null
+            };
+
+            var clone = (StateBehaviour)ScriptableObject.CreateInstance(type);
+            EditorUtility.CopySerialized(entry.Instance, clone);
+            clone.name = $"{type.Name}_Clipboard";
+            clone.hideFlags = HideFlags.HideInHierarchy;
+            _behaviourClipboard.Instance = clone;
+        }
+
+        private void PasteBehaviour(StateView state, int afterIndex)
+        {
+            if (_behaviourClipboard?.GetScript() == null || _behaviourClipboard.Instance == null) return;
+
+            var type = _behaviourClipboard.GetScript().GetClass();
+            if (type == null) return;
+
+            var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+            EditorUtility.CopySerialized(_behaviourClipboard.Instance, instance);
+            instance.hideFlags = HideFlags.HideInHierarchy;
+
+            state.BehaviourEntries.Insert(afterIndex + 1, new BehaviourEntry
+            {
+                TypeName = _behaviourClipboard.TypeName,
+                Instance = instance
+            });
+
+            _window.NotifySidePanelChanged();
+            UpdateSelection(_selected, _states, _connections, _blackboardVariables);
+        }
+
+        private void AppendBehaviourFromClipboard(StateView state)
+        {
+            if (_behaviourClipboard?.GetScript() == null || _behaviourClipboard.Instance == null) return;
+            var type = _behaviourClipboard.GetScript().GetClass();
+            if (type == null) return;
+            var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+            EditorUtility.CopySerialized(_behaviourClipboard.Instance, instance);
+            instance.hideFlags = HideFlags.HideInHierarchy;
+            state.BehaviourEntries.Add(new BehaviourEntry
+            {
+                TypeName = _behaviourClipboard.TypeName,
+                Instance = instance
+            });
+            _window.NotifySidePanelChanged();
+            UpdateSelection(_selected, _states, _connections, _blackboardVariables);
         }
 
         // ─── REORDER DRAG HANDLERS ────────────────────────────────────
