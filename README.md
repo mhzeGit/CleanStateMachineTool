@@ -26,15 +26,19 @@ A clean, extensible state machine system for Unity with a built-in visual graph 
 ## Installation
 
 1. Open the Unity Package Manager (`Window > Package Manager`)
-2. Click the **+** button and select **Add package from disk...**
-3. Navigate to `Packages/com.cleanstatemachine/` and select `package.json`
+2. Click the **+** button and select **Add package from git URL...**
+3. Enter the following URL:
+
+   ```
+   https://github.com/mhzeGit/UnityStateMachineTool.git?path=Packages/com.cleanstatemachine
+   ```
 
 Or add it as a dependency in your `Packages/manifest.json`:
 
 ```json
 {
   "dependencies": {
-    "com.cleanstatemachine": "file:Packages/com.cleanstatemachine"
+    "com.cleanstatemachine": "https://github.com/mhzeGit/UnityStateMachineTool.git?path=Packages/com.cleanstatemachine"
   }
 }
 ```
