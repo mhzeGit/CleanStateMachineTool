@@ -271,6 +271,7 @@ namespace CleanStateMachine
                 _window.GraphValidation.MarkDirty();
                 _window.GraphValidation.RunAndUpdate();
             }
+            _window.RefreshBlackboardSyncState();
             _window.MarkSavedInternal();
             _window.UpdateTitleInternal();
 

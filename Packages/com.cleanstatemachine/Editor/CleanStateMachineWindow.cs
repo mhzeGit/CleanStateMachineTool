@@ -107,6 +107,108 @@ namespace CleanStateMachine
 
         internal readonly List<int> ExpandedSubStateStack = new();
 
+        // ─── Blackboard Bidirectional Sync ──────────────────────────
+
+        private string _lastSourceVariableHash = "";
+        private double _nextBlackboardSyncTime;
+
+        /// <summary>Pushes current window blackboard values to the source (controller data or runtime component).</summary>
+        internal void PushBlackboardToSource()
+        {
+            if (_controller == null || BlackboardVariables == null) return;
+
+            var sourceVars = GetBlackboardSourceVariables();
+            if (sourceVars == null) return;
+
+            bool changed = false;
+            for (int i = 0; i < BlackboardVariables.Count; i++)
+            {
+                var wv = BlackboardVariables[i];
+                for (int j = 0; j < sourceVars.Count; j++)
+                {
+                    var sv = sourceVars[j];
+                    if (sv.Name == wv.Name && sv.Type == wv.Type)
+                    {
+                        if (sv.StringValue != wv.StringValue)
+                        {
+                            sv.StringValue = wv.StringValue;
+                            changed = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (changed && !Application.isPlaying)
+                EditorUtility.SetDirty(_controller);
+
+            _lastSourceVariableHash = ComputeVariableHash(sourceVars);
+        }
+
+        private void PullBlackboardFromSource()
+        {
+            if (_controller == null || BlackboardVariables == null) return;
+
+            var sourceVars = GetBlackboardSourceVariables();
+            if (sourceVars == null) return;
+
+            string currentHash = ComputeVariableHash(sourceVars);
+            if (currentHash == _lastSourceVariableHash) return;
+
+            bool changed = false;
+            for (int i = 0; i < sourceVars.Count; i++)
+            {
+                var sv = sourceVars[i];
+                for (int j = 0; j < BlackboardVariables.Count; j++)
+                {
+                    var wv = BlackboardVariables[j];
+                    if (wv.Name == sv.Name && wv.Type == sv.Type)
+                    {
+                        if (wv.StringValue != sv.StringValue)
+                        {
+                            wv.StringValue = sv.StringValue;
+                            changed = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            _lastSourceVariableHash = currentHash;
+
+            if (changed)
+            {
+                SidePanelElement?.UpdateBlackboard();
+                Repaint();
+            }
+        }
+
+        private List<BlackboardVariable> GetBlackboardSourceVariables()
+        {
+            if (Application.isPlaying)
+                return TrackedComponent != null ? TrackedComponent.RuntimeVariables : null;
+            return _controller != null ? _controller.Data.BlackboardVariables : null;
+        }
+
+        private static string ComputeVariableHash(List<BlackboardVariable> vars)
+        {
+            if (vars == null || vars.Count == 0) return "";
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < vars.Count; i++)
+            {
+                sb.Append(vars[i].Name);
+                sb.Append((int)vars[i].Type);
+                sb.Append(vars[i].StringValue);
+            }
+            return sb.ToString();
+        }
+
+        internal void RefreshBlackboardSyncState()
+        {
+            var sourceVars = GetBlackboardSourceVariables();
+            _lastSourceVariableHash = ComputeVariableHash(sourceVars);
+        }
+
         private int _dataIndexCounter = 0;
 
         internal int GetNextDataIndex() => _dataIndexCounter++;
@@ -1276,6 +1378,7 @@ namespace CleanStateMachine
         internal void NotifySidePanelChanged()
         {
             MarkChangedInternal();
+            PushBlackboardToSource();
             Repaint();
         }
 
@@ -1313,6 +1416,16 @@ namespace CleanStateMachine
 
             if (_controller == null && !EditorApplication.isPlaying) return;
             PlayModeTracker.OnEditorUpdate();
+
+            if (_controller != null)
+            {
+                double now = EditorApplication.timeSinceStartup;
+                if (now >= _nextBlackboardSyncTime)
+                {
+                    _nextBlackboardSyncTime = now + 0.2;
+                    PullBlackboardFromSource();
+                }
+            }
         }
     }
 }

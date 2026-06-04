@@ -31,6 +31,7 @@ namespace CleanStateMachine
                     _operations.SyncStatesWithSubMachines();
                     _window.SidePanelElement?.UpdateBlackboard();
                     _window.SidePanelElement?.UpdateSelection();
+                    _window.PushBlackboardToSource();
                     _window.Repaint();
                 }
                 e.Use();
@@ -46,6 +47,7 @@ namespace CleanStateMachine
                     _operations.SyncStatesWithSubMachines();
                     _window.SidePanelElement?.UpdateBlackboard();
                     _window.SidePanelElement?.UpdateSelection();
+                    _window.PushBlackboardToSource();
                     _window.Repaint();
                 }
                 e.Use();
