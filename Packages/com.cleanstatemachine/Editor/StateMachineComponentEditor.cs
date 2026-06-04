@@ -297,7 +297,7 @@ namespace CleanStateMachine
             {
                 if (unityEventProp != null)
                 {
-                    var ueField = new PropertyField(unityEventProp, "");
+                    var ueField = new PropertyField(unityEventProp, nameProp?.stringValue ?? "Event");
                     ueField.AddToClassList("event-field");
                     row.Add(ueField);
                 }
