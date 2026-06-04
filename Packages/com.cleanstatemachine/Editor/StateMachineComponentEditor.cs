@@ -279,19 +279,7 @@ namespace CleanStateMachine
             var unityEventProp = eventProp.FindPropertyRelative("unityEvent");
             var argEventProp = eventProp.FindPropertyRelative("argEvent");
 
-            var headerRow = new VisualElement();
-            headerRow.AddToClassList("event-row-header");
-
             var eventType = (BlackboardEventType)(eventTypeProp?.enumValueIndex ?? 0);
-            var badge = new Label(eventType == BlackboardEventType.ArgEvent ? "ArgEvent" : "UnityEvent");
-            badge.AddToClassList("variable-badge");
-            headerRow.Add(badge);
-
-            var nameLabel = new Label(nameProp?.stringValue ?? "Event");
-            nameLabel.AddToClassList("variable-name-label");
-            headerRow.Add(nameLabel);
-
-            row.Add(headerRow);
 
             if (eventType == BlackboardEventType.UnityEvent)
             {
