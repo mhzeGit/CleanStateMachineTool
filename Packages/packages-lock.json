@@ -21,7 +21,7 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "d6e08cad94f9ad313d8049eb6b72b2849fb50d6b"
+      "hash": "689aa3ea5c8a02caba1147071ae778a7d5c49606"
     },
     "com.mhze.unity-editor-navigator": {
       "version": "https://github.com/mhzeGit/unity-editor-navigator.git",
