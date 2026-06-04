@@ -19,6 +19,7 @@ from this one file and start contributing immediately.
 - **Only the package folder matters**: `Packages/com.cleanstatemachine/`
 - **Everything else is a standard Unity project wrapper** (Assets, ProjectSettings, Library, Temp, etc.) — ignore it for code contributions unless you need demo scenes, sample assets, or build settings
 - The `README.md` at the project root is documentation for end users of the package
+- `Screenshots/` at the project root contains the GIF displayed in the README (`graph-editor-overview.gif`)
 
 ## Architecture & Patterns
 
