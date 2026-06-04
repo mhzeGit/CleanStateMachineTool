@@ -4,7 +4,7 @@ namespace CleanStateMachine
 {
     public class InvokeUnityEventStateBehaviour : StateBehaviour
     {
-        public override string DisplayName => "Invoke Blackboard Event";
+        public override string DisplayName => "Invoke Unity Event";
 
         public enum InvokeTiming
         {
