@@ -308,6 +308,27 @@ namespace CleanStateMachine
                 {
                     var aeField = new PropertyField(argEventProp, "");
                     aeField.AddToClassList("event-field");
+
+                    string capturedName = nameProp?.stringValue;
+                    if (!string.IsNullOrEmpty(capturedName))
+                    {
+                        aeField.RegisterCallback<AttachToPanelEvent>(_ =>
+                        {
+                            aeField.schedule.Execute(() =>
+                            {
+                                var title = aeField.Q<Label>(className: "foldout-label");
+                                if (title != null)
+                                {
+                                    var listeners = argEventProp.FindPropertyRelative("_listeners");
+                                    int count = listeners?.arraySize ?? 0;
+                                    string desired = count > 0 ? $"{capturedName}  ({count})" : capturedName;
+                                    if (title.text != desired)
+                                        title.text = desired;
+                                }
+                            }).Every(100);
+                        });
+                    }
+
                     row.Add(aeField);
                 }
             }
