@@ -634,8 +634,7 @@ namespace CleanStateMachine
                 else
                     newEvents.Add(new BlackboardEvent
                     {
-                        Name = ce.Name,
-                        EventType = ce.EventType
+                        Name = ce.Name
                     });
             }
             _blackboardEvents = newEvents;
@@ -646,13 +645,9 @@ namespace CleanStateMachine
             if (string.IsNullOrEmpty(eventName)) return;
             for (int i = 0; i < _blackboardEvents.Count; i++)
             {
-                var be = _blackboardEvents[i];
-                if (be.Name == eventName)
+                if (_blackboardEvents[i].Name == eventName)
                 {
-                    if (be.EventType == BlackboardEventType.UnityEvent)
-                        be.unityEvent?.Invoke();
-                    else
-                        be.argEvent?.Invoke();
+                    _blackboardEvents[i].argEvent?.Invoke();
                     return;
                 }
             }
@@ -664,7 +659,7 @@ namespace CleanStateMachine
             for (int i = 0; i < _blackboardEvents.Count; i++)
             {
                 var be = _blackboardEvents[i];
-                if (be.Name == eventName && be.EventType == BlackboardEventType.ArgEvent)
+                if (be.Name == eventName)
                 {
                     if (be.argEvent == null) return;
                     var listeners = be.argEvent.Listeners;

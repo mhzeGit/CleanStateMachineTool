@@ -2234,8 +2234,7 @@ namespace CleanStateMachine
                             hasMatch = true;
                             var be = _blackboardEvents[i];
                             string captured = be.Name;
-                            string typeTag = be.EventType == BlackboardEventType.ArgEvent ? "[ArgEvent]" : "[UnityEvent]";
-                            menu.AddItem($"{captured}  {typeTag}", () =>
+                            menu.AddItem(captured, () =>
                             {
                                 eventNameProp.stringValue = captured;
                                 so.ApplyModifiedProperties();

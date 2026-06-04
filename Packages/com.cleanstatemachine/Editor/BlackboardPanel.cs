@@ -406,7 +406,7 @@ namespace CleanStateMachine
             var rightGroup = new VisualElement();
             rightGroup.AddToClassList("variable-right");
 
-            var badge = new Label(evt.EventType == BlackboardEventType.ArgEvent ? "ArgEvent" : "UnityEvent");
+            var badge = new Label("ArgEvent");
             badge.AddToClassList("variable-badge");
             rightGroup.Add(badge);
 
@@ -417,19 +417,6 @@ namespace CleanStateMachine
                 int idx = (int)row.userData;
                 MenuDropdown.Show(_window.rootVisualElement, _window.rootVisualElement.WorldToLocal(e.mousePosition), menu =>
                 {
-                    var evtItem = _events[idx];
-                    string toggleLabel = evtItem.EventType == BlackboardEventType.ArgEvent
-                        ? "Convert to UnityEvent"
-                        : "Convert to ArgEvent";
-                    menu.AddItem(toggleLabel, () =>
-                    {
-                        evtItem.EventType = evtItem.EventType == BlackboardEventType.ArgEvent
-                            ? BlackboardEventType.UnityEvent
-                            : BlackboardEventType.ArgEvent;
-                        _window.NotifySidePanelChanged();
-                        RebuildEvents();
-                    });
-                    menu.AddSeparator();
                     menu.AddItem("Delete Event", new Color(0.85f, 0.2f, 0.2f), () =>
                     {
                         if (_events == null || idx < 0 || idx >= _events.Count) return;
@@ -732,7 +719,7 @@ namespace CleanStateMachine
         private void OnAddClicked()
         {
             if (_isEventsTab)
-                ShowAddEventMenu();
+                AddEvent();
             else
                 ShowAddVariableMenu();
         }
@@ -776,25 +763,13 @@ namespace CleanStateMachine
                 _scrollView.scrollOffset = new Vector2(0, float.MaxValue);
         }
 
-        private void ShowAddEventMenu()
-        {
-            var pos = _window.rootVisualElement.WorldToLocal(
-                new Vector2(_addButton.worldBound.x, _addButton.worldBound.y + _addButton.worldBound.height));
-            MenuDropdown.Show(_window.rootVisualElement, pos, menu =>
-            {
-                menu.AddItem("UnityEvent", () => AddEvent(BlackboardEventType.UnityEvent));
-                menu.AddItem("ArgEvent", () => AddEvent(BlackboardEventType.ArgEvent));
-            });
-        }
-
-        private void AddEvent(BlackboardEventType eventType)
+        private void AddEvent()
         {
             if (_events == null) return;
 
             var e = new BlackboardEvent
             {
-                Name = GetUniqueEventName(eventType == BlackboardEventType.ArgEvent ? "New ArgEvent" : "New Event"),
-                EventType = eventType
+                Name = GetUniqueEventName("New Event")
             };
             _events.Add(e);
             _window.NotifySidePanelChanged();

@@ -241,7 +241,7 @@ namespace CleanStateMachine
 
             if (controller == null) return;
 
-            // Sync event names from controller to component, preserving existing UnityEvent assignments
+            // Sync event names from controller to component, preserving existing ArgEvent assignments
             _component.SyncEventNamesFromController();
             serializedObject.Update();
 
@@ -275,50 +275,34 @@ namespace CleanStateMachine
             row.AddToClassList("event-row");
 
             var nameProp = eventProp.FindPropertyRelative("Name");
-            var eventTypeProp = eventProp.FindPropertyRelative("EventType");
-            var unityEventProp = eventProp.FindPropertyRelative("unityEvent");
             var argEventProp = eventProp.FindPropertyRelative("argEvent");
 
-            var eventType = (BlackboardEventType)(eventTypeProp?.enumValueIndex ?? 0);
-
-            if (eventType == BlackboardEventType.UnityEvent)
+            if (argEventProp != null)
             {
-                if (unityEventProp != null)
-                {
-                    var ueField = new PropertyField(unityEventProp, nameProp?.stringValue ?? "Event");
-                    ueField.AddToClassList("event-field");
-                    row.Add(ueField);
-                }
-            }
-            else
-            {
-                if (argEventProp != null)
-                {
-                    var aeField = new PropertyField(argEventProp, "");
-                    aeField.AddToClassList("event-field");
+                var aeField = new PropertyField(argEventProp, "");
+                aeField.AddToClassList("event-field");
 
-                    string capturedName = nameProp?.stringValue;
-                    if (!string.IsNullOrEmpty(capturedName))
+                string capturedName = nameProp?.stringValue;
+                if (!string.IsNullOrEmpty(capturedName))
+                {
+                    aeField.RegisterCallback<AttachToPanelEvent>(_ =>
                     {
-                        aeField.RegisterCallback<AttachToPanelEvent>(_ =>
+                        aeField.schedule.Execute(() =>
                         {
-                            aeField.schedule.Execute(() =>
+                            var title = aeField.Q<Label>(className: "foldout-label");
+                            if (title != null)
                             {
-                                var title = aeField.Q<Label>(className: "foldout-label");
-                                if (title != null)
-                                {
-                                    var listeners = argEventProp.FindPropertyRelative("_listeners");
-                                    int count = listeners?.arraySize ?? 0;
-                                    string desired = count > 0 ? $"{capturedName}  ({count})" : capturedName;
-                                    if (title.text != desired)
-                                        title.text = desired;
-                                }
-                            }).Every(100);
-                        });
-                    }
-
-                    row.Add(aeField);
+                                var listeners = argEventProp.FindPropertyRelative("_listeners");
+                                int count = listeners?.arraySize ?? 0;
+                                string desired = count > 0 ? $"{capturedName}  ({count})" : capturedName;
+                                if (title.text != desired)
+                                    title.text = desired;
+                            }
+                        }).Every(100);
+                    });
                 }
+
+                row.Add(aeField);
             }
 
             return row;
