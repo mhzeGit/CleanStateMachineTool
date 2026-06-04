@@ -254,6 +254,7 @@ namespace CleanStateMachine
                 var empty = new Label("No blackboard events defined.");
                 empty.AddToClassList("empty-variables");
                 _eventsScroll.Add(empty);
+                _lastEventCount = 0;
                 return;
             }
 
@@ -265,6 +266,7 @@ namespace CleanStateMachine
             }
 
             _eventsScroll.Bind(serializedObject);
+            _lastEventCount = count;
         }
 
         private VisualElement CreateEventRow(SerializedProperty eventProp)
@@ -273,12 +275,15 @@ namespace CleanStateMachine
             row.AddToClassList("event-row");
 
             var nameProp = eventProp.FindPropertyRelative("Name");
+            var eventTypeProp = eventProp.FindPropertyRelative("EventType");
             var unityEventProp = eventProp.FindPropertyRelative("unityEvent");
+            var argEventProp = eventProp.FindPropertyRelative("argEvent");
 
             var headerRow = new VisualElement();
             headerRow.AddToClassList("event-row-header");
 
-            var badge = new Label("event");
+            var eventType = (BlackboardEventType)(eventTypeProp?.enumValueIndex ?? 0);
+            var badge = new Label(eventType == BlackboardEventType.ArgEvent ? "ArgEvent" : "UnityEvent");
             badge.AddToClassList("variable-badge");
             headerRow.Add(badge);
 
@@ -288,11 +293,23 @@ namespace CleanStateMachine
 
             row.Add(headerRow);
 
-            if (unityEventProp != null)
+            if (eventType == BlackboardEventType.UnityEvent)
             {
-                var ueField = new PropertyField(unityEventProp, "");
-                ueField.AddToClassList("event-field");
-                row.Add(ueField);
+                if (unityEventProp != null)
+                {
+                    var ueField = new PropertyField(unityEventProp, "");
+                    ueField.AddToClassList("event-field");
+                    row.Add(ueField);
+                }
+            }
+            else
+            {
+                if (argEventProp != null)
+                {
+                    var aeField = new PropertyField(argEventProp, "");
+                    aeField.AddToClassList("event-field");
+                    row.Add(aeField);
+                }
             }
 
             return row;

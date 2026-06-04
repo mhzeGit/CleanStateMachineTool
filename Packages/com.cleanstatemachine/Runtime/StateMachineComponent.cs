@@ -622,7 +622,6 @@ namespace CleanStateMachine
             return _runtimeVariableLookup.TryGetValue(name, out variable) && variable.Type == expectedType;
         }
 
-        /// <summary>Syncs the component's event list to match the controller's event names, preserving existing UnityEvent assignments.</summary>
         public void SyncEventNamesFromController()
         {
             if (Data?.BlackboardEvents == null) return;
@@ -633,7 +632,11 @@ namespace CleanStateMachine
                 if (existing != null)
                     newEvents.Add(existing);
                 else
-                    newEvents.Add(new BlackboardEvent { Name = ce.Name });
+                    newEvents.Add(new BlackboardEvent
+                    {
+                        Name = ce.Name,
+                        EventType = ce.EventType
+                    });
             }
             _blackboardEvents = newEvents;
         }
@@ -643,9 +646,31 @@ namespace CleanStateMachine
             if (string.IsNullOrEmpty(eventName)) return;
             for (int i = 0; i < _blackboardEvents.Count; i++)
             {
-                if (_blackboardEvents[i].Name == eventName)
+                var be = _blackboardEvents[i];
+                if (be.Name == eventName)
                 {
-                    _blackboardEvents[i].unityEvent?.Invoke();
+                    if (be.EventType == BlackboardEventType.UnityEvent)
+                        be.unityEvent?.Invoke();
+                    else
+                        be.argEvent?.Invoke();
+                    return;
+                }
+            }
+        }
+
+        public void InvokeArgEvent(string eventName, object parameter)
+        {
+            if (string.IsNullOrEmpty(eventName)) return;
+            for (int i = 0; i < _blackboardEvents.Count; i++)
+            {
+                var be = _blackboardEvents[i];
+                if (be.Name == eventName && be.EventType == BlackboardEventType.ArgEvent)
+                {
+                    if (be.argEvent == null) return;
+                    var listeners = be.argEvent.Listeners;
+                    int count = listeners.Count;
+                    for (int j = 0; j < count; j++)
+                        listeners[j].Invoke(parameter);
                     return;
                 }
             }

@@ -42,6 +42,19 @@ namespace CleanStateMachine
             set => StringValue = value.ToString();
         }
 
+        public object GetValueAsObject()
+        {
+            return Type switch
+            {
+                BlackboardVariableType.Bool => BoolValue,
+                BlackboardVariableType.Int => IntValue,
+                BlackboardVariableType.Float => FloatValue,
+                BlackboardVariableType.String => StringValue,
+                BlackboardVariableType.Trigger => TriggerValue,
+                _ => StringValue
+            };
+        }
+
         public BlackboardVariable Clone()
         {
             return new BlackboardVariable

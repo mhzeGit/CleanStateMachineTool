@@ -1,7 +1,9 @@
 {
   "name": "CleanStateMachine.Runtime",
   "rootNamespace": "CleanStateMachine",
-  "references": [],
+  "references": [
+    "com.mhze.argevent.Runtime"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
