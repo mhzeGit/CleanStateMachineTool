@@ -108,6 +108,56 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: True
+--- !u!114 &-8357027212820311864
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 03->State 01_Condition_1
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+  comparison: 0
+  ignoreCase: 1
+--- !u!114 &-8028446930085326748
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: Correct State 1->State 2_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: CanEnterAnyState
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-7881652573596994501
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -251,6 +301,31 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 4
   comparison: 1
+--- !u!114 &-6537054140858971990
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 03->State 01_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 03
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-6388373870097427965
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -550,6 +625,31 @@ MonoBehaviour:
     ValueType: 2
     DefaultValue: 3
   comparison: 0
+--- !u!114 &-4029319745153155442
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 2->Correct State 1_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: CanEnterAnyState
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-3729689983490442471
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -592,6 +692,31 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 3
     DefaultValue: Hello World 1
+--- !u!114 &-3548569361403700188
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 03->State 02_Condition_1
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-3547766199571372246
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -850,6 +975,31 @@ MonoBehaviour:
     DefaultValue: 2
   comparison: 0
   ignoreCase: 1
+--- !u!114 &-1130403226599445784
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 02->State 03_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 03
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-888776593492327252
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -900,6 +1050,31 @@ MonoBehaviour:
     DefaultValue: 0
   comparison: 0
   ignoreCase: 1
+--- !u!114 &-601408268302571379
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 02->State 01_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-482169798527592677
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -922,6 +1097,31 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &-239305018556647055
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 04->State 03_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 1
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 1
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 1
+    DefaultValue: 0
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &-74142085561586492
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -994,8 +1194,8 @@ MonoBehaviour:
       ExternalBlackboardParmValue: 
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
-    - Name: State01
-      Position: {x: 872.1648, y: 285.70847}
+    - Name: State 02
+      Position: {x: 392.81177, y: 214.5679}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -1013,48 +1213,8 @@ MonoBehaviour:
       ExternalBlackboardParmValue: 
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
-    - Name: State03
-      Position: {x: 1088.4067, y: 134.08847}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours:
-      - TypeName: 
-        Instance: {fileID: 0}
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: Sub State Machine
-      Position: {x: 1346.926, y: 242.2442}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 1
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 0a000000090000000b0000000700000008000000
-      Behaviours: []
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: Correct State 1
-      Position: {x: 373.88245, y: -38.278046}
+    - Name: State 03
+      Position: {x: 600.74316, y: 62.0169}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -1072,111 +1232,8 @@ MonoBehaviour:
       ExternalBlackboardParmValue: 
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
-    - Name: External Reference
-      Position: {x: 576.8711, y: -26.822906}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 1
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours: []
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State 1
-      Position: {x: 233.98572, y: 399.40402}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours:
-      - TypeName: DebugLog_StateBehaviour
-        Instance: {fileID: 6860914190456535688}
-      - TypeName: DebugLog_StateBehaviour
-        Instance: {fileID: 4599123459577080679}
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: External Reference
-      Position: {x: 2148.7134, y: 257.18695}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 1
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours: []
-      ExternalAction: 2
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: BoolPar
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: True
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State
-      Position: {x: 2034.833, y: 369.03577}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours:
-      - TypeName: SetVariable_StateBehaviour
-        Instance: {fileID: 2279336327940846723}
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State01
-      Position: {x: 1644.025, y: 241.3711}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours:
-      - TypeName: DebugLog_StateBehaviour
-        Instance: {fileID: 5624222137294669257}
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State03
-      Position: {x: 1792.1631, y: 61.421753}
+    - Name: State 01
+      Position: {x: 300.24792, y: 7.251892}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -1194,67 +1251,8 @@ MonoBehaviour:
       ExternalBlackboardParmValue: 
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
-    - Name: State02
-      Position: {x: 1843.7949, y: 239.9436}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours:
-      - TypeName: DebugLog_StateBehaviour
-        Instance: {fileID: 6470101292087070497}
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: Sub State Machine
-      Position: {x: 605.1504, y: 360.46356}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 1
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 020000000100000003000000
-      Behaviours: []
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State 2
-      Position: {x: 470.86108, y: 204.3913}
-      Size: {x: 160, y: 40}
-      IsEntry: 0
-      IsSubEntry: 0
-      IsSubStateMachine: 0
-      IsExternalReference: 0
-      IsAnyState: 0
-      AutoRun: 1
-      ChildIndices: 
-      Behaviours: []
-      ExternalAction: 0
-      ExternalStateMachine: {fileID: 0}
-      ExternalTargetStateName: 
-      ExternalBlackboardParmName: 
-      ExternalBlackboardParmType: 0
-      ExternalBlackboardParmValue: 
-      _legacyBehaviourType: 
-      _legacyBehaviour: {fileID: 0}
-    - Name: State
-      Position: {x: 764.5226, y: 477.64087}
+    - Name: State 04
+      Position: {x: 528.6874, y: -121.67737}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -1273,144 +1271,79 @@ MonoBehaviour:
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
     Connections:
-    - FromIndex: 1
-      ToIndex: 12
-      MinStateTime: 0
-      Conditions:
-      - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: 1943883215794026386}
-    - FromIndex: 12
-      ToIndex: 1
-      MinStateTime: 0
-      Conditions:
-      - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: 3308863759234135349}
     - FromIndex: 2
       ToIndex: 1
-      MinStateTime: 0.3
-      Conditions: []
-    - FromIndex: 4
-      ToIndex: 5
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 14
-      ToIndex: 12
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 12
-      ToIndex: 5
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 6
-      ToIndex: 4
-      MinStateTime: 0.1
-      Conditions:
-      - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: 3139213929986704865}
-    - FromIndex: 13
-      ToIndex: 6
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 13
-      ToIndex: 12
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 13
-      ToIndex: 5
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 5
-      ToIndex: 13
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 4
-      ToIndex: 6
-      MinStateTime: 0.1
-      Conditions:
-      - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: -805362348108512926}
-    - FromIndex: 6
-      ToIndex: 4
       MinStateTime: 0
       Conditions:
       - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: 2861864380506065921}
+        Instance: {fileID: 4468884182881792473}
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -3548569361403700188}
+    - FromIndex: 1
+      ToIndex: 2
+      MinStateTime: 0
+      Conditions:
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -1130403226599445784}
     - FromIndex: 0
-      ToIndex: 4
+      ToIndex: 3
       MinStateTime: 0
       Conditions: []
-    - FromIndex: 7
-      ToIndex: 8
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 11
-      ToIndex: 9
-      MinStateTime: 0
-      Conditions:
-      - TypeName: Timer_ConditionBehaviours
-        Instance: {fileID: 0}
-    - FromIndex: 8
-      ToIndex: 11
-      MinStateTime: 0
-      Conditions: []
-    - FromIndex: 11
-      ToIndex: 7
-      MinStateTime: 0
-      Conditions:
-      - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: -5278571050982210083}
-    - FromIndex: 9
-      ToIndex: 10
-      MinStateTime: 0
-      Conditions:
-      - TypeName: Timer_ConditionBehaviours
-        Instance: {fileID: 0}
-    - FromIndex: 10
-      ToIndex: 11
-      MinStateTime: 0
-      Conditions:
-      - TypeName: Timer_ConditionBehaviours
-        Instance: {fileID: 0}
-    - FromIndex: 9
+    - FromIndex: 2
       ToIndex: 3
       MinStateTime: 0
       Conditions:
       - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: -3354019746153768997}
+        Instance: {fileID: -6537054140858971990}
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -8357027212820311864}
     - FromIndex: 3
-      ToIndex: 9
+      ToIndex: 1
       MinStateTime: 0
       Conditions:
       - TypeName: UltimateCompare_ConditionBehaviours
-        Instance: {fileID: -1750164651802265112}
+        Instance: {fileID: 4043574278611176863}
+    - FromIndex: 1
+      ToIndex: 3
+      MinStateTime: 0
+      Conditions:
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -601408268302571379}
+    - FromIndex: 2
+      ToIndex: 4
+      MinStateTime: 0
+      Conditions:
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: 4071274093643877576}
+    - FromIndex: 4
+      ToIndex: 2
+      MinStateTime: 0
+      Conditions:
+      - TypeName: UltimateCompare_ConditionBehaviours
+        Instance: {fileID: -239305018556647055}
     Groups: []
     BlackboardVariables:
-    - Name: WrongState
-      Type: 3
-      StringValue: ITS ON A WROvNG STATE!!!
-    - Name: CanEnterAnyState
+    - Name: State 02
       Type: 0
       StringValue: False
-    - Name: EnterSubState02
+    - Name: State 03
       Type: 0
       StringValue: False
     - Name: Index
       Type: 1
       StringValue: 0
-    - Name: EnterSubState
-      Type: 0
-      StringValue: False
-    - Name: ExternalReference
-      Type: 0
-      StringValue: False
     BlackboardEvents:
-    - Name: testEvent
+    - Name: DisableCube
+      unityEvent:
+        m_PersistentCalls:
+          m_Calls: []
+    - Name: EnableCube
       unityEvent:
         m_PersistentCalls:
           m_Calls: []
     Breakpoints: []
-    PanOffset: {x: 32.950684, y: 260.49142}
-    Zoom: 0.66967463
+    PanOffset: {x: -8.7473755, y: 380.43225}
+    Zoom: 0.61054426
     ExpandedSubStateIndices: 
 --- !u!114 &713869973929600445
 MonoBehaviour:
@@ -1753,6 +1686,21 @@ MonoBehaviour:
     DefaultValue: 0
   comparison: 0
   ignoreCase: 1
+--- !u!114 &3156658980708284136
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f55f1a3210b39c948b55c9a377b06eba, type: 3}
+  m_Name: State 2_Behaviour_0
+  m_EditorClassIdentifier: 
+  invokeOn: 0
+  targetEvent:
+    EventName: DisableCube
 --- !u!114 &3308863759234135349
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -1817,6 +1765,81 @@ MonoBehaviour:
     BlackboardVariableName: 
     ValueType: 0
     DefaultValue: False
+--- !u!114 &4043574278611176863
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 01->State 02_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 02
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: True
+  comparison: 0
+  ignoreCase: 1
+--- !u!114 &4071274093643877576
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 03->State 04_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 1
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: Index
+    ValueType: 1
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 1
+    DefaultValue: 1
+  comparison: 0
+  ignoreCase: 1
+--- !u!114 &4468884182881792473
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 725c19ff57621de41921d76280f30a14, type: 3}
+  m_Name: State 03->State 02_Condition_0
+  m_EditorClassIdentifier: 
+  variableType: 0
+  input1:
+    UseBlackboard: 1
+    BlackboardVariableName: State 03
+    ValueType: 0
+    DefaultValue: 0
+  input2:
+    UseBlackboard: 0
+    BlackboardVariableName: 
+    ValueType: 0
+    DefaultValue: False
+  comparison: 0
+  ignoreCase: 1
 --- !u!114 &4599123459577080679
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -1876,6 +1899,21 @@ MonoBehaviour:
     DefaultValue: 1
   comparison: 1
   ignoreCase: 1
+--- !u!114 &4811659364810752262
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f55f1a3210b39c948b55c9a377b06eba, type: 3}
+  m_Name: Correct State 1_Behaviour_0
+  m_EditorClassIdentifier: 
+  invokeOn: 0
+  targetEvent:
+    EventName: DisableCube
 --- !u!114 &4884205063601903858
 MonoBehaviour:
   m_ObjectHideFlags: 1

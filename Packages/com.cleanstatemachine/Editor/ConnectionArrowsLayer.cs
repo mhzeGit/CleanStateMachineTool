@@ -59,11 +59,11 @@ namespace CleanStateMachine
             public bool IsOn;
         }
 
-        private static SearchHighlightState GetSearchHighlightState(ConnectionView conn)
+        private static SearchHighlightState GetSearchHighlightState(ConnectionView conn, double frameTime)
         {
             if (conn.SearchHighlightStartTime < 0) return default;
 
-            float elapsed = (float)(Time.realtimeSinceStartup - conn.SearchHighlightStartTime);
+            float elapsed = (float)(frameTime - conn.SearchHighlightStartTime);
             float blinkPeriod = 0.15f;
             int blinkCount = 4;
             float blinkEnd = blinkCount * blinkPeriod;
@@ -84,15 +84,18 @@ namespace CleanStateMachine
 
         private void OnGenerateVisualContent(MeshGenerationContext mgc)
         {
-            DrawAllConnections(mgc);
+            double frameTime = Time.realtimeSinceStartup;
+            DrawAllConnections(mgc, frameTime);
             DrawPendingConnection(mgc);
         }
 
         private static int CountCircleVertices() => 1 + CircleSegments * 2;
         private static int CountCircleIndices() => CircleSegments * 3 + CircleSegments * 6;
 
-        private void DrawAllConnections(MeshGenerationContext mgc)
+        private void DrawAllConnections(MeshGenerationContext mgc, double frameTime)
         {
+            var connScreenEndpoints = new (Vector3 start, Vector3 end)[_connections.Count];
+            var connShouldWriteWave = new bool[_connections.Count];
             int totalVerts = 0;
             int totalIndices = 0;
 
@@ -102,6 +105,9 @@ namespace CleanStateMachine
                 if (IsConnectionHidden != null && IsConnectionHidden(conn))
                     continue;
 
+                GetScreenEndpoints(conn, out Vector3 startPos, out Vector3 endPos);
+                connScreenEndpoints[i] = (startPos, endPos);
+
                 totalVerts += 8;
                 totalIndices += 18;
 
@@ -110,9 +116,11 @@ namespace CleanStateMachine
 
                 if (conn.IsActive)
                 {
-                    double elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
+                    double elapsed = frameTime - conn.ActivationTime;
                     float fade = Mathf.Clamp01(1f - (float)(elapsed / 3.0));
-                    if (fade > 0.01f)
+                    bool shouldWrite = fade > 0.01f && Vector3.Distance(startPos, endPos) >= 0.01f;
+                    connShouldWriteWave[i] = shouldWrite;
+                    if (shouldWrite)
                     {
                         int cv = CountCircleVertices();
                         int ci = CountCircleIndices();
@@ -132,13 +140,14 @@ namespace CleanStateMachine
                 var conn = _connections[i];
                 if (IsConnectionHidden != null && IsConnectionHidden(conn))
                     continue;
-                GetScreenEndpoints(conn, out Vector3 startPos, out Vector3 endPos);
+
+                (Vector3 startPos, Vector3 endPos) = connScreenEndpoints[i];
 
                 float fade = 0f;
                 double elapsed = 0;
                 if (conn.IsActive)
                 {
-                    elapsed = Time.realtimeSinceStartup - conn.ActivationTime;
+                    elapsed = frameTime - conn.ActivationTime;
                     fade = Mathf.Clamp01(1f - (float)(elapsed / 3.0));
                     if (fade <= 0.01f)
                     {
@@ -161,7 +170,7 @@ namespace CleanStateMachine
                 Color color = conn.IsSelected ? SelectedColor : Color.Lerp(ConnectionColor, ActiveConnectionColor, fade);
                 float width = Mathf.Max(1f, (conn.IsSelected ? SelectedBaseWidth : BaseWidth) * _zoom * widthMultiplier);
 
-                SearchHighlightState searchHl = GetSearchHighlightState(conn);
+                SearchHighlightState searchHl = GetSearchHighlightState(conn, frameTime);
                 if (searchHl.IsOn)
                 {
                     color = SearchHighlightColor;
@@ -171,8 +180,8 @@ namespace CleanStateMachine
                 WriteLine(mesh, ref vertexOffset, startPos, endPos, color, width);
                 WriteMidArrowhead(mesh, ref vertexOffset, startPos, endPos, color, _zoom);
 
-                if (fade > 0.01f)
-                    WriteActiveWave(mesh, ref vertexOffset, startPos, endPos, _zoom, fade, color, elapsed);
+                if (connShouldWriteWave[i])
+                    WriteActiveWave(mesh, ref vertexOffset, startPos, endPos, _zoom, fade, color, elapsed, frameTime);
             }
         }
 
@@ -297,7 +306,7 @@ namespace CleanStateMachine
             vertexOffset += 6;
         }
 
-        private static void WriteActiveWave(MeshWriteData mesh, ref int vertexOffset, Vector3 start, Vector3 end, float zoom, float fade, Color arrowColor, double elapsed)
+        private static void WriteActiveWave(MeshWriteData mesh, ref int vertexOffset, Vector3 start, Vector3 end, float zoom, float fade, Color arrowColor, double elapsed, double frameTime)
         {
             Vector3 dir = (end - start).normalized;
             float totalLen = Vector3.Distance(start, end);
@@ -324,7 +333,7 @@ namespace CleanStateMachine
             for (int i = 0; i < WaveCircleCount; i++)
             {
                 float phase = (float)i / WaveCircleCount;
-                float t = (Time.realtimeSinceStartup * speed + phase) % 1.0f;
+                float t = ((float)frameTime * speed + phase) % 1.0f;
 
                 Vector3 pos = start + dir * (t * totalLen);
 
