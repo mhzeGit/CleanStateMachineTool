@@ -630,12 +630,22 @@ namespace CleanStateMachine
             {
                 var existing = _blackboardEvents.Find(e => e.Name == ce.Name);
                 if (existing != null)
+                {
+                    existing.Arguments.Clear();
+                    for (int a = 0; a < ce.Arguments.Count; a++)
+                        existing.Arguments.Add(ce.Arguments[a].Clone());
                     newEvents.Add(existing);
+                }
                 else
-                    newEvents.Add(new BlackboardEvent
+                {
+                    var newEvent = new BlackboardEvent
                     {
                         Name = ce.Name
-                    });
+                    };
+                    for (int a = 0; a < ce.Arguments.Count; a++)
+                        newEvent.Arguments.Add(ce.Arguments[a].Clone());
+                    newEvents.Add(newEvent);
+                }
             }
             _blackboardEvents = newEvents;
         }
@@ -655,6 +665,11 @@ namespace CleanStateMachine
 
         public void InvokeArgEvent(string eventName, object parameter)
         {
+            InvokeArgEvent(eventName, new object[] { parameter });
+        }
+
+        public void InvokeArgEvent(string eventName, object[] parameters)
+        {
             if (string.IsNullOrEmpty(eventName)) return;
             for (int i = 0; i < _blackboardEvents.Count; i++)
             {
@@ -665,7 +680,12 @@ namespace CleanStateMachine
                     var listeners = be.argEvent.Listeners;
                     int count = listeners.Count;
                     for (int j = 0; j < count; j++)
-                        listeners[j].Invoke(parameter);
+                    {
+                        if (parameters != null && parameters.Length > 0)
+                            listeners[j].Invoke(parameters);
+                        else
+                            listeners[j].Invoke();
+                    }
                     return;
                 }
             }

@@ -343,6 +343,26 @@
     border-left-width: 2px;
 }
 
+.event-row-wrapper {
+    flex-direction: column;
+    flex-shrink: 0;
+    border-bottom-color: rgba(255, 255, 255, 0.09);
+    border-bottom-width: 1px;
+}
+
+.bb-event-header {
+    border-bottom-width: 0;
+    background-color: transparent;
+}
+
+.bb-event-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bb-event-header.variable-row-selected {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
 /* Badge for event type indicator */
 .blackboard-panel .variable-badge {
     width: 60px;
@@ -562,6 +582,95 @@
     padding: 16px;
     -unity-text-align: middle-center;
     white-space: normal;
+}
+
+/* --- Event Arguments (BlackboardPanel) --- */
+.event-args-container {
+    flex-direction: column;
+    padding-left: 24px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.event-arg-row {
+    flex-direction: row;
+    align-items: center;
+    height: 28px;
+    gap: 4px;
+}
+
+.event-arg-name {
+    flex: 1;
+    min-width: 60px;
+}
+
+.event-arg-name .unity-text-field__input,
+.event-arg-name .unity-base-text-field__input {
+    font-size: 11px;
+    height: 22px;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px;
+    padding-left: 6px;
+    padding-right: 4px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.event-arg-type {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.event-arg-type .unity-base-popup-field__input {
+    font-size: 11px;
+    height: 22px;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px;
+    padding-left: 6px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.event-arg-remove {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    background-color: transparent;
+    color: #cc5555;
+    justify-content: center;
+    align-items: center;
+    border-width: 0;
+    flex-shrink: 0;
+}
+
+.event-arg-remove:hover {
+    color: #ff7777;
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.event-args-hint {
+    font-size: 10px;
+    color: #808080;
+    padding: 6px 4px;
+    -unity-font-style: italic;
+}
+
+.event-add-arg-button {
+    height: 24px;
+    font-size: 11px;
+    background-color: transparent;
+    color: #6a8a6a;
+    justify-content: center;
+    align-items: center;
+    border-width: 0;
+    margin-top: 2px;
+    -unity-font-style: bold;
+}
+
+.event-add-arg-button:hover {
+    color: #8aaa8a;
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 /* --- Section Divider --- */

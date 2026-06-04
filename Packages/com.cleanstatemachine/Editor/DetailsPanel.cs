@@ -435,6 +435,7 @@ namespace CleanStateMachine
                     {
                         enterChildren = false;
                         if (prop.name == "m_Script") continue;
+                        if (prop.name == "argParameters") continue;
 
                         var card = new VisualElement();
                         card.AddToClassList("property-card");
@@ -466,6 +467,12 @@ namespace CleanStateMachine
 
                         propsContainer.Add(card);
                     }
+
+                    if (entry.Instance is InvokeArgEventStateBehaviour invokeBehaviour)
+                    {
+                        BuildArgParameterFields(invokeBehaviour, propsContainer, so);
+                    }
+
                     if (propsContainer.childCount > 0)
                     {
                         propsContainer.Bind(so);
@@ -2117,6 +2124,99 @@ namespace CleanStateMachine
                 EditorUtility.SetDirty(so.targetObject);
             });
             return toggle;
+        }
+
+        private void BuildArgParameterFields(InvokeArgEventStateBehaviour invokeBehaviour, VisualElement propsContainer, SerializedObject so)
+        {
+            string eventName = invokeBehaviour.targetEvent.EventName;
+            if (string.IsNullOrEmpty(eventName)) return;
+            if (_blackboardEvents == null) return;
+
+            BlackboardEvent evtDef = null;
+            for (int i = 0; i < _blackboardEvents.Count; i++)
+            {
+                if (_blackboardEvents[i].Name == eventName)
+                {
+                    evtDef = _blackboardEvents[i];
+                    break;
+                }
+            }
+            if (evtDef == null || evtDef.Arguments == null || evtDef.Arguments.Count == 0) return;
+
+            var argDefs = evtDef.Arguments;
+            var parameters = invokeBehaviour.argParameters;
+
+            for (int i = parameters.Count - 1; i >= 0; i--)
+            {
+                bool found = false;
+                for (int j = 0; j < argDefs.Count; j++)
+                {
+                    if (parameters[i].ArgumentName == argDefs[j].Name)
+                    {
+                        parameters[i].Value.ValueType = argDefs[j].Type;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    parameters.RemoveAt(i);
+            }
+
+            for (int i = 0; i < argDefs.Count; i++)
+            {
+                bool found = false;
+                for (int j = 0; j < parameters.Count; j++)
+                {
+                    if (parameters[j].ArgumentName == argDefs[i].Name)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    parameters.Add(new ArgEventParameterAssignment
+                    {
+                        ArgumentName = argDefs[i].Name,
+                        Value = new BlackboardVariableReference { ValueType = argDefs[i].Type }
+                    });
+                }
+            }
+
+            so.Update();
+
+            var argParamsProp = so.FindProperty("argParameters");
+            if (argParamsProp == null || !argParamsProp.isArray) return;
+
+            for (int i = 0; i < argDefs.Count; i++)
+            {
+                var card = new VisualElement();
+                card.AddToClassList("property-card");
+
+                var label = new Label(argDefs[i].Name);
+                label.AddToClassList("property-card-label");
+                card.Add(label);
+
+                for (int j = 0; j < argParamsProp.arraySize; j++)
+                {
+                    var elemProp = argParamsProp.GetArrayElementAtIndex(j);
+                    var nameProp = elemProp.FindPropertyRelative("ArgumentName");
+                    if (nameProp != null && nameProp.stringValue == argDefs[i].Name)
+                    {
+                        var valueProp = elemProp.FindPropertyRelative("Value");
+                        VisualElement content;
+                        if (valueProp != null)
+                        {
+                            content = BuildBbVarRefField(so, valueProp);
+                            content.AddToClassList("property-card-content");
+                            card.Add(content);
+                        }
+                        break;
+                    }
+                }
+
+                propsContainer.Add(card);
+            }
         }
 
         private VisualElement BuildBbVarSelectorField(SerializedObject so, SerializedProperty prop)

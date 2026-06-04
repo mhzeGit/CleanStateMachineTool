@@ -23,6 +23,7 @@ namespace CleanStateMachine
 
         private int _editingIndex = -1;
         private int _selectedIndex = -1;
+        private int _expandedEventIndex = -1;
         private int _lastClickIndex = -1;
         private float _lastClickTime;
         private const float DoubleClickTime = 0.35f;
@@ -132,8 +133,12 @@ namespace CleanStateMachine
             if (index < 0 || _eventRows == null || index >= _eventRows.Count) return;
             ClearRowSelection();
             _selectedIndex = index;
-            _eventRows[index].AddToClassList("variable-row-selected");
+            _expandedEventIndex = index;
+            var header = _eventRows[index].Q<VisualElement>(className: "bb-event-header");
+            if (header != null)
+                header.AddToClassList("variable-row-selected");
             _scrollView.ScrollTo(_eventRows[index]);
+            UpdateEventArgsVisibility();
         }
 
         private void SetActiveTab(bool isEvents)
@@ -146,6 +151,7 @@ namespace CleanStateMachine
             ClearRowSelection();
             _selectedIndex = -1;
             _editingIndex = -1;
+            _expandedEventIndex = -1;
         }
 
         private void RebuildVariables()
@@ -175,6 +181,11 @@ namespace CleanStateMachine
                 var row = CreateEventRow(_events[i], i);
                 _eventsContainer.Add(row);
                 _eventRows.Add(row);
+            }
+
+            if (_expandedEventIndex >= 0 && _expandedEventIndex < _eventRows.Count)
+            {
+                UpdateEventArgsVisibility();
             }
         }
 
@@ -360,12 +371,17 @@ namespace CleanStateMachine
         private VisualElement CreateEventRow(BlackboardEvent evt, int index)
         {
             var row = new VisualElement();
-            row.AddToClassList("variable-row");
+            row.AddToClassList("event-row-wrapper");
             row.userData = index;
+
+            var header = new VisualElement();
+            header.AddToClassList("variable-row");
+            header.AddToClassList("bb-event-header");
+            header.userData = index;
 
             var handle = new DragHandle();
             handle.RegisterCallback<MouseDownEvent>(OnHandleDown);
-            row.Add(handle);
+            header.Add(handle);
 
             var nameContainer = new VisualElement();
             nameContainer.AddToClassList("variable-name");
@@ -401,7 +417,7 @@ namespace CleanStateMachine
 
             nameContainer.Add(nameLabel);
             nameContainer.Add(nameInput);
-            row.Add(nameContainer);
+            header.Add(nameContainer);
 
             var rightGroup = new VisualElement();
             rightGroup.AddToClassList("variable-right");
@@ -410,7 +426,9 @@ namespace CleanStateMachine
             badge.AddToClassList("variable-badge");
             rightGroup.Add(badge);
 
-            row.Add(rightGroup);
+            header.Add(rightGroup);
+
+            row.Add(header);
 
             row.RegisterCallback<ContextClickEvent>(e =>
             {
@@ -447,13 +465,123 @@ namespace CleanStateMachine
                     }
 
                     ClearRowSelection();
-                    row.AddToClassList("variable-row-selected");
+                    header.AddToClassList("variable-row-selected");
                     _selectedIndex = index;
+                    _expandedEventIndex = _expandedEventIndex == index ? -1 : index;
                     Focus();
+                    UpdateEventArgsVisibility();
                 }
             });
 
+            var argsContainer = new VisualElement();
+            argsContainer.AddToClassList("event-args-container");
+            argsContainer.style.display = DisplayStyle.None;
+            row.Add(argsContainer);
+
             return row;
+        }
+
+        private void UpdateEventArgsVisibility()
+        {
+            for (int i = 0; i < _eventRows.Count; i++)
+            {
+                var container = _eventRows[i].Q<VisualElement>(className: "event-args-container");
+                if (container != null)
+                {
+                    bool expanded = _expandedEventIndex == i;
+                    container.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
+                    if (expanded && i < _events.Count)
+                        RebuildEventArgsContainer(_events[i], container, i);
+                }
+            }
+        }
+
+        private void RebuildEventArgsContainer(BlackboardEvent evt, VisualElement container, int eventIndex)
+        {
+            container.Clear();
+
+            var args = evt.Arguments;
+            if (args == null) return;
+
+            if (args.Count > 0)
+            {
+                for (int i = 0; i < args.Count; i++)
+                {
+                    int argIndex = i;
+                    var argRow = new VisualElement();
+                    argRow.AddToClassList("event-arg-row");
+
+                    var argNameField = new TextField();
+                    argNameField.AddToClassList("event-arg-name");
+                    argNameField.value = args[i].Name;
+                    argNameField.RegisterValueChangedCallback(e =>
+                    {
+                        args[argIndex].Name = e.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    argRow.Add(argNameField);
+
+                    var typePopup = new UnityEngine.UIElements.PopupField<BlackboardVariableType>(
+                        new System.Collections.Generic.List<BlackboardVariableType>(
+                            (BlackboardVariableType[])System.Enum.GetValues(typeof(BlackboardVariableType))),
+                        args[i].Type);
+                    typePopup.AddToClassList("event-arg-type");
+                    typePopup.RegisterValueChangedCallback(e =>
+                    {
+                        args[argIndex].Type = e.newValue;
+                        _window.NotifySidePanelChanged();
+                    });
+                    argRow.Add(typePopup);
+
+                    var removeBtn = new Button(() =>
+                    {
+                        args.RemoveAt(argIndex);
+                        _window.NotifySidePanelChanged();
+                        RebuildEventArgsContainer(evt, container, eventIndex);
+                    });
+                    removeBtn.text = "X";
+                    removeBtn.AddToClassList("event-arg-remove");
+                    argRow.Add(removeBtn);
+
+                    container.Add(argRow);
+                }
+            }
+            else
+            {
+                var hint = new Label("No arguments defined. Click + to add up to 8 arguments.");
+                hint.AddToClassList("event-args-hint");
+                container.Add(hint);
+            }
+
+            if (args.Count < 8)
+            {
+                var addArgBtn = new Button(() =>
+                {
+                    args.Add(new BlackboardEventArg
+                    {
+                        Name = GetUniqueArgName(args, "Arg"),
+                        Type = BlackboardVariableType.Float
+                    });
+                    _window.NotifySidePanelChanged();
+                    RebuildEventArgsContainer(evt, container, eventIndex);
+                });
+                addArgBtn.text = "+ Add Argument";
+                addArgBtn.AddToClassList("event-add-arg-button");
+                container.Add(addArgBtn);
+            }
+        }
+
+        private static string GetUniqueArgName(List<BlackboardEventArg> args, string baseName)
+        {
+            if (!args.Exists(a => a.Name == baseName))
+                return baseName;
+            for (int i = 1; i < 100; i++)
+            {
+                string candidate = $"{baseName}{i}";
+                if (!args.Exists(a => a.Name == candidate))
+                    return candidate;
+            }
+            return baseName;
         }
 
         private void ClearRowSelection()
@@ -461,7 +589,20 @@ namespace CleanStateMachine
             foreach (var r in _variableRows)
                 r.RemoveFromClassList("variable-row-selected");
             foreach (var r in _eventRows)
-                r.RemoveFromClassList("variable-row-selected");
+            {
+                var h = r.Q<VisualElement>(className: "bb-event-header");
+                if (h != null)
+                    h.RemoveFromClassList("variable-row-selected");
+            }
+        }
+
+        private void CollapseAllEventArgs()
+        {
+            foreach (var r in _eventRows)
+            {
+                var c = r.Q<VisualElement>(className: "event-args-container");
+                if (c != null) c.style.display = DisplayStyle.None;
+            }
         }
 
         private void StartNameEdit(int index)
@@ -709,6 +850,7 @@ namespace CleanStateMachine
             }
 
             _selectedIndex = -1;
+            _expandedEventIndex = -1;
             if (_isEventsTab)
                 RebuildEvents();
             else
