@@ -5,6 +5,8 @@ A clean, extensible state machine system for Unity with a built-in visual graph 
 ![Unity](https://img.shields.io/badge/unity-6000.0%2B-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+![Clean State Machine Graph Editor](Screenshots/graph-editor-overview.gif)
+
 ---
 
 ## Features

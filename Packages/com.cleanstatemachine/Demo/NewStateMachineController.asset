@@ -1252,7 +1252,7 @@ MonoBehaviour:
       _legacyBehaviourType: 
       _legacyBehaviour: {fileID: 0}
     - Name: State 04
-      Position: {x: 528.6874, y: -121.67737}
+      Position: {x: 575.058, y: -94.33062}
       Size: {x: 160, y: 40}
       IsEntry: 0
       IsSubEntry: 0
@@ -1342,8 +1342,8 @@ MonoBehaviour:
         m_PersistentCalls:
           m_Calls: []
     Breakpoints: []
-    PanOffset: {x: -8.7473755, y: 380.43225}
-    Zoom: 0.61054426
+    PanOffset: {x: 16.898773, y: 305.5022}
+    Zoom: 0.723899
     ExpandedSubStateIndices: 
 --- !u!114 &713869973929600445
 MonoBehaviour:
