@@ -67,7 +67,7 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "UnityStateMachineTool.slnx",
+    "dotnet.defaultSolution": "CleanStateMachine.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false,
     "mcpServers": {
         "CodeGraphContext": {

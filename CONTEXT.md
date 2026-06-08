@@ -12,7 +12,7 @@ from this one file and start contributing immediately.
 - A visual state machine editor and runtime system for Unity, delivered as an embedded UPM package (`com.cleanstatemachine`)
 - Editor tool provides a graph-based canvas with nodes (states), edges (transitions), groups, blackboard variables, behaviours, and conditions
 - Runtime executes the graph via `StateMachineComponent`, a MonoBehaviour you attach to any GameObject
-- Unity 6000.0+ required; external dependency: `com.mhze.argevent` (ArgEvent system, https://github.com/mhzeGit/ArgEventSystem) for all blackboard event functionality; MIT licensed
+- Unity 6000.0+ required; external dependency: [`com.mhze.argevent`](https://github.com/mhzeGit/ArgEventSystem) (ArgEvent system) for all blackboard event functionality; MIT licensed
 - The project root is a standard Unity project shell that **only exists to host and test the package** — the actual product is the package itself
 
 ## Scope / What to Focus On
