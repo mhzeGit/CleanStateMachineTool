@@ -35,16 +35,6 @@ A clean, extensible state machine system for Unity with a built-in visual graph 
    https://github.com/mhzeGit/CleanStateMachine.git?path=Packages/com.cleanstatemachine
    ```
 
-Or add it as a dependency in your `Packages/manifest.json`:
-
-```json
-{
-  "dependencies": {
-    "com.cleanstatemachine": "https://github.com/mhzeGit/CleanStateMachine.git?path=Packages/com.cleanstatemachine"
-  }
-}
-```
-
 **Requirements**: Unity 6000.0 or newer.
 
 **Dependencies**: This package requires [ArgEvent](https://github.com/mhzeGit/ArgEventSystem) (`com.mhze.argevent`) for all blackboard event functionality. It will be resolved automatically via the UPM git dependency.
