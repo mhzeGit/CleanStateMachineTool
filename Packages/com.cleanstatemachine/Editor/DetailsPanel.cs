@@ -2268,11 +2268,14 @@ namespace CleanStateMachine
                         schedule.Execute(() => UpdateSelection(_selected, _states, _connections, _blackboardVariables)).StartingIn(0);
                     });
                     menu.AddSeparator();
+                    var filterType = (BlackboardVariableType)valueTypeProp.enumValueIndex;
                     bool hasMatch = false;
                     for (int i = 0; i < _blackboardVariables.Count; i++)
                     {
-                        hasMatch = true;
                         var bv = _blackboardVariables[i];
+                        if (bv.Type != filterType)
+                            continue;
+                        hasMatch = true;
                         string varName = bv.Name;
                         string captured = varName;
                         BlackboardVariableType capturedType = bv.Type;
@@ -2296,7 +2299,7 @@ namespace CleanStateMachine
                         });
                     }
                     if (!hasMatch)
-                        menu.AddDisabledItem("No variables in blackboard");
+                        menu.AddDisabledItem("No matching variables in blackboard");
                 });
             };
 

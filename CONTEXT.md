@@ -340,6 +340,8 @@ The `Assets/` folder (with its own `CleanStateMachine.Behaviours.asmdef` referen
 
 **`SetVariable_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to write a `value` into a `target` blackboard variable on the same state machine. `target` is a `BlackboardVariableSelector` (rendered as a dropdown of all blackboard variables), `value` is a `BlackboardVariableReference` (direct value or reference to another variable).
 
+**`DestroyGameObject_StateBehaviour.cs`** — Inherits from `StateBehaviour`. Overrides `OnStateEnter` to get a GameObject from a blackboard variable (selected via `BlackboardVariableSelector target`) and destroy it via `Object.Destroy`. Only runs if a variable is selected and the reference is not null.
+
 ---
 
 ## DEMO
