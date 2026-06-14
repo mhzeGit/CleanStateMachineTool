@@ -28,6 +28,7 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
     };
 
     public CompareType comparison = CompareType.Equal;
+    public bool notEqual;
     public bool ignoreCase = true;
 
     public override string DisplayName => "Compare Variable";
@@ -36,12 +37,25 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
     {
         input1.ValueType = variableType;
         input2.ValueType = variableType;
+
+        if (variableType == BlackboardVariableType.Bool ||
+            variableType == BlackboardVariableType.String ||
+            variableType == BlackboardVariableType.GameObject)
+        {
+            if (comparison == CompareType.NotEqual)
+                notEqual = true;
+            comparison = CompareType.Equal;
+        }
     }
 
     public override bool ShouldShowProperty(string propertyName)
     {
         if (propertyName == "ignoreCase")
             return variableType == BlackboardVariableType.String;
+        if (propertyName == "comparison")
+            return variableType == BlackboardVariableType.Int || variableType == BlackboardVariableType.Float;
+        if (propertyName == "notEqual")
+            return variableType == BlackboardVariableType.Bool || variableType == BlackboardVariableType.String || variableType == BlackboardVariableType.GameObject;
         return true;
     }
 
@@ -63,12 +77,7 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
     {
         bool a = input1.GetBoolValue(sm);
         bool b = input2.GetBoolValue(sm);
-        return comparison switch
-        {
-            CompareType.Equal => a == b,
-            CompareType.NotEqual => a != b,
-            _ => false
-        };
+        return notEqual ? a != b : a == b;
     }
 
     private bool CompareInt(StateMachineComponent sm)
@@ -110,12 +119,7 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
         System.StringComparison c = ignoreCase
             ? System.StringComparison.OrdinalIgnoreCase
             : System.StringComparison.Ordinal;
-        return comparison switch
-        {
-            CompareType.Equal => string.Equals(a, b, c),
-            CompareType.NotEqual => !string.Equals(a, b, c),
-            _ => false
-        };
+        return notEqual ? !string.Equals(a, b, c) : string.Equals(a, b, c);
     }
 
     private bool GetTrigger(StateMachineComponent sm)
@@ -127,11 +131,6 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
     {
         GameObject a = input1.GetGameObjectValue(sm);
         GameObject b = input2.GetGameObjectValue(sm);
-        return comparison switch
-        {
-            CompareType.Equal => a == b,
-            CompareType.NotEqual => a != b,
-            _ => false
-        };
+        return notEqual ? a != b : a == b;
     }
 }
