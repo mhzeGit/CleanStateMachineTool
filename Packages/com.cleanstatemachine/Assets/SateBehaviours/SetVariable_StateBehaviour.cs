@@ -38,6 +38,9 @@ public class SetVariable_StateBehaviour : StateBehaviour
                 if (value.GetTriggerValue(stateMachine))
                     stateMachine.SetTriggerParameter(target.VariableName);
                 break;
+            case BlackboardVariableType.GameObject:
+                stateMachine.SetGameObjectParameter(target.VariableName, value.GetGameObjectValue(stateMachine));
+                break;
         }
     }
 }

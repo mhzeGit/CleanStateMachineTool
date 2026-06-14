@@ -498,6 +498,15 @@
 
 
 
+/* Variable value hint (GameObject scene ref label) */
+.variable-value-hint {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    -unity-text-align: middle-right;
+    padding-right: 4px;
+    flex: 1;
+}
+
 /* Vector field (multiple axis inputs) */
 .variable-value-vector {
     flex: 1;

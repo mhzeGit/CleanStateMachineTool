@@ -95,6 +95,7 @@ namespace CleanStateMachine
                                         BlackboardVariableType.Int => variables[j].IntValue,
                                         BlackboardVariableType.Float => variables[j].FloatValue,
                                         BlackboardVariableType.String => variables[j].StringValue,
+                                        BlackboardVariableType.GameObject => variables[j].GameObjectValue,
                                         _ => variables[j].StringValue
                                     };
                                 }
@@ -110,6 +111,7 @@ namespace CleanStateMachine
                         BlackboardVariableType.Int => assignment.Value.GetIntValue(null),
                         BlackboardVariableType.Float => assignment.Value.GetFloatValue(null),
                         BlackboardVariableType.String => assignment.Value.DefaultValue,
+                        BlackboardVariableType.GameObject => assignment.Value.DefaultGameObjectValue,
                         _ => assignment.Value.DefaultValue
                     };
                 }

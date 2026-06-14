@@ -721,6 +721,19 @@ namespace CleanStateMachine
                 v.BoolValue = true;
         }
 
+        public void SetGameObjectParameter(string name, GameObject value)
+        {
+            if (TryGetVariable(name, BlackboardVariableType.GameObject, out var v))
+                v.GameObjectValue = value;
+        }
+
+        public GameObject GetGameObjectParameter(string name)
+        {
+            if (TryGetVariable(name, BlackboardVariableType.GameObject, out var v))
+                return v.GameObjectValue;
+            return null;
+        }
+
         public bool GetTriggerParameter(string name)
         {
             if (TryGetVariable(name, BlackboardVariableType.Trigger, out var v))
@@ -907,6 +920,8 @@ namespace CleanStateMachine
                 case BlackboardVariableType.Trigger:
                     if (bool.TryParse(state.ExternalBlackboardParmValue, out var tr) && tr)
                         sm.SetTriggerParameter(state.ExternalBlackboardParmName);
+                    break;
+                case BlackboardVariableType.GameObject:
                     break;
             }
         }

@@ -1386,12 +1386,19 @@ MonoBehaviour:
     - Name: State 02
       Type: 0
       StringValue: False
+      GameObjectValue: {fileID: 0}
     - Name: State 03
       Type: 0
       StringValue: False
+      GameObjectValue: {fileID: 0}
     - Name: Index
       Type: 1
       StringValue: 0
+      GameObjectValue: {fileID: 0}
+    - Name: Gameobject01
+      Type: 5
+      StringValue: 0
+      GameObjectValue: {fileID: 0}
     BlackboardEvents:
     - Name: New ArgEvent
       argEvent:
@@ -1430,8 +1437,8 @@ MonoBehaviour:
       - Name: Arg7
         Type: 2
     Breakpoints: []
-    PanOffset: {x: 15.982788, y: 338.57336}
-    Zoom: 0.7573531
+    PanOffset: {x: 24.0271, y: 237.79901}
+    Zoom: 0.700348
     ExpandedSubStateIndices: 
 --- !u!114 &713869973929600445
 MonoBehaviour:

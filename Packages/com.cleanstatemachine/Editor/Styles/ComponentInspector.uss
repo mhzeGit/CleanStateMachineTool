@@ -84,7 +84,7 @@
 }
 
 .variable-badge {
-    width: 34px;
+    width: 76px;
     font-size: 10px;
     -unity-font-style: bold;
     color: #7a8aad;
@@ -95,8 +95,8 @@
 .variable-name-label {
     font-size: 11px;
     color: #d9d9d9;
-    flex: 1;
-    min-width: 60px;
+    flex: 1 1 40px;
+    min-width: 40px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -105,8 +105,8 @@
 }
 
 .variable-value-container {
-    flex: 1;
-    min-width: 80px;
+    flex: 0 0 auto;
+    min-width: 70px;
 }
 
 .variable-field.unity-toggle {

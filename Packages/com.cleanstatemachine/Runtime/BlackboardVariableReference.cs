@@ -1,4 +1,5 @@
 using System.Globalization;
+using UnityEngine;
 
 namespace CleanStateMachine
 {
@@ -9,6 +10,7 @@ namespace CleanStateMachine
         public string BlackboardVariableName;
         public BlackboardVariableType ValueType = BlackboardVariableType.Float;
         public string DefaultValue = "";
+        public GameObject DefaultGameObjectValue;
 
         public string GetStringValue(StateMachineComponent sm)
         {
@@ -43,6 +45,13 @@ namespace CleanStateMachine
             if (UseBlackboard && !string.IsNullOrEmpty(BlackboardVariableName))
                 return sm.GetTriggerParameter(BlackboardVariableName);
             return bool.TryParse(DefaultValue, out var v) && v;
+        }
+
+        public GameObject GetGameObjectValue(StateMachineComponent sm)
+        {
+            if (UseBlackboard && !string.IsNullOrEmpty(BlackboardVariableName))
+                return sm.GetGameObjectParameter(BlackboardVariableName);
+            return DefaultGameObjectValue;
         }
     }
 }

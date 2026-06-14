@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace CleanStateMachine
 {
@@ -9,6 +10,7 @@ namespace CleanStateMachine
         Float,
         String,
         Trigger,
+        GameObject,
     }
 
     [Serializable]
@@ -17,6 +19,7 @@ namespace CleanStateMachine
         public string Name = "New Variable";
         public BlackboardVariableType Type = BlackboardVariableType.Float;
         public string StringValue = "0";
+        public GameObject GameObjectValue;
 
         public bool BoolValue
         {
@@ -51,6 +54,7 @@ namespace CleanStateMachine
                 BlackboardVariableType.Float => FloatValue,
                 BlackboardVariableType.String => StringValue,
                 BlackboardVariableType.Trigger => TriggerValue,
+                BlackboardVariableType.GameObject => GameObjectValue,
                 _ => StringValue
             };
         }
@@ -61,7 +65,8 @@ namespace CleanStateMachine
             {
                 Name = Name,
                 Type = Type,
-                StringValue = StringValue
+                StringValue = StringValue,
+                GameObjectValue = GameObjectValue
             };
         }
     }

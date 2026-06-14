@@ -319,6 +319,8 @@ namespace CleanStateMachine
                     sb.Append(variables[i].Name);
                     sb.Append((int)variables[i].Type);
                     sb.Append(variables[i].StringValue);
+                    if (variables[i].Type == BlackboardVariableType.GameObject)
+                        sb.Append(variables[i].GameObjectValue?.GetInstanceID() ?? 0);
                 }
             }
             _lastVariableHash = sb.ToString();
@@ -335,6 +337,8 @@ namespace CleanStateMachine
                 sb.Append(current[i].Name);
                 sb.Append((int)current[i].Type);
                 sb.Append(current[i].StringValue);
+                if (current[i].Type == BlackboardVariableType.GameObject)
+                    sb.Append(current[i].GameObjectValue?.GetInstanceID() ?? 0);
             }
             return sb.ToString() != _lastVariableHash;
         }
@@ -420,6 +424,20 @@ namespace CleanStateMachine
                     valueContainer.Add(triggerToggle);
                     break;
                 }
+                case BlackboardVariableType.GameObject:
+                {
+                    var field = new ObjectField();
+                    field.objectType = typeof(GameObject);
+                    field.value = variable.GameObjectValue;
+                    field.AddToClassList("variable-field");
+                    field.RegisterValueChangedCallback(e =>
+                    {
+                        variable.GameObjectValue = (GameObject)e.newValue;
+                        MarkDirty();
+                    });
+                    valueContainer.Add(field);
+                    break;
+                }
             }
 
             row.Add(valueContainer);
@@ -467,6 +485,10 @@ namespace CleanStateMachine
                         if (field is TriggerToggle tt && tt.Value != variable.BoolValue)
                             tt.SetValueWithoutNotify(variable.BoolValue);
                         break;
+                    case BlackboardVariableType.GameObject:
+                        if (field is ObjectField gof && gof.value != variable.GameObjectValue)
+                            gof.SetValueWithoutNotify(variable.GameObjectValue);
+                        break;
                 }
             }
         }
@@ -489,6 +511,7 @@ namespace CleanStateMachine
                 BlackboardVariableType.Float => "float",
                 BlackboardVariableType.String => "string",
                 BlackboardVariableType.Trigger => "trigger",
+                BlackboardVariableType.GameObject => "GameObject",
                 _ => type.ToString()
             };
         }

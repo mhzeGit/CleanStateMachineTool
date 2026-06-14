@@ -334,6 +334,7 @@ namespace CleanStateMachine
                 BlackboardVariableType.Float => "float",
                 BlackboardVariableType.String => "string",
                 BlackboardVariableType.Trigger => "trigger",
+                BlackboardVariableType.GameObject => "GameObject",
                 _ => type.ToString()
             };
         }

@@ -2039,6 +2039,19 @@ namespace CleanStateMachine
                             valueArea.Add(triggerToggle);
                             break;
                         }
+                        case BlackboardVariableType.GameObject:
+                        {
+                            var defaultGoProp = prop.FindPropertyRelative("DefaultGameObjectValue");
+                            if (defaultGoProp != null)
+                            {
+                                var field = new ObjectField();
+                                field.objectType = typeof(GameObject);
+                                field.bindingPath = defaultGoProp.propertyPath;
+                                field.AddToClassList("variable-field");
+                                valueArea.Add(field);
+                            }
+                            break;
+                        }
                     }
                 }
             };
@@ -2644,6 +2657,14 @@ namespace CleanStateMachine
                         _window.NotifySidePanelChanged();
                     };
                     return triggerToggle;
+                }
+                case BlackboardVariableType.GameObject:
+                {
+                    var goLabel = new Label("Assign in\ncomponent");
+                    goLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
+                    goLabel.style.fontSize = 10;
+                    goLabel.style.whiteSpace = WhiteSpace.Normal;
+                    return goLabel;
                 }
                 default:
                 {

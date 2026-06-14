@@ -270,6 +270,12 @@ namespace CleanStateMachine
                 toggleContainer.Add(toggle);
                 rightGroup.Add(toggleContainer);
             }
+            else if (variable.Type == BlackboardVariableType.GameObject)
+            {
+                var hint = new Label("scene ref");
+                hint.AddToClassList("variable-value-hint");
+                rightGroup.Add(hint);
+            }
             else
             {
                 switch (variable.Type)
@@ -894,6 +900,7 @@ namespace CleanStateMachine
                     BlackboardVariableType.Bool => "False",
                     BlackboardVariableType.String => "",
                     BlackboardVariableType.Trigger => "False",
+                    BlackboardVariableType.GameObject => "",
                     _ => "0"
                 }
             };

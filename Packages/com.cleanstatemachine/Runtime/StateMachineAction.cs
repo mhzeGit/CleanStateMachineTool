@@ -36,6 +36,12 @@ namespace CleanStateMachine
                 _stateMachine.SetStringParameter(_blackboardVariableName, value);
         }
 
+        protected void SetBlackboardValue(GameObject value)
+        {
+            if (_stateMachine != null && !string.IsNullOrEmpty(_blackboardVariableName))
+                _stateMachine.SetGameObjectParameter(_blackboardVariableName, value);
+        }
+
         protected void SetBlackboardTrigger()
         {
             if (_stateMachine != null && !string.IsNullOrEmpty(_blackboardVariableName))
@@ -77,6 +83,11 @@ namespace CleanStateMachine
             return "";
         }
 
-
+        protected GameObject GetBlackboardGameObject()
+        {
+            if (_stateMachine != null && !string.IsNullOrEmpty(_blackboardVariableName))
+                return _stateMachine.GetGameObjectParameter(_blackboardVariableName);
+            return null;
+        }
     }
 }

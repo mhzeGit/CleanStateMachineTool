@@ -54,6 +54,7 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
             BlackboardVariableType.Float => CompareFloat(stateMachine),
             BlackboardVariableType.String => CompareString(stateMachine),
             BlackboardVariableType.Trigger => GetTrigger(stateMachine),
+            BlackboardVariableType.GameObject => CompareGameObject(stateMachine),
             _ => false
         };
     }
@@ -120,5 +121,17 @@ public class UltimateCompare_ConditionBehaviours : ConditionScript
     private bool GetTrigger(StateMachineComponent sm)
     {
         return input1.GetTriggerValue(sm);
+    }
+
+    private bool CompareGameObject(StateMachineComponent sm)
+    {
+        GameObject a = input1.GetGameObjectValue(sm);
+        GameObject b = input2.GetGameObjectValue(sm);
+        return comparison switch
+        {
+            CompareType.Equal => a == b,
+            CompareType.NotEqual => a != b,
+            _ => false
+        };
     }
 }
