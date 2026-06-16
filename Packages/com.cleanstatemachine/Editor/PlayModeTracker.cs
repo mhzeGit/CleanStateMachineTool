@@ -179,7 +179,7 @@ namespace CleanStateMachine
                 if (_window.Controller != null)
                 {
                     _window.GraphSerializer.SaveCurrentData();
-                    _window.Controller.Data = _window.Controller.Data;
+                    _window.RestorePrePlayModeBlackboard();
                 }
                 _window.ExpandedSubStateStack.Clear();
                 _window.PendingExpandStack = null;
@@ -190,6 +190,7 @@ namespace CleanStateMachine
             else if (change == PlayModeStateChange.EnteredPlayMode)
             {
                 _window.TriggeredBreakpointIndices.Clear();
+                _window.CapturePrePlayModeBlackboard();
             }
             else if (change == PlayModeStateChange.EnteredEditMode)
             {

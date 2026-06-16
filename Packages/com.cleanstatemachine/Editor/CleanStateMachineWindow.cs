@@ -105,6 +105,11 @@ namespace CleanStateMachine
         internal List<BlackboardVariable> BlackboardVariables = new();
         internal List<BlackboardEvent> BlackboardEvents = new();
 
+        // Snapshot of blackboard state before entering play mode, so runtime
+        // modifications can be discarded when returning to edit mode.
+        private List<BlackboardVariable> _prePlayModeBbVariables;
+        private List<BlackboardEvent> _prePlayModeBbEvents;
+
         internal readonly List<int> ExpandedSubStateStack = new();
 
         // ─── Blackboard Bidirectional Sync ──────────────────────────
@@ -207,6 +212,47 @@ namespace CleanStateMachine
         {
             var sourceVars = GetBlackboardSourceVariables();
             _lastSourceVariableHash = ComputeVariableHash(sourceVars);
+        }
+
+        internal void CapturePrePlayModeBlackboard()
+        {
+            if (_controller == null) return;
+            var srcVars = _controller.Data.BlackboardVariables;
+            var srcEvents = _controller.Data.BlackboardEvents;
+            _prePlayModeBbVariables = new List<BlackboardVariable>(srcVars.Count);
+            for (int i = 0; i < srcVars.Count; i++)
+                _prePlayModeBbVariables.Add(srcVars[i].Clone());
+            _prePlayModeBbEvents = new List<BlackboardEvent>(srcEvents.Count);
+            for (int i = 0; i < srcEvents.Count; i++)
+                _prePlayModeBbEvents.Add(srcEvents[i].Clone());
+        }
+
+        internal void RestorePrePlayModeBlackboard()
+        {
+            if (_controller == null || _prePlayModeBbVariables == null) return;
+
+            _controller.Data.BlackboardVariables.Clear();
+            for (int i = 0; i < _prePlayModeBbVariables.Count; i++)
+                _controller.Data.BlackboardVariables.Add(_prePlayModeBbVariables[i].Clone());
+
+            _controller.Data.BlackboardEvents.Clear();
+            for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
+                _controller.Data.BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+
+            BlackboardVariables.Clear();
+            for (int i = 0; i < _prePlayModeBbVariables.Count; i++)
+                BlackboardVariables.Add(_prePlayModeBbVariables[i].Clone());
+
+            BlackboardEvents.Clear();
+            for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
+                BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+
+            RefreshBlackboardSyncState();
+            if (SidePanelElement != null)
+                SidePanelElement.UpdateBlackboard();
+
+            _prePlayModeBbVariables = null;
+            _prePlayModeBbEvents = null;
         }
 
         private int _dataIndexCounter = 0;
@@ -432,6 +478,8 @@ namespace CleanStateMachine
             {
                 if (_hasUnsavedChanges || Application.isPlaying)
                 {
+                    if (Application.isPlaying && _prePlayModeBbVariables != null)
+                        RestorePrePlayModeBlackboard();
                     GraphSerializer.SaveCurrentData();
                     _controller.Data = _controller.Data;
                 }
