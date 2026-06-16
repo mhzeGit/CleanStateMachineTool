@@ -348,6 +348,7 @@ namespace CleanStateMachine
         internal Label ExpandedModeLabel;
         internal VisualElement BreadcrumbContainer;
         private Button _searchButton;
+        private VisualElement _emptyStateContainer;
 
         // ─── Private Helpers ──────────────────────────────────────────
 
@@ -673,6 +674,27 @@ namespace CleanStateMachine
                 _searchButton.style.backgroundColor = new Color(0.18f, 0.18f, 0.18f, 0.85f));
             rootVisualElement.Add(_searchButton);
 
+            _emptyStateContainer = new VisualElement();
+            _emptyStateContainer.style.position = Position.Absolute;
+            _emptyStateContainer.style.left = 0f;
+            _emptyStateContainer.style.right = 0f;
+            _emptyStateContainer.style.top = 0f;
+            _emptyStateContainer.style.bottom = 0f;
+            _emptyStateContainer.style.display = DisplayStyle.Flex;
+            _emptyStateContainer.style.justifyContent = Justify.Center;
+            _emptyStateContainer.style.alignItems = Align.Center;
+            _emptyStateContainer.pickingMode = PickingMode.Ignore;
+
+            var emptyLabel = new Label("Open a State Machine Controller file or select a State Machine Component in the Hierarchy");
+            emptyLabel.style.fontSize = 18;
+            emptyLabel.style.color = new Color(0.5f, 0.5f, 0.5f);
+            emptyLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+            emptyLabel.style.whiteSpace = WhiteSpace.Normal;
+            emptyLabel.style.maxWidth = 400;
+            _emptyStateContainer.Add(emptyLabel);
+
+            rootVisualElement.Add(_emptyStateContainer);
+
             GraphOperations.SyncGroupElements();
             rootVisualElement.schedule.Execute(() =>
             {
@@ -684,6 +706,8 @@ namespace CleanStateMachine
             }).StartingIn(10);
 
             rootVisualElement.RegisterCallback<KeyDownEvent>(OnRootKeyDown);
+
+            UpdateEmptyStateVisibility();
         }
 
         private void OnGUI()
@@ -697,6 +721,14 @@ namespace CleanStateMachine
                 _pendingController = null;
                 GraphSerializer.LoadController(pending);
             }
+
+            if (_controller == null)
+            {
+                UpdateEmptyStateVisibility();
+                return;
+            }
+
+            UpdateEmptyStateVisibility();
 
             if (_pendingFocusOnContent)
             {
@@ -896,6 +928,24 @@ namespace CleanStateMachine
                 return;
 
             UpdateResizeCursor();
+        }
+
+        private void UpdateEmptyStateVisibility()
+        {
+            bool hasController = _controller != null;
+            _emptyStateContainer.style.display = hasController ? DisplayStyle.None : DisplayStyle.Flex;
+
+            GridBackground.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            GroupContainer.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            ConnectionArrowsLayer.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            StateLayer.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            GraphCanvas.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            ExpandedModeBar.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            GraphPreview.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            SidePanelElement.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_searchButton != null)
+                _searchButton.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            SelectionBox.Element.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void OnRootKeyDown(KeyDownEvent e)
