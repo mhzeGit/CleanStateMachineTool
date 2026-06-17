@@ -9,7 +9,7 @@ namespace CleanStateMachine
         [OnOpenAsset]
         public static bool OnOpenAsset(int instanceID, int line)
         {
-#if UNITY_6000_0_OR_NEWER
+#if UNITY_6500_0_OR_NEWER
             var controller = EditorUtility.EntityIdToObject(EntityId.FromULong((ulong)instanceID)) as StateMachineController;
 #else
             var controller = EditorUtility.InstanceIDToObject(instanceID) as StateMachineController;
