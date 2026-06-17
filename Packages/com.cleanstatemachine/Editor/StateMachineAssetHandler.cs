@@ -9,9 +9,11 @@ namespace CleanStateMachine
         [OnOpenAsset]
         public static bool OnOpenAsset(int instanceID, int line)
         {
-#pragma warning disable CS0618
+#if UNITY_6000_0_OR_NEWER
+            var controller = EditorUtility.EntityIdToObject(EntityId.FromULong((ulong)instanceID)) as StateMachineController;
+#else
             var controller = EditorUtility.InstanceIDToObject(instanceID) as StateMachineController;
-#pragma warning restore CS0618
+#endif
             if (controller != null)
             {
                 CleanStateMachineWindow.OpenWithController(controller);
