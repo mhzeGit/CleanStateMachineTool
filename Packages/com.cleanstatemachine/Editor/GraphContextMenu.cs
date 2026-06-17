@@ -51,11 +51,6 @@ namespace CleanStateMachine
 
         private void AddDefaultItems(MenuDropdown.IBuilder menu, Vector2 graphMousePosition, bool hasSelection, bool hasClipboard, bool contextNodeHasBreakpoint = false)
         {
-            menu.AddItem("Create State", () => CreateStateRequested?.Invoke(graphMousePosition));
-            menu.AddItem("Create Sub State Machine", new Color(0.863f, 0.627f, 0.314f), () => CreateSubStateMachineRequested?.Invoke(graphMousePosition));
-            menu.AddItem("Create External Reference", new Color(0.471f, 0.510f, 0.863f), () => CreateExternalReferenceRequested?.Invoke(graphMousePosition));
-            menu.AddItem("Create Any State", new Color(0.800f, 0.400f, 0.800f), () => CreateAnyStateRequested?.Invoke(graphMousePosition));
-
             if (_contextNode != null)
             {
                 StateView captured = _contextNode;
@@ -65,6 +60,13 @@ namespace CleanStateMachine
                     menu.AddItem("Remove Breakpoint", new Color(0.85f, 0.35f, 0.15f), () => ToggleBreakpointRequested?.Invoke(captured));
                 else
                     menu.AddItem("Add Breakpoint", new Color(0.85f, 0.35f, 0.15f), () => ToggleBreakpointRequested?.Invoke(captured));
+            }
+            else
+            {
+                menu.AddItem("Create State", () => CreateStateRequested?.Invoke(graphMousePosition));
+                menu.AddItem("Create Sub State Machine", new Color(0.863f, 0.627f, 0.314f), () => CreateSubStateMachineRequested?.Invoke(graphMousePosition));
+                menu.AddItem("Create External Reference", new Color(0.471f, 0.510f, 0.863f), () => CreateExternalReferenceRequested?.Invoke(graphMousePosition));
+                menu.AddItem("Create Any State", new Color(0.800f, 0.400f, 0.800f), () => CreateAnyStateRequested?.Invoke(graphMousePosition));
             }
 
             menu.AddSeparator();
