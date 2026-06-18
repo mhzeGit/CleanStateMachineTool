@@ -72,7 +72,11 @@ namespace CleanStateMachine
         public void DrawScreen(float zoom, Vector2 panOffset)
         {
             if (!IsActive)
+            {
+                if (Element.style.display != DisplayStyle.None)
+                    Element.style.display = DisplayStyle.None;
                 return;
+            }
 
             if (!HasValidDrag(zoom))
             {

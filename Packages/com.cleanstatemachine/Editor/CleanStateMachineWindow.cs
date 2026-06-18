@@ -945,7 +945,8 @@ namespace CleanStateMachine
             SidePanelElement.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
             if (_searchButton != null)
                 _searchButton.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
-            SelectionBox.Element.style.display = hasController ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!hasController)
+                SelectionBox.Element.style.display = DisplayStyle.None;
         }
 
         private void OnRootKeyDown(KeyDownEvent e)
