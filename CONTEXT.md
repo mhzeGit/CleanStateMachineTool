@@ -181,7 +181,7 @@ The Editor assembly (`CleanStateMachine.Editor`) contains the entire graph edito
 
 **`DragHandle.cs`** — Reusable `VisualElement` subclass that renders a visible 3x2 dot grid as a drag affordance. Used by `BlackboardPanel`, `DetailsPanel` (condition/behaviour entries), and any other reorderable list. The 6-dot pattern (2 rows x 3 columns) provides a clear visual grab target. Styled via `.drag-handle`, `.drag-handle-row`, and `.drag-handle-dot` USS classes with hover highlighting.
 
-**`BlackboardPanel.cs`** — The blackboard sub-panel VisualElement. Has two tabs: "Variables" and "Events". The Variables tab lists all blackboard variables with type-appropriate inline editors (toggle for Bool, numeric fields, text field, trigger toggle). The Events tab lists all blackboard events with an "ArgEvent" type badge and an expandable argument definition section. Supports: adding variables via a dropdown (all types), adding events directly, inline rename on double-click/F2, row selection (click) and deletion (Delete key), drag-to-reorder rows via `DragHandle`, inline value editing for variables. When an event row is selected, the argument definitions section expands showing each arg's name (editable text field) and type (enum dropdown for `BlackboardVariableType`), with "X" remove button per arg and an "+ Add Argument" button (up to 8 args). Mutations use undoable commands (`DeleteBlackboardVariableCommand`, `ModifyBlackboardVariableCommand`, `DeleteBlackboardEventCommand`, `RenameBlackboardEventCommand`).
+**`BlackboardPanel.cs`** — The blackboard sub-panel VisualElement. Has two tabs: "Variables" and "Events". The Variables tab lists all blackboard variables with type-appropriate inline editors (toggle for Bool, numeric fields, text field, trigger toggle). The Events tab lists all blackboard events with an "ArgEvent" type badge and an expandable argument definition section. Supports: adding variables via a dropdown (all types), adding events directly, inline rename on double-click/F2, row selection (click) and deletion (Delete/Backspace/Ctrl+X), drag-to-reorder rows via `DragHandle`, inline value editing for variables. When an event row is selected, the argument definitions section expands showing each arg's name (editable text field) and type (enum dropdown for `BlackboardVariableType`), with "X" remove button per arg and an "+ Add Argument" button (up to 8 args). All mutations use undoable commands (`AddBlackboardVariableCommand`, `AddBlackboardEventCommand`, `DeleteBlackboardVariableCommand`, `ModifyBlackboardVariableCommand`, `DeleteBlackboardEventCommand`, `RenameBlackboardEventCommand`). `RebuildFromSource()` fetches fresh data from the window and fully rebuilds both tabs.
 
 ### Expanded View & Play Mode
 
@@ -246,6 +246,10 @@ The undo/redo system uses the classic Command pattern. Every reversible graph mu
 **`DeleteConnectionCommand.cs`** — Removes a single `ConnectionView` from the list. `Undo()` re-adds it. Description: "Delete Connection".
 
 **`DeleteBlackboardVariableCommand.cs`** — Clones the variable at construction, removes it from the list by index. `Undo()` inserts the clone at the original index. Description: "Delete Variable".
+
+**`AddBlackboardVariableCommand.cs`** — Stores a reference to a new `BlackboardVariable`. `Execute()` adds it to the list; `Undo()` removes it by reference. Description: "Add Variable '<name>'".
+
+**`AddBlackboardEventCommand.cs`** — Same pattern as `AddBlackboardVariableCommand` for events. Description: "Add Event '<name>'".
 
 **`MoveStatesCommand.cs`** — Captures start and end positions for a list of `ISelectable` items (states and groups). `Execute()` applies end positions; `Undo()` restores start positions. Supports mixed selections. Description: "Move N State(s)".
 

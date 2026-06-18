@@ -119,6 +119,14 @@ namespace CleanStateMachine
             RebuildEvents();
         }
 
+        public void RebuildFromSource()
+        {
+            _variables = _window.GetBlackboardVariables();
+            _events = _window.GetBlackboardEvents();
+            RebuildVariables();
+            RebuildEvents();
+        }
+
         public void SelectVariable(int index)
         {
             if (index < 0 || _variableRows == null || index >= _variableRows.Count) return;
@@ -915,7 +923,8 @@ namespace CleanStateMachine
                     _ => "0"
                 }
             };
-            _variables.Add(v);
+            var cmd = new AddBlackboardVariableCommand(_variables, v);
+            _window.UndoRedoSystem.Execute(cmd);
             _window.NotifySidePanelChanged();
             RebuildVariables();
 
@@ -931,7 +940,8 @@ namespace CleanStateMachine
             {
                 Name = GetUniqueEventName("New Event")
             };
-            _events.Add(e);
+            var cmd = new AddBlackboardEventCommand(_events, e);
+            _window.UndoRedoSystem.Execute(cmd);
             _window.NotifySidePanelChanged();
             RebuildEvents();
 

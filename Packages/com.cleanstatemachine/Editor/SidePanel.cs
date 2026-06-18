@@ -181,8 +181,7 @@ namespace CleanStateMachine
 
         public void UpdateBlackboard()
         {
-            _blackboardPanel.UpdateVariables(_window.GetBlackboardVariables());
-            _blackboardPanel.UpdateEvents(_window.GetBlackboardEvents());
+            _blackboardPanel.RebuildFromSource();
         }
 
         public void SelectBlackboardVariable(BlackboardVariable variable)
