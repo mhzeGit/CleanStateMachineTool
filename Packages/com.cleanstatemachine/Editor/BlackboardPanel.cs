@@ -156,6 +156,10 @@ namespace CleanStateMachine
 
         private void RebuildVariables()
         {
+            _editingIndex = -1;
+            _selectedIndex = -1;
+            _lastClickIndex = -1;
+            _lastClickTime = 0;
             _variablesContainer.Clear();
             _variableRows.Clear();
 
@@ -171,6 +175,11 @@ namespace CleanStateMachine
 
         private void RebuildEvents()
         {
+            _editingIndex = -1;
+            _selectedIndex = -1;
+            _lastClickIndex = -1;
+            _lastClickTime = 0;
+            _expandedEventIndex = -1;
             _eventsContainer.Clear();
             _eventRows.Clear();
 
