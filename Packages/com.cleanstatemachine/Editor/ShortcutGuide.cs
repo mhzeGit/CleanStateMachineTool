@@ -207,6 +207,7 @@ namespace CleanStateMachine
                         new ShortcutItem { Key = "Ctrl + D", Description = "Duplicate selected states" },
                         new ShortcutItem { Key = "Ctrl + G", Description = "Group selected states into a comment box" },
                         new ShortcutItem { Key = "F2", Description = "Rename selected state or group" },
+                        new ShortcutItem { Key = "Ctrl + X", Description = "Delete selection (context-aware: graph or blackboard)" },
                         new ShortcutItem { Key = "Delete / Backspace", Description = "Delete selected items" },
                         new ShortcutItem { Key = "C", Description = "Start connection from selected state" },
                         new ShortcutItem { Key = "B", Description = "Toggle breakpoint on selected states" },

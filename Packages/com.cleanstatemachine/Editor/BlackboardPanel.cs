@@ -841,7 +841,9 @@ namespace CleanStateMachine
                 }
             }
 
-            if (e.keyCode != KeyCode.Delete && e.keyCode != KeyCode.Backspace) return;
+            bool isDelete = e.keyCode == KeyCode.Delete || e.keyCode == KeyCode.Backspace;
+            bool isCut = e.keyCode == KeyCode.X && e.ctrlKey;
+            if (!isDelete && !isCut) return;
             if (!_isMouseOver) return;
             if (_editingIndex >= 0) return;
 

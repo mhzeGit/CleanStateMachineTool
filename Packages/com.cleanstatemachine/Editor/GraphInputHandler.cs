@@ -236,6 +236,26 @@ namespace CleanStateMachine
                 }
             }
 
+            if (e.keyCode == KeyCode.X && e.control)
+            {
+                bool mouseOverBlackboard = false;
+                if (_window.SidePanelElement != null && _window.GetShowSidePanel())
+                {
+                    var bbPanel = _window.SidePanelElement.BlackboardPanel;
+                    if (bbPanel != null && bbPanel.worldBound.width > 0 && bbPanel.worldBound.height > 0)
+                        mouseOverBlackboard = bbPanel.worldBound.Contains(e.mousePosition);
+                }
+
+                if (!mouseOverBlackboard)
+                {
+                    _operations.DeleteSelected();
+                }
+
+                e.Use();
+                _window.Repaint();
+                return true;
+            }
+
             if (e.keyCode is KeyCode.Delete or KeyCode.Backspace)
             {
                 _operations.DeleteSelected();
