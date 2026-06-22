@@ -1,3 +1,4 @@
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEngine;
@@ -18,11 +19,27 @@ namespace CleanStateMachine
             return false;
         }
 
+        private static readonly MethodInfo _entityIdToObject =
+            typeof(EditorUtility).GetMethod("EntityIdToObject", BindingFlags.Public | BindingFlags.Static);
+
+        private static readonly MethodInfo _instanceIdToObject =
+            typeof(EditorUtility).GetMethod("InstanceIDToObject", new[] { typeof(int) });
+
         private static Object InstanceIDToObject(int instanceID)
         {
-#pragma warning disable 0618, 0619
-            return EditorUtility.InstanceIDToObject(instanceID);
-#pragma warning restore 0618, 0619
+            if (_entityIdToObject != null)
+            {
+                var entityIdType = _entityIdToObject.GetParameters()[0].ParameterType;
+                var fromULong = entityIdType.GetMethod("FromULong", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ulong) }, null);
+                if (fromULong != null)
+                {
+                    var entityId = fromULong.Invoke(null, new object[] { (ulong)instanceID });
+                    return (Object)_entityIdToObject.Invoke(null, new object[] { entityId });
+                }
+            }
+            if (_instanceIdToObject != null)
+                return (Object)_instanceIdToObject.Invoke(null, new object[] { instanceID });
+            return null;
         }
     }
 }
