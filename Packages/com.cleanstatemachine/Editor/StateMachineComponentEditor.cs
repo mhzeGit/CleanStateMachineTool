@@ -320,9 +320,7 @@ namespace CleanStateMachine
                     sb.Append((int)variables[i].Type);
                     sb.Append(variables[i].StringValue);
                     if (variables[i].Type == BlackboardVariableType.GameObject)
-#pragma warning disable CS0619
-                        sb.Append(variables[i].GameObjectValue?.GetInstanceID() ?? 0);
-#pragma warning restore CS0619
+                        sb.Append(variables[i].GameObjectValue?.GetHashCode() ?? 0);
                 }
             }
             _lastVariableHash = sb.ToString();
@@ -340,9 +338,7 @@ namespace CleanStateMachine
                 sb.Append((int)current[i].Type);
                 sb.Append(current[i].StringValue);
                 if (current[i].Type == BlackboardVariableType.GameObject)
-#pragma warning disable CS0619
-                    sb.Append(current[i].GameObjectValue?.GetInstanceID() ?? 0);
-#pragma warning restore CS0619
+                    sb.Append(current[i].GameObjectValue?.GetHashCode() ?? 0);
             }
             return sb.ToString() != _lastVariableHash;
         }
