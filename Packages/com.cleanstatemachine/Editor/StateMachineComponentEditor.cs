@@ -320,7 +320,7 @@ namespace CleanStateMachine
                     sb.Append((int)variables[i].Type);
                     sb.Append(variables[i].StringValue);
                     if (variables[i].Type == BlackboardVariableType.GameObject)
-#if UNITY_6500_0_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                         sb.Append(variables[i].GameObjectValue?.GetEntityId().GetHashCode() ?? 0);
 #else
                         sb.Append(variables[i].GameObjectValue?.GetInstanceID() ?? 0);
@@ -342,7 +342,7 @@ namespace CleanStateMachine
                 sb.Append((int)current[i].Type);
                 sb.Append(current[i].StringValue);
                 if (current[i].Type == BlackboardVariableType.GameObject)
-#if UNITY_6500_0_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
                     sb.Append(current[i].GameObjectValue?.GetEntityId().GetHashCode() ?? 0);
 #else
                     sb.Append(current[i].GameObjectValue?.GetInstanceID() ?? 0);
