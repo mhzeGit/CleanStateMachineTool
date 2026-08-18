@@ -242,10 +242,15 @@ namespace CleanStateMachine
             if (_behaviourInstances.TryGetValue(state, out var existing))
                 return existing;
 
-            if (state.Behaviours.Count == 0)
+            if (state.Behaviours == null || state.Behaviours.Count == 0)
                 return null;
 
-            return null;
+            var instances = CreateBehaviourInstances(state);
+            if (instances.Count == 0)
+                return null;
+
+            _behaviourInstances[state] = instances;
+            return instances;
         }
 
         private void PreCreateBehaviourInstances()
@@ -258,32 +263,50 @@ namespace CleanStateMachine
                 if (state.Behaviours == null || state.Behaviours.Count == 0)
                     continue;
 
-                var instances = new List<StateBehaviour>();
-                for (int i = 0; i < state.Behaviours.Count; i++)
-                {
-                    var be = state.Behaviours[i];
-                    if (be.Instance != null)
-                    {
-                        instances.Add(be.Instance);
-                        continue;
-                    }
-
-                    if (string.IsNullOrEmpty(be.TypeName))
-                        continue;
-
-                    var type = ResolveType(be.TypeName);
-                    if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
-                        continue;
-
-                    var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
-                    instance.name = $"{state.Name}_Behaviour_{i}";
-                    instance.hideFlags = HideFlags.HideAndDontSave;
-                    instances.Add(instance);
-                }
-
+                var instances = CreateBehaviourInstances(state);
                 if (instances.Count > 0)
                     _behaviourInstances[state] = instances;
             }
+        }
+
+        /// <summary>
+        /// Creates the runtime behaviour instances for a state.
+        /// Authored controller instances (sub-assets) are cloned per component so the
+        /// serialized configuration is preserved while mutable behaviour state never
+        /// leaks between components that share the same controller. Behaviours without
+        /// an authored instance are created from their resolved type.
+        /// </summary>
+        private List<StateBehaviour> CreateBehaviourInstances(StateData state)
+        {
+            var instances = new List<StateBehaviour>();
+
+            for (int i = 0; i < state.Behaviours.Count; i++)
+            {
+                var be = state.Behaviours[i];
+
+                if (be.Instance != null)
+                {
+                    var clone = (StateBehaviour)ScriptableObject.Instantiate(be.Instance);
+                    clone.name = $"{state.Name}_Behaviour_{i}";
+                    clone.hideFlags = HideFlags.HideAndDontSave;
+                    instances.Add(clone);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(be.TypeName))
+                    continue;
+
+                var type = ResolveType(be.TypeName);
+                if (type == null || !type.IsSubclassOf(typeof(StateBehaviour)))
+                    continue;
+
+                var instance = (StateBehaviour)ScriptableObject.CreateInstance(type);
+                instance.name = $"{state.Name}_Behaviour_{i}";
+                instance.hideFlags = HideFlags.HideAndDontSave;
+                instances.Add(instance);
+            }
+
+            return instances;
         }
 
         private void PreCreateConditionInstances()
@@ -298,11 +321,19 @@ namespace CleanStateMachine
                 for (int i = 0; i < conditions.Count; i++)
                 {
                     var entry = conditions[i];
-                    if (entry.Instance != null)
-                        continue;
 
                     if (_conditionCache.ContainsKey(entry))
                         continue;
+
+                    if (entry.Instance != null)
+                    {
+                        var clone = (ConditionScript)ScriptableObject.Instantiate(entry.Instance);
+                        clone.name = $"{entry.TypeName}_Condition";
+                        clone.hideFlags = HideFlags.HideAndDontSave;
+                        _conditionCache[entry] = clone;
+                        _runtimeConditionInstances.Add(clone);
+                        continue;
+                    }
 
                     if (string.IsNullOrEmpty(entry.TypeName))
                         continue;
@@ -417,12 +448,15 @@ namespace CleanStateMachine
             {
                 var entry = connection.Conditions[i];
 
-                ConditionScript condition = entry.Instance;
+                // Prefer the per-component instance created during initialization.
+                // The authored instance on the controller is shared and must not be
+                // mutated by any single component.
+                ConditionScript condition;
+                if (!_conditionCache.TryGetValue(entry, out condition))
+                    condition = entry.Instance;
+
                 if (condition == null)
-                {
-                    if (!_conditionCache.TryGetValue(entry, out condition))
-                        return false;
-                }
+                    return false;
 
                 if (!condition.Evaluate(this))
                     return false;
@@ -842,10 +876,10 @@ namespace CleanStateMachine
                             for (int j = 0; j < behaviours.Count; j++)
                                 behaviours[j]?.OnStateEnter(this);
                         }
-                    ExecuteExternalAction(stateData);
+                        ExecuteExternalAction(stateData);
+                    }
                 }
-            }
-            OnStateEnteredGlobal?.Invoke(this);
+                OnStateEnteredGlobal?.Invoke(this);
             }
             finally
             {
