@@ -86,6 +86,14 @@ namespace CleanStateMachine
             set => _isLoading = value;
         }
 
+        /// <summary>
+        /// True once the window's working blackboard has been populated from the
+        /// current controller's data (via LoadFromCurrentData). Used by
+        /// GraphSerializer.SaveCurrentData to never clobber a controller's
+        /// blackboard with an empty, uninitialized working list.
+        /// </summary>
+        internal bool IsBlackboardInitialized { get; set; }
+
         internal bool HasUnsavedChanges
         {
             get => _hasUnsavedChanges;
@@ -217,8 +225,23 @@ namespace CleanStateMachine
         internal void CapturePrePlayModeBlackboard()
         {
             if (_controller == null) return;
+
+            // Prefer the window's working copy when the source list is empty: a
+            // source that was never populated (or was prematurely cleared) must
+            // not cause an empty pre-play snapshot, or the post-play restore
+            // would wipe the blackboard.
             var srcVars = _controller.Data.BlackboardVariables;
+            if (srcVars == null || srcVars.Count == 0)
+                srcVars = BlackboardVariables;
+            if (srcVars == null)
+                srcVars = new List<BlackboardVariable>();
+
             var srcEvents = _controller.Data.BlackboardEvents;
+            if (srcEvents == null || srcEvents.Count == 0)
+                srcEvents = BlackboardEvents;
+            if (srcEvents == null)
+                srcEvents = new List<BlackboardEvent>();
+
             _prePlayModeBbVariables = new List<BlackboardVariable>(srcVars.Count);
             for (int i = 0; i < srcVars.Count; i++)
                 _prePlayModeBbVariables.Add(srcVars[i].Clone());
@@ -229,23 +252,39 @@ namespace CleanStateMachine
 
         internal void RestorePrePlayModeBlackboard()
         {
-            if (_controller == null || _prePlayModeBbVariables == null) return;
+            if (_controller == null) return;
+
+            // Nothing was snapshotted (or the snapshot was empty): never touch
+            // the source blackboard. A missing snapshot must not erase data.
+            if (_prePlayModeBbVariables == null || _prePlayModeBbVariables.Count == 0)
+            {
+                _prePlayModeBbVariables = null;
+                _prePlayModeBbEvents = null;
+                RefreshBlackboardSyncState();
+                return;
+            }
 
             _controller.Data.BlackboardVariables.Clear();
             for (int i = 0; i < _prePlayModeBbVariables.Count; i++)
                 _controller.Data.BlackboardVariables.Add(_prePlayModeBbVariables[i].Clone());
 
-            _controller.Data.BlackboardEvents.Clear();
-            for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
-                _controller.Data.BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+            if (_prePlayModeBbEvents != null)
+            {
+                _controller.Data.BlackboardEvents.Clear();
+                for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
+                    _controller.Data.BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+            }
 
             BlackboardVariables.Clear();
             for (int i = 0; i < _prePlayModeBbVariables.Count; i++)
                 BlackboardVariables.Add(_prePlayModeBbVariables[i].Clone());
 
-            BlackboardEvents.Clear();
-            for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
-                BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+            if (_prePlayModeBbEvents != null)
+            {
+                BlackboardEvents.Clear();
+                for (int i = 0; i < _prePlayModeBbEvents.Count; i++)
+                    BlackboardEvents.Add(_prePlayModeBbEvents[i].Clone());
+            }
 
             RefreshBlackboardSyncState();
             if (SidePanelElement != null)

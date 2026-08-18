@@ -17,6 +17,29 @@ namespace CleanStateMachine
         public void SaveCurrentData()
         {
             if (_window.CurrentData == null) return;
+
+            // Snapshot the source blackboard first: if the window's working
+            // copy was never initialized for this controller (e.g. the window
+            // received a controller without loading its graph), an empty
+            // working list must never erase the controller's variables.
+            var sourceVars = _window.CurrentData.BlackboardVariables;
+            var sourceEvents = _window.CurrentData.BlackboardEvents;
+            var preservedVars = new List<BlackboardVariable>();
+            var preservedEvents = new List<BlackboardEvent>();
+            if (!_window.IsBlackboardInitialized)
+            {
+                if (sourceVars != null)
+                {
+                    for (int i = 0; i < sourceVars.Count; i++)
+                        preservedVars.Add(sourceVars[i].Clone());
+                }
+                if (sourceEvents != null)
+                {
+                    for (int i = 0; i < sourceEvents.Count; i++)
+                        preservedEvents.Add(sourceEvents[i].Clone());
+                }
+            }
+
             _window.CurrentData.States.Clear();
             _window.CurrentData.Connections.Clear();
             _window.CurrentData.Groups.Clear();
@@ -105,11 +128,27 @@ namespace CleanStateMachine
                 _window.CurrentData.Groups.Add(gd);
             }
 
-            foreach (var v in _window.BlackboardVariables)
-                _window.CurrentData.BlackboardVariables.Add(v.Clone());
+            if (preservedVars.Count > 0)
+            {
+                for (int i = 0; i < preservedVars.Count; i++)
+                    _window.CurrentData.BlackboardVariables.Add(preservedVars[i]);
+            }
+            else
+            {
+                for (int i = 0; i < _window.BlackboardVariables.Count; i++)
+                    _window.CurrentData.BlackboardVariables.Add(_window.BlackboardVariables[i].Clone());
+            }
 
-            foreach (var e in _window.BlackboardEvents)
-                _window.CurrentData.BlackboardEvents.Add(e.Clone());
+            if (preservedEvents.Count > 0)
+            {
+                for (int i = 0; i < preservedEvents.Count; i++)
+                    _window.CurrentData.BlackboardEvents.Add(preservedEvents[i]);
+            }
+            else
+            {
+                for (int i = 0; i < _window.BlackboardEvents.Count; i++)
+                    _window.CurrentData.BlackboardEvents.Add(_window.BlackboardEvents[i].Clone());
+            }
 
             _window.CurrentData.PanOffset = _window.PanOffset;
             _window.CurrentData.Zoom = _window.Zoom;
@@ -265,6 +304,7 @@ namespace CleanStateMachine
             _window.GraphOperations.SyncGroupElements();
             _window.GraphOperations.SyncStatesWithSubMachines();
             _window.ResetDataIndexCounter();
+            _window.IsBlackboardInitialized = true;
             _window.IsLoading = false;
             if (_window.GraphValidation != null)
             {
@@ -350,6 +390,7 @@ namespace CleanStateMachine
             _window.Groups.Clear();
             _window.BlackboardVariables.Clear();
             _window.BlackboardEvents.Clear();
+            _window.IsBlackboardInitialized = false;
             _window.UndoRedoSystemClear();
             _window.ActiveStateIndex = -1;
             _window.PanOffset = Vector2.zero;
